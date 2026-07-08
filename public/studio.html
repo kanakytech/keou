@@ -2578,7 +2578,9 @@ async function resumePendingGenerations() {
 
 log('Studio ready — drop your product images');
 if (!window.IS_OS) loadActivityLog();
-resumePendingGenerations();
+// Opensource can run as a shared hosted instance — never resume another
+// visitor's jobs into this browser's grid.
+if (!window.IS_OS) resumePendingGenerations();
 
 // Inject SVG icons into static slots
 document.querySelectorAll('.icon-slot-target').forEach(el => { el.innerHTML = Icons.get('target'); });

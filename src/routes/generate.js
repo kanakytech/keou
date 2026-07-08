@@ -547,7 +547,7 @@ router.get('/pack/:packId/zip', requireAuth, async (req, res) => {
 });
 
 // ─── Get user's pending/processing generations ───
-router.get('/pending', requireAuth, async (req, res) => {
+router.get('/pending', requireEnterprise, requireAuth, async (req, res) => {
   try {
     const items = await queryAll(`
       SELECT id, type, status, task_id, record_id, input_url, format, created_at, metadata
