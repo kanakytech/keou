@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo.png">
+<meta name="color-scheme" content="dark">
+<title>Login — Keou Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circle,var(--border) 1px,transparent 1px);background-size:24px 24px}
+.auth-card .form-group{animation:fadeInUp .4s var(--ease-out) both}
+.auth-card .form-group:nth-child(1){animation-delay:.15s}
+.auth-card .form-group:nth-child(2){animation-delay:.2s}
+.auth-card .btn-primary{animation:fadeInUp .4s var(--ease-out) .25s both}
+.auth-footer{animation:fadeIn .5s var(--ease-out) .3s both}
+.auth-powered{
+  text-align:center;margin-top:32px;font-size:11px;color:var(--ink-faint);
+  letter-spacing:.3px;animation:fadeIn .6s var(--ease-out) .5s both;
+}
+.pw-wrap{position:relative}
+.pw-wrap .form-input{padding-right:40px}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink-faint);font-size:16px;padding:2px;line-height:1;transition:color .2s}
+.pw-toggle:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<div class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="/logo.png" alt="Keou">
+        <span id="agency-name">Keou Systems</span>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div id="login-section">
+        <h2 class="auth-title">Welcome back</h2>
+        <p class="auth-subtitle">Sign in to your agency workspace</p>
+
+        <div id="global-error" class="form-error" style="text-align:center;margin-bottom:16px"></div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-input" id="email" type="email" placeholder="you@agency.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <div class="pw-wrap">
+              <input class="form-input" id="password" type="password" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="Show password"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary full" id="login-btn">Sign in</button>
+        </form>
+
+        <p class="auth-footer" style="color:var(--ink-faint);font-size:12px;margin-top:20px">
+          Access is managed by your agency admin.
+        </p>
+      </div>
+
+      <!-- CHANGE PASSWORD FORM -->
+      <div id="change-pwd-section" class="hidden">
+        <h2 class="auth-title">Set your password</h2>
+        <p class="auth-subtitle">Create a secure password to get started</p>
+
+        <div id="pwd-error" class="form-error" style="text-align:center;margin-bottom:16px"></div>
+
+        <form id="change-pwd-form">
+          <div class="form-group">
+            <label class="form-label" for="new-password">New Password</label>
+            <div class="pw-wrap">
+              <input class="form-input" id="new-password" type="password" placeholder="Min 8 characters" required minlength="8">
+              <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="Show password"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm-password">Confirm Password</label>
+            <div class="pw-wrap">
+              <input class="form-input" id="confirm-password" type="password" placeholder="Repeat your password" required>
+              <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="Show password"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary full" id="change-btn">Set Password & Continue</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="auth-powered">Powered by Keou Systems &mdash; Next Dimension</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/auth.js"></script>
+<script>
+(async () => {
+  // Load agency name
+  try {
+    const r = await fetch('/api/auth/agency');
+    const d = await r.json();
+    if (d.name) document.getElementById('agency-name').textContent = d.name;
+    document.title = `Login — ${d.name || 'Keou Systems'}`;
+  } catch {}
+
+  // Check if already logged in
+  const isLoggedIn = await Auth.refresh();
+
+  if (isLoggedIn && Auth.needsPasswordChange()) {
+    showChangePassword();
+  } else if (isLoggedIn) {
+    window.location.href = '/studio.html';
+    return;
+  }
+
+  document.body.style.opacity = '1';
+
+  // ── LOGIN ──
+  const loginForm = document.getElementById('login-form');
+  const loginBtn = document.getElementById('login-btn');
+  const errorEl = document.getElementById('global-error');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.classList.remove('show');
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please fill in all fields';
+      errorEl.classList.add('show');
+      shakeEl(errorEl);
+      return;
+    }
+
+    loginBtn.classList.add('btn-loading');
+    loginBtn.disabled = true;
+
+    try {
+      const data = await Auth.login(email, password);
+      if (data.mustChangePassword) {
+        showChangePassword();
+      } else {
+        window.location.href = '/studio.html';
+      }
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add('show');
+      shakeEl(loginBtn);
+      loginBtn.classList.remove('btn-loading');
+      loginBtn.disabled = false;
+    }
+  });
+
+  // ── CHANGE PASSWORD ──
+  const changePwdForm = document.getElementById('change-pwd-form');
+  const changeBtn = document.getElementById('change-btn');
+  const pwdError = document.getElementById('pwd-error');
+
+  changePwdForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    pwdError.classList.remove('show');
+
+    const newPwd = document.getElementById('new-password').value;
+    const confirmPwd = document.getElementById('confirm-password').value;
+
+    if (newPwd.length < 8) {
+      pwdError.textContent = 'Password must be at least 8 characters';
+      pwdError.classList.add('show');
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      pwdError.textContent = 'Passwords do not match';
+      pwdError.classList.add('show');
+      return;
+    }
+
+    changeBtn.classList.add('btn-loading');
+    changeBtn.disabled = true;
+
+    try {
+      await Auth.changePassword(null, newPwd);
+      window.location.href = '/studio.html';
+    } catch (err) {
+      pwdError.textContent = err.message;
+      pwdError.classList.add('show');
+      changeBtn.classList.remove('btn-loading');
+      changeBtn.disabled = false;
+    }
+  });
+
+  function showChangePassword() {
+    const loginSec = document.getElementById('login-section');
+    const changeSec = document.getElementById('change-pwd-section');
+    loginSec.style.opacity = '0';
+    loginSec.style.transform = 'translateX(-20px)';
+    loginSec.style.transition = 'all .25s ease';
+    setTimeout(() => {
+      loginSec.classList.add('hidden');
+      changeSec.classList.remove('hidden');
+      changeSec.style.animation = 'fadeInUp .4s var(--ease-out) both';
+    }, 250);
+  }
+})();
+
+function shakeEl(el) {
+  el.style.animation = 'none';
+  el.offsetHeight; // trigger reflow
+  el.style.animation = 'shake .4s ease';
+}
+
+function togglePw(btn) {
+  const input = btn.previousElementSibling;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.innerHTML = isHidden ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+
+// Shake animation
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}`;
+document.head.appendChild(shakeStyle);
+</script>
+</body>
+</html>

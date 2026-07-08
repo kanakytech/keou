@@ -1,0 +1,2618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo.png">
+<meta name="color-scheme" content="dark">
+<title>Production Engine — Keou Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+/* ── Studio-specific styles ── */
+.main{flex:1;max-width:960px;width:100%;margin:0 auto;padding:40px 24px 60px}
+.main.visible{animation:fadeInUp .45s var(--ease-out) both}
+
+/* ── Studio Header ── */
+.studio-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.studio-header h2{margin:0}
+.studio-controls{display:flex;align-items:center;gap:10px}
+.project-select{
+  padding:8px 14px;border:1.5px solid var(--border);border-radius:100px;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  color:var(--ink);background:rgba(255,255,255,.04);cursor:pointer;
+  min-width:160px;outline:none;transition:border-color .2s;
+}
+.project-select:focus{border-color:rgba(255,255,255,.2)}
+.project-select option{background:#141414;color:#e5e5e5}
+.btn-assets{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
+  border:1.5px solid var(--border);border-radius:100px;background:rgba(255,255,255,.04);
+  color:var(--ink-muted);font-size:12px;font-weight:500;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .2s;text-decoration:none;
+}
+.btn-assets:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+
+/* ── Drop Zone ── */
+.drop-zone{
+  border:2px dashed rgba(255,255,255,.12);border-radius:var(--radius);
+  padding:56px 24px;text-align:center;cursor:pointer;
+  transition:all 0.3s var(--ease-out);background:rgba(255,255,255,.02);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.drop-zone:hover,.drop-zone.dragover{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.04);transform:scale(1.005)}
+.drop-zone.compact{padding:20px}
+.drop-icon{
+  width:48px;height:48px;border-radius:50%;background:var(--surface-2);border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 16px;
+  font-size:22px;color:var(--ink-muted);transition:all 0.25s ease;
+}
+.drop-zone:hover .drop-icon{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.drop-text{font-size:14px;color:var(--ink-muted);font-weight:400}
+.drop-text span{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+/* "Tap to upload" only shows on touch devices, "Drop ... here or" only on desktop */
+.drop-text span.drop-text-mobile{display:none;color:var(--ink-muted);font-weight:400;text-decoration:none}
+.drop-text span.drop-text-desktop{display:inline;color:var(--ink-muted);font-weight:400;text-decoration:none}
+@media(hover:none) and (pointer:coarse){
+  .drop-text span.drop-text-mobile{display:inline}
+  .drop-text span.drop-text-desktop{display:none}
+}
+
+/* ── Section Card ── */
+.section-card{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;margin-bottom:16px;transition:all 0.25s ease;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.section-card:hover{border-color:var(--border-strong)}
+
+/* ── Queue ── */
+.queue-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.queue-header .section-label{margin-bottom:0}
+.queue-grid{display:flex;flex-wrap:wrap;gap:8px}
+.queue-item{
+  width:68px;height:68px;border-radius:12px;overflow:hidden;position:relative;
+  border:1px solid var(--border);flex-shrink:0;transition:all 0.2s ease;
+}
+.queue-item:hover{border-color:rgba(255,255,255,.15);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.queue-item img{width:100%;height:100%;object-fit:cover;display:block}
+.queue-remove{
+  position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;
+  background:rgba(0,0,0,.7);border:none;color:#fff;font-size:11px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;
+}
+.queue-item:hover .queue-remove{opacity:1}
+
+/* ── Format ── */
+.format-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.format-btn{
+  padding:16px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:transparent;color:var(--ink-muted);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+  transition:all .2s ease;text-align:center;
+}
+.format-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+.format-btn.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.format-btn:active{transform:scale(0.95);transition-duration:.08s}
+.format-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.format-label{display:flex;align-items:center;justify-content:center;margin:0 auto 8px;opacity:.5}
+.format-btn.active .format-label{opacity:1}
+.format-label svg{display:block}
+.format-ratio{display:block;font-size:12px;letter-spacing:0.5px;font-weight:600}
+
+/* ── Variant Selector ── */
+.variant-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.variant-btn{
+  padding:14px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:transparent;color:var(--ink-muted);cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .2s ease;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.variant-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+.variant-btn.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.variant-btn:active{transform:scale(0.95);transition-duration:.08s}
+.variant-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.variant-btn svg{width:18px;height:18px;flex-shrink:0}
+.variant-label{font-size:12px;font-weight:600;letter-spacing:0.3px}
+
+/* ── Platform Presets ── */
+.platform-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.platform-btn{
+  padding:14px 10px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:rgba(255,255,255,.02);color:var(--ink-muted);cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .2s ease;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.platform-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.04);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.platform-btn.active{border-color:rgba(255,255,255,.18);color:var(--ink);background:rgba(255,255,255,.06)}
+.platform-btn:active{transform:scale(0.95);transition-duration:.08s}
+.platform-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.platform-icon{width:22px;height:22px;opacity:.45;transition:opacity .2s}
+.platform-btn.active .platform-icon,.platform-btn:hover .platform-icon{opacity:1}
+.platform-label{font-size:12px;font-weight:600;line-height:1.2}
+.platform-meta{font-size:10px;color:var(--ink-faint);font-weight:500;letter-spacing:.3px}
+.platform-btn-custom{grid-column:1/-1}
+
+/* ── Estimator ── */
+.estimator{
+  display:flex;align-items:center;justify-content:center;gap:24px;
+  padding:14px 20px;margin-bottom:12px;border-radius:var(--radius-sm,10px);
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  animation:fadeInUp .3s var(--ease-out) both;
+}
+.estimator-row{display:flex;align-items:center;gap:8px}
+.estimator-icon{width:16px;height:16px;flex-shrink:0;opacity:.45}
+.estimator-count{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:.2px}
+.estimator-time{font-size:13px;font-weight:500;color:var(--ink-muted);letter-spacing:.2px}
+.estimator-divider{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.estimator-cost{font-size:13px;font-weight:600;color:var(--ink-muted);letter-spacing:.2px}
+@media(max-width:480px){
+  .estimator{flex-direction:column;gap:8px;padding:12px 16px}
+}
+
+/* ── Progress ── */
+.progress-card{
+  background:rgba(255,255,255,.03);border:1px solid var(--glass-edge-dark);border-radius:var(--radius);
+  padding:24px;text-align:center;margin-bottom:16px;
+  backdrop-filter:blur(var(--glass-blur-soft)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-soft)) saturate(var(--glass-sat));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+.batch-notice{
+  font-size:13px;font-weight:500;padding:10px 14px;border-radius:8px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;line-height:1.4;
+}
+.batch-notice.warn{background:rgba(234,179,8,.1);color:#fbbf24;border:1px solid rgba(234,179,8,.2)}
+.batch-notice.safe{background:rgba(34,197,94,.08);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.progress-bar{height:4px;background:var(--surface-3);border-radius:100px;overflow:hidden;margin-bottom:16px}
+.progress-fill{height:100%;background:var(--ink);border-radius:100px;width:100%;transform-origin:left;transform:scaleX(0);transition:transform .5s var(--ease-out);position:relative}
+.progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);background-size:200% 100%;animation:shimmer 2s ease-in-out infinite}
+.progress-stats{display:flex;justify-content:space-between;align-items:center}
+#progress-text{font-size:13px;color:var(--ink-muted);font-weight:500}
+#progress-timer{font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:1px}
+
+/* ── Results Grid ── */
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+
+/* ── Result Card ── */
+.result-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all 0.3s var(--ease-out);animation:fadeInUp .4s var(--ease-out) both}
+.result-card:hover{border-color:rgba(255,255,255,.12);transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.result-card.done{border-color:var(--border-strong)}
+.result-card.error{border-color:var(--error)}
+.result-media-wrap{position:relative;background:var(--surface-2);aspect-ratio:1;overflow:hidden}
+.result-media-wrap img{width:100%;height:100%;object-fit:contain;display:block;transition:opacity .3s,transform .35s var(--ease-out)}
+.result-card:hover .result-media-wrap img{transform:scale(1.02)}
+.result-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.result-overlay.active{opacity:1;pointer-events:auto}
+.result-overlay .spinner{width:28px;height:28px;border:2.5px solid rgba(255,255,255,.1);border-top-color:#e5e5e5;border-radius:50%;animation:spin 0.8s linear infinite}
+.result-overlay span{font-size:12px;color:var(--ink-muted);letter-spacing:0.5px;font-weight:500;transition:opacity .3s var(--ease-smooth)}
+/* Per-card perceived progress — asymptotic: climbs fast, never hits 100%
+   on its own (the real completion snaps it via the reveal). */
+.result-overlay .ov-progress{width:56%;height:3px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.result-overlay .ov-progress i{display:block;height:100%;border-radius:99px;background:#fff;transform-origin:left;transform:scaleX(0)}
+.result-overlay.active .ov-progress i{animation:ovProgress 75s cubic-bezier(.05,.6,.13,.96) forwards}
+@keyframes ovProgress{0%{transform:scaleX(0)}10%{transform:scaleX(.38)}30%{transform:scaleX(.62)}60%{transform:scaleX(.8)}100%{transform:scaleX(.93)}}
+/* Liquid reveal — the glass dissolves off the finished visual:
+   decode first (JS), then blur→sharp + saturate settle + spring pop. */
+.result-card.result-reveal .result-media-wrap img{animation:resultReveal .7s var(--ease-out) both}
+@keyframes resultReveal{
+  0%{opacity:0;transform:scale(1.045);filter:blur(14px) saturate(160%) brightness(1.1)}
+  55%{opacity:1;filter:blur(2px) saturate(118%) brightness(1.02)}
+  100%{opacity:1;transform:scale(1);filter:blur(0) saturate(100%) brightness(1)}
+}
+.result-card.result-reveal{animation:cardSettle .65s var(--spring-bouncy) both}
+@keyframes cardSettle{0%{transform:scale(.985)}100%{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){
+  .result-card.result-reveal .result-media-wrap img,.result-card.result-reveal{animation:none}
+  .result-overlay.active .ov-progress i{animation-duration:.01ms}
+}
+.result-status{
+  padding:10px 16px;font-size:12px;color:var(--ink-muted);font-weight:500;
+  border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;
+}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-dot.queued{background:var(--border-strong)}
+.status-dot.uploading,.status-dot.generating{background:var(--ink);animation:pulse 1.5s infinite}
+.status-dot.done{background:var(--success)}
+.status-dot.error{background:var(--error)}
+.status-dot.polishing,.status-dot.rendering{background:var(--ink);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.result-actions{display:flex;border-top:1px solid var(--border)}
+.action-btn{
+  flex:1;padding:12px 8px;background:transparent;border:none;
+  border-right:1px solid var(--border);color:var(--ink-muted);
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;
+  transition:all .2s ease;display:flex;align-items:center;justify-content:center;
+  gap:6px;text-decoration:none;
+}
+.action-btn:last-child{border-right:none}
+.action-btn:hover{background:rgba(255,255,255,.04);color:var(--ink)}
+.action-btn:active{transform:scale(0.96);transition-duration:.08s}
+.action-btn.disabled{opacity:.3;pointer-events:none}
+
+/* ── Template Chips ── */
+.template-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.template-chip{
+  padding:6px 14px;border:1.5px solid var(--border);border-radius:100px;
+  background:transparent;color:var(--ink-muted);font-size:11px;font-weight:600;
+  font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s var(--ease-out);
+  letter-spacing:0.2px;
+}
+.template-chip:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.04);transform:translateY(-1px)}
+.template-chip.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.template-chip:active{transform:scale(0.94);transition-duration:.06s}
+
+/* ── Creative Direction Presets ── */
+.cd-preset{padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.cd-preset:hover{border-color:var(--ink-faint);color:var(--ink);background:var(--surface)}
+.cd-preset.active{border-color:var(--ink);color:var(--ink);background:var(--surface-2)}
+/* ── Batch Bar ── */
+.batch-bar{
+  display:flex;gap:8px;margin-bottom:16px;padding:14px 20px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);
+  align-items:center;
+}
+.batch-bar .batch-info{flex:1;font-size:13px;color:var(--ink-muted);font-weight:500}
+.batch-bar .batch-info strong{color:var(--ink);font-weight:700}
+
+/* ── Activity Log ── */
+.log-section{margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
+.log-entry{display:flex;align-items:flex-start;gap:12px;padding:8px 0;font-size:12px;color:var(--ink-muted);position:relative;padding-left:20px}
+.log-entry::before{content:'';position:absolute;left:2px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.06)}
+.log-entry:first-child::before{top:8px}
+.log-entry:last-child::before{bottom:50%}
+.log-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);flex-shrink:0;margin-top:6px;position:relative;z-index:1}
+.log-dot.success{background:var(--success)}
+.log-dot.error{background:var(--error)}
+.log-dot.processing{background:var(--ink);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.log-time{color:var(--ink-faint);flex-shrink:0;font-variant-numeric:tabular-nums;font-size:11px}
+#log.collapsed .log-entry:nth-child(n+7){display:none}
+.log-toggle{
+  display:inline-block;margin-top:8px;font-size:11px;font-weight:600;color:var(--ink-muted);
+  cursor:pointer;padding:4px 0;transition:color .2s;
+}
+.log-toggle:hover{color:var(--ink)}
+
+
+/* ── Responsive ── */
+
+/* Tablet landscape / small desktop */
+@media(max-width:1024px){
+  .main{max-width:720px}
+  .results-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+}
+
+/* Tablet portrait */
+@media(max-width:768px){
+  .main{padding:24px 16px 40px}
+  .studio-header{flex-direction:column;align-items:stretch;gap:12px}
+  .studio-controls{flex-wrap:wrap}
+  .project-select{min-width:0;flex:1}
+  .format-grid{grid-template-columns:repeat(4,1fr);gap:6px}
+  .format-btn{padding:12px 6px;font-size:12px}
+  .format-label{font-size:16px}
+  .variant-grid{grid-template-columns:repeat(5,1fr);gap:6px}
+  .variant-btn{padding:10px 5px;gap:4px}
+  .variant-btn svg{width:16px;height:16px}
+  .variant-label{font-size:11px}
+  .results-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  #progress-timer{font-size:20px}
+  .batch-bar{flex-wrap:wrap;gap:10px}
+  .action-btn{font-size:11px;padding:10px 6px;gap:4px}
+  .drop-zone{padding:40px 20px}
+  .log-entry{font-size:11px;gap:8px}
+}
+
+/* Mobile */
+@media(max-width:480px){
+  .main{padding:16px 12px 100px} /* extra bottom padding so sticky Generate doesn't hide last input */
+  .studio-header h2{font-size:20px}
+  .drop-zone{padding:28px 14px}
+  .drop-icon{width:40px;height:40px;font-size:18px}
+  .drop-text{font-size:13px}
+  .section-card{padding:14px}
+  .queue-item{width:60px;height:60px;border-radius:10px} /* slightly bigger thumb on mobile */
+  .queue-remove{width:24px;height:24px;font-size:14px;top:-6px;right:-6px} /* easier tap */
+  .platform-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .platform-btn{padding:14px 10px;min-height:60px} /* WCAG-friendly */
+  .platform-label{font-size:12px}
+  .platform-meta{font-size:10px}
+  .format-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .format-btn{padding:14px 8px;min-height:60px} /* WCAG */
+  .variant-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .variant-btn{padding:12px 6px;flex-direction:column;gap:4px;min-height:60px} /* col layout = label + icon */
+  .variant-btn svg{width:18px;height:18px}
+  .variant-label{font-size:11px}
+  .results-grid{grid-template-columns:1fr;gap:14px}
+  .result-card{border-radius:14px}
+  .result-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px} /* uniform 3-col grid for actions */
+  .action-btn{font-size:11px;padding:11px 4px;min-height:44px;flex-direction:column;gap:2px}
+  .progress-card{padding:16px}
+  #progress-timer{font-size:18px}
+  .batch-bar{padding:12px 14px;flex-direction:column;align-items:stretch;text-align:center;gap:10px}
+  .batch-bar .btn-secondary{min-height:44px}
+  .log-section{margin-top:24px;padding-top:20px}
+  .log-entry{gap:6px;padding:6px 0}
+  .log-time{font-size:10px}
+
+  /* ── Sticky Generate CTA on mobile ────────────────────
+     The Generate button is the primary action of the entire
+     page. On mobile users scroll through upload + prompt +
+     variants and the CTA was 4 screens away. Pin it to the
+     bottom (above the bottom nav) so it's always one tap. */
+  #generate-btn{
+    position:fixed;
+    left:12px;right:12px;bottom:calc(64px + env(safe-area-inset-bottom,0));
+    width:auto;z-index:90;
+    min-height:54px;font-size:15px;
+    box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06);
+    border-radius:14px;
+  }
+  /* Hide the in-form Generate button on mobile when sticky version is showing —
+     no, actually we KEEP it inline because position:fixed removes it from flow.
+     The fixed version replaces it entirely. */
+  #generate-btn.is-processing{opacity:.7}
+}
+
+/* "+ New client" action option + New Client modal styles now in shared/styles.css */
+
+
+/* ─── Opensource BYOK bar ─── */
+#byok-bar { max-width: 1200px; margin: 12px auto 0; padding: 0 24px; }
+#byok-bar .byok-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 12px; background: rgba(255,255,255,.03); font-size: 12px; color: var(--ink-muted, #9a9a9a); flex-wrap: wrap; }
+#byok-bar .byok-label { font-weight: 600; color: var(--ink, #eee); letter-spacing: .3px; }
+#byok-bar input { flex: 1; min-width: 180px; background: rgba(0,0,0,.25); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 7px 10px; color: var(--ink, #eee); font-size: 12px; outline: none; }
+#byok-bar button { background: var(--accent, #d97757); color: #fff; border: 0; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+#byok-bar #byok-status.ok { color: #6fcf97; }
+#byok-bar .byok-get { color: var(--ink-muted, #9a9a9a); text-decoration: none; border-bottom: 1px dotted currentColor; }
+</style>
+</head>
+<body>
+
+<!-- Ambient glow background -->
+<div class="ambient-bg"></div>
+
+<!-- Nav (rendered by nav.js) -->
+<nav class="navbar"></nav>
+
+<!-- New Client Modal (opens from project select → "+ New client") -->
+<div class="kc-modal-backdrop" id="new-client-backdrop" aria-hidden="true">
+  <div class="kc-modal" role="dialog" aria-modal="true" aria-labelledby="new-client-title">
+    <h3 class="kc-modal-title" id="new-client-title">New Client</h3>
+    <p class="kc-modal-sub">Organize your generations by client. A default campaign is created automatically.</p>
+    <form id="new-client-form" autocomplete="off">
+      <div class="kc-modal-field">
+        <label for="new-client-name">Client name</label>
+        <input id="new-client-name" type="text" placeholder="e.g. Nike NZ" required maxlength="60">
+      </div>
+      <div class="kc-modal-field">
+        <label for="new-client-desc">Notes (optional)</label>
+        <input id="new-client-desc" type="text" placeholder="Sportswear — Summer campaign" maxlength="200">
+      </div>
+      <div class="kc-modal-field">
+        <label>Color</label>
+        <div class="kc-modal-colors" id="new-client-colors">
+          <div class="kc-modal-color active" data-color="#3B82F6" style="background:#3B82F6"></div>
+          <div class="kc-modal-color" data-color="#10B981" style="background:#10B981"></div>
+          <div class="kc-modal-color" data-color="#F59E0B" style="background:#F59E0B"></div>
+          <div class="kc-modal-color" data-color="#EF4444" style="background:#EF4444"></div>
+          <div class="kc-modal-color" data-color="#8B5CF6" style="background:#8B5CF6"></div>
+          <div class="kc-modal-color" data-color="#EC4899" style="background:#EC4899"></div>
+          <div class="kc-modal-color" data-color="#0A0A0A" style="background:#0A0A0A"></div>
+        </div>
+      </div>
+      <div class="kc-modal-error" id="new-client-error" role="alert" aria-live="polite"></div>
+      <div class="kc-modal-actions">
+        <button type="button" class="kc-modal-btn secondary" id="new-client-cancel">Cancel</button>
+        <button type="submit" class="kc-modal-btn primary" id="new-client-submit">Create client</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Export Pack modal — pick a preset and run N adaptations in parallel -->
+<div class="kc-modal-backdrop" id="export-pack-backdrop" aria-hidden="true">
+  <div class="kc-modal" role="dialog" aria-modal="true" aria-labelledby="export-pack-title" style="max-width:540px">
+    <h3 class="kc-modal-title" id="export-pack-title">Export pack</h3>
+    <p class="kc-modal-sub">One source asset → multiple deliverable formats, named ready for handoff.</p>
+
+    <!-- Pack picker (visible while choosing) -->
+    <div id="export-pack-picker">
+      <div class="kc-modal-field">
+        <label>Choose a pack</label>
+        <div id="pack-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div class="kc-modal-error" id="export-pack-error"></div>
+      <div class="kc-modal-actions">
+        <button type="button" class="kc-modal-btn secondary" id="export-pack-cancel">Cancel</button>
+        <button type="button" class="kc-modal-btn primary" id="export-pack-start">Generate pack</button>
+      </div>
+    </div>
+
+    <!-- Progress (visible after Start) -->
+    <div id="export-pack-progress" style="display:none">
+      <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink);margin-bottom:8px">
+          <span><strong id="pack-progress-ready">0</strong> / <span id="pack-progress-total">0</span> ready</span>
+          <span id="pack-progress-state" style="color:var(--ink-muted);font-size:12px">Working…</span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden">
+          <div id="pack-progress-bar" style="height:100%;width:0%;background:var(--ink);transition:width .35s ease"></div>
+        </div>
+        <div id="pack-progress-list" style="margin-top:14px;display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
+      </div>
+      <div class="kc-modal-error" id="export-pack-error-2"></div>
+      <div class="kc-modal-actions">
+        <button type="button" class="kc-modal-btn secondary" id="export-pack-close">Close (keep working in background)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="main" id="main-content" style="display:none">
+
+  <!-- Studio Header with Project Selector -->
+  <div class="studio-header">
+    <h2>Production Engine</h2>
+    <div class="studio-controls">
+      <span class="provider-badge" id="provider-badge" style="font-size:10px;padding:3px 8px;border-radius:100px;border:1px solid var(--border);color:var(--ink-muted);font-weight:500;letter-spacing:.3px"></span>
+      <select class="project-select" id="project-select">
+        <option value="">Default</option>
+      </select>
+      <select class="project-select" id="campaign-select" style="display:none">
+        <option value="">General</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <section id="upload-section">
+    <p class="section-label">Product Images</p>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="image/*" multiple hidden>
+      <div id="drop-content">
+        <div class="drop-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="drop-text"><span class="drop-text-desktop">Drop your product images here or </span><span class="drop-text-mobile">Tap to upload </span><span>browse</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Queue -->
+  <section id="queue-section" class="section-card hidden" style="margin-top:16px">
+    <div class="queue-header">
+      <p class="section-label"><span id="queue-count">0</span> images ready</p>
+      <button class="btn-secondary btn-sm" id="clear-all-btn">Clear all</button>
+    </div>
+    <div class="queue-grid" id="queue-grid"></div>
+  </section>
+
+  <!-- Format + Generate -->
+  <section id="format-section" class="hidden" style="margin-top:24px">
+
+    <!-- Platform Presets -->
+    <p class="section-label">Platform</p>
+    <div class="platform-grid" id="platform-grid">
+      <button class="platform-btn" data-preset="instagram-post">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></span>
+        <span class="platform-label">Instagram Post</span>
+        <span class="platform-meta">1:1 · &times;5</span>
+      </button>
+      <button class="platform-btn" data-preset="instagram-story">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="5" y="1" width="14" height="22" rx="3"/><line x1="10" y1="19" x2="14" y2="19"/></svg></span>
+        <span class="platform-label">Instagram Story</span>
+        <span class="platform-meta">9:16 · &times;5</span>
+      </button>
+      <button class="platform-btn" data-preset="tiktok">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M9 12V4c4 0 6 2 7 5V4h3c0 3-2 5-5 5"/><circle cx="9" cy="16" r="4"/></svg></span>
+        <span class="platform-label">TikTok</span>
+        <span class="platform-meta">9:16 · &times;5</span>
+      </button>
+      <button class="platform-btn" data-preset="facebook-ad">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="1" y="4" width="22" height="16" rx="3"/><polygon points="10,8 10,16 17,12" stroke="currentColor" fill="none"/></svg></span>
+        <span class="platform-label">Facebook Ad</span>
+        <span class="platform-meta">16:9 · &times;5</span>
+      </button>
+      <button class="platform-btn" data-preset="pinterest">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M12 7c-2 0-4 1.5-4 4 0 1.5.8 2.5 2 3l-1 4"/><path d="M10 14c.5 1 2 1.5 3 1 1.5-.5 2.5-2 2.5-4 0-2.5-2-4-4.5-4"/></svg></span>
+        <span class="platform-label">Pinterest</span>
+        <span class="platform-meta">3:4 · &times;5</span>
+      </button>
+      <button class="platform-btn" data-preset="product-page">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/><rect x="13" y="13" width="9" height="9" rx="2"/></svg></span>
+        <span class="platform-label">Product Page</span>
+        <span class="platform-meta">1:1 · &times;10</span>
+      </button>
+      <button class="platform-btn platform-btn-custom active" data-preset="custom">
+        <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+        <span class="platform-label">Custom</span>
+      </button>
+    </div>
+
+    <p class="section-label">Output Format</p>
+    <div class="format-grid">
+      <button class="format-btn active" data-format="1:1">
+        <span class="format-label"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="4" y="4" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.8"/><rect x="8" y="8" width="16" height="16" rx="2" fill="currentColor" opacity=".15"/></svg></span><span class="format-ratio">1:1</span>
+      </button>
+      <button class="format-btn" data-format="3:4">
+        <span class="format-label"><svg width="28" height="36" viewBox="0 0 28 36" fill="none"><rect x="2" y="2" width="24" height="32" rx="4" stroke="currentColor" stroke-width="1.8"/><rect x="6" y="6" width="16" height="24" rx="2" fill="currentColor" opacity=".15"/></svg></span><span class="format-ratio">3:4</span>
+      </button>
+      <button class="format-btn" data-format="9:16">
+        <span class="format-label"><svg width="22" height="38" viewBox="0 0 22 38" fill="none"><rect x="2" y="2" width="18" height="34" rx="4" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="6" width="12" height="26" rx="2" fill="currentColor" opacity=".15"/></svg></span><span class="format-ratio">9:16</span>
+      </button>
+      <button class="format-btn" data-format="16:9">
+        <span class="format-label"><svg width="40" height="24" viewBox="0 0 40 24" fill="none"><rect x="2" y="2" width="36" height="20" rx="4" stroke="currentColor" stroke-width="1.8"/><rect x="6" y="5" width="28" height="14" rx="2" fill="currentColor" opacity=".15"/></svg></span><span class="format-ratio">16:9</span>
+      </button>
+    </div>
+
+    <!-- Variant Count -->
+    <p class="section-label">Variants per image</p>
+    <div class="variant-grid">
+      <button class="variant-btn active" data-variants="1">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="5" y="5" width="10" height="10" rx="2.5" fill="currentColor" opacity=".8"/></svg>
+        <span class="variant-label">&times;1</span>
+      </button>
+      <button class="variant-btn" data-variants="5">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="5" width="7" height="7" rx="2" fill="currentColor" opacity=".8"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><circle cx="4.5" cy="15.5" r="2.5" fill="currentColor" opacity=".3"/><circle cx="15.5" cy="18" r="1.5" fill="currentColor" opacity=".2"/></svg>
+        <span class="variant-label">&times;5</span>
+      </button>
+      <button class="variant-btn" data-variants="10">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="7.5" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".65"/><rect x="14" y="1" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/><rect x="1" y="7.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".65"/><rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/><rect x="14" y="7.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".35"/><rect x="1" y="14" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".5"/><rect x="7.5" y="14" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".35"/><rect x="14" y="14" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".2"/><circle cx="18" cy="18" r="1" fill="currentColor" opacity=".15"/></svg>
+        <span class="variant-label">&times;10</span>
+      </button>
+      <button class="variant-btn" data-variants="15">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x=".5" y=".5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".8"/><rect x="6" y=".5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".7"/><rect x="11.5" y=".5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".6"/><rect x=".5" y="6" width="5" height="5" rx="1.2" fill="currentColor" opacity=".7"/><rect x="6" y="6" width="5" height="5" rx="1.2" fill="currentColor" opacity=".6"/><rect x="11.5" y="6" width="5" height="5" rx="1.2" fill="currentColor" opacity=".5"/><rect x=".5" y="11.5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".6"/><rect x="6" y="11.5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".5"/><rect x="11.5" y="11.5" width="5" height="5" rx="1.2" fill="currentColor" opacity=".4"/><circle cx="18" cy="3" r="1" fill="currentColor" opacity=".4"/><circle cx="18" cy="8.5" r="1" fill="currentColor" opacity=".3"/><circle cx="18" cy="14" r="1" fill="currentColor" opacity=".25"/><circle cx="3" cy="18" r="1" fill="currentColor" opacity=".25"/><circle cx="8.5" cy="18" r="1" fill="currentColor" opacity=".2"/><circle cx="14" cy="18" r="1" fill="currentColor" opacity=".15"/></svg>
+        <span class="variant-label">&times;15</span>
+      </button>
+      <button class="variant-btn" data-variants="20">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x=".5" y=".5" width="4" height="4" rx="1" fill="currentColor" opacity=".8"/><rect x="5.5" y=".5" width="4" height="4" rx="1" fill="currentColor" opacity=".7"/><rect x="10.5" y=".5" width="4" height="4" rx="1" fill="currentColor" opacity=".6"/><rect x="15.5" y=".5" width="4" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x=".5" y="5.5" width="4" height="4" rx="1" fill="currentColor" opacity=".7"/><rect x="5.5" y="5.5" width="4" height="4" rx="1" fill="currentColor" opacity=".6"/><rect x="10.5" y="5.5" width="4" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="15.5" y="5.5" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><rect x=".5" y="10.5" width="4" height="4" rx="1" fill="currentColor" opacity=".6"/><rect x="5.5" y="10.5" width="4" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="10.5" y="10.5" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><rect x="15.5" y="10.5" width="4" height="4" rx="1" fill="currentColor" opacity=".3"/><rect x=".5" y="15.5" width="4" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="5.5" y="15.5" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><rect x="10.5" y="15.5" width="4" height="4" rx="1" fill="currentColor" opacity=".3"/><rect x="15.5" y="15.5" width="4" height="4" rx="1" fill="currentColor" opacity=".2"/></svg>
+        <span class="variant-label">&times;20</span>
+      </button>
+    </div>
+
+    <!-- Artistic Direction (Optional) -->
+    <div class="da-section" style="margin-bottom:16px">
+      <div class="da-toggle" id="da-toggle" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0;user-select:none">
+        <span style="font-size:13px;color:var(--ink-muted);font-weight:500;display:inline-flex;align-items:center;gap:5px"><span class="icon-slot-target"></span> Add creative direction</span>
+        <span style="font-size:11px;color:var(--ink-faint);font-style:italic">(optional)</span>
+        <span id="da-chevron" style="margin-left:auto;font-size:12px;color:var(--ink-faint);transition:transform .2s">▼</span>
+      </div>
+      <div id="da-input-wrap" class="hidden" style="margin-top:4px">
+        <div class="cd-presets" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <button class="cd-preset" data-prompt="Clean white studio background, soft directional lighting, premium e-commerce look">Studio White</button>
+          <button class="cd-preset" data-prompt="Natural outdoor lifestyle setting, warm golden hour lighting, authentic brand feel">Lifestyle Outdoor</button>
+          <button class="cd-preset" data-prompt="Dark luxury setting, dramatic lighting, high contrast, premium brand positioning">Luxury Dark</button>
+          <button class="cd-preset" data-prompt="Minimal clean background, even lighting, product-focused, Amazon/e-commerce ready">E-commerce Clean</button>
+          <button class="cd-preset" data-prompt="Modern urban environment, street style, contemporary brand aesthetic">Urban Street</button>
+          <button class="cd-preset" data-prompt="Warm cozy interior, soft natural light, homey lifestyle feel">Home Cozy</button>
+        </div>
+        <div class="template-chips" id="template-chips">
+          <button class="template-chip" data-tpl="ecommerce">E-commerce</button>
+          <button class="template-chip" data-tpl="food">Food &amp; Beverage</button>
+          <button class="template-chip" data-tpl="beauty">Beauty</button>
+          <button class="template-chip" data-tpl="realestate">Real Estate</button>
+          <button class="template-chip" data-tpl="lifestyle">Lifestyle</button>
+          <button class="template-chip" data-tpl="automotive">Automotive</button>
+          <button class="template-chip" data-tpl="fashion">Fashion</button>
+        </div>
+        <textarea id="da-input" class="form-input" rows="2"
+          placeholder="e.g. Beach summer vibe, golden hour lighting, luxury feel..."
+          style="resize:vertical;font-size:13px;min-height:48px;max-height:120px"></textarea>
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:4px">Pick a template or write your own direction. Leave empty for default studio look.</p>
+      </div>
+    </div>
+
+    <!-- Estimator -->
+    <div id="estimator" class="estimator" style="display:none">
+      <div class="estimator-row">
+        <svg class="estimator-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>
+        <span class="estimator-count" id="estimator-count">0 creatives</span>
+      </div>
+      <div class="estimator-row">
+        <svg class="estimator-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/></svg>
+        <span class="estimator-time" id="estimator-time">~2 min</span>
+      </div>
+      <div class="estimator-divider"></div>
+      <div class="estimator-row">
+        <svg class="estimator-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="3" x2="10" y2="17"/><path d="M14 7c0-1.7-1.8-3-4-3S6 5.3 6 7s1.8 3 4 3 4 1.3 4 3-1.8 3-4 3-4-1.3-4-3"/></svg>
+        <span class="estimator-cost" id="estimator-cost">$0.00</span>
+      </div>
+    </div>
+
+    <button id="generate-btn" class="btn-primary full">Generate Creatives</button>
+  </section>
+
+  <!-- Progress -->
+  <section id="progress-section" class="hidden" style="margin-top:24px">
+    <div class="progress-card">
+      <div id="batch-notice" class="batch-notice" style="display:none"></div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-stats">
+        <span id="progress-text">0 / 0</span>
+        <span id="progress-timer">00:00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Batch Actions -->
+  <div id="batch-bar" class="batch-bar hidden">
+    <span class="batch-info"><strong id="done-count">0</strong> visuals ready</span>
+    <button class="btn-secondary btn-sm hidden" id="retry-failed-btn">Retry failed</button>
+    <button class="btn-secondary btn-sm" id="download-all-btn">Save All</button>
+  </div>
+
+  <!-- Results -->
+  <section id="results-section" class="hidden" style="margin-top:8px">
+    <div class="results-grid" id="results-grid"></div>
+  </section>
+
+  <!-- Log -->
+  <section class="log-section" id="log-section">
+    <p class="section-label">Activity Log</p>
+    <div id="log" class="collapsed"></div>
+    <span class="log-toggle" id="log-toggle" onclick="toggleLog()" style="display:none">Show more ↓</span>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://keou.systems">Keou Systems</a> &mdash; Private Creative Infrastructure for Agencies</span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="/shared/lightbox.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/modal.js"></script>
+<script>
+
+// ─── Opensource BYOK bar ───
+// The visitor pastes their own provider API key. It lives in localStorage only
+// and rides every generation request as X-Provider-Key — never stored server-side.
+function renderByokBar() {
+  const main = document.getElementById('main-content');
+  if (!main || document.getElementById('byok-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'byok-bar';
+  bar.innerHTML = `
+    <div class="byok-inner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      <span class="byok-label">API key</span>
+      <input type="password" id="byok-input" placeholder="Paste your KIE.AI API key" autocomplete="off" spellcheck="false">
+      <button type="button" id="byok-save">Save</button>
+      <span id="byok-status"></span>
+      <a href="https://kie.ai" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
+    </div>`;
+  main.parentNode.insertBefore(bar, main);
+  const input = bar.querySelector('#byok-input');
+  const status = bar.querySelector('#byok-status');
+  const refresh = () => {
+    const k = Auth.getProviderKey();
+    status.textContent = k ? 'Key saved in this browser' : 'No key set';
+    status.className = k ? 'ok' : '';
+    if (k) input.placeholder = '••••••••••••  (saved)';
+  };
+  bar.querySelector('#byok-save').addEventListener('click', () => {
+    const v = input.value.trim();
+    if (!v) { refresh(); return; } // empty Save must not wipe a stored key
+    Auth.setProviderKey(v);
+    input.value = '';
+    refresh();
+  });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') bar.querySelector('#byok-save').click(); });
+  refresh();
+}
+
+// ─── Auth Guard ───
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  // Render navbar
+  Nav.render({ active: 'studio' });
+
+  // Opensource edition: basic studio (image + video only), visitor's own
+  // provider key kept in this browser and sent per-request.
+  window.IS_OS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
+  if (window.IS_OS) {
+    document.body.classList.add('edition-opensource');
+    renderByokBar();
+  }
+
+  // Production engine badge (enterprise deployments only).
+  if (!window.IS_OS) (async () => {
+    try {
+      const res = await Auth.authFetch('/api/admin/default-provider');
+      if (res.ok) {
+        const data = await res.json();
+        const el = document.getElementById('provider-badge');
+        if (el && data.provider) el.textContent = (data.provider === 'fal' ? 'Fal.ai' : 'KIE.AI');
+      }
+    } catch {}
+  })();
+
+  // Load projects for selector + "+ New client" inline creation
+  const select = document.getElementById('project-select');
+  const campaignSelect = document.getElementById('campaign-select');
+  let lastValidProjectValue = '';
+
+  function appendCreateOption() {
+    // Idempotent: remove any existing create option first
+    const old = select.querySelector('option[data-action="create"]');
+    if (old) old.remove();
+    const opt = document.createElement('option');
+    opt.value = '__create__';
+    opt.textContent = '+ New client';
+    opt.dataset.action = 'create';
+    // Insert at the top so the action is the first thing users see in the dropdown.
+    select.insertBefore(opt, select.firstChild);
+    // Never default-select the action — fall through to the next option (Default)
+    if (select.selectedIndex === 0) select.selectedIndex = 1;
+  }
+
+  async function loadCampaigns(projectId) {
+    campaignSelect.innerHTML = '<option value="">General</option>';
+    if (!projectId) { campaignSelect.style.display = 'none'; Select.init(); return; }
+    try {
+      const cRes = await Auth.authFetch(`/api/campaigns?projectId=${projectId}`);
+      const cData = await cRes.json();
+      (cData.campaigns || []).forEach(c => {
+        if (c.name === 'General') {
+          const defaultOpt = campaignSelect.querySelector('option[value=""]');
+          if (defaultOpt) defaultOpt.value = c.id;
+        } else {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          campaignSelect.appendChild(opt);
+        }
+      });
+      campaignSelect.style.display = '';
+      const preCampaign = new URLSearchParams(window.location.search).get('campaign');
+      if (preCampaign) campaignSelect.value = preCampaign;
+    } catch (e) {
+      console.error('Load campaigns error:', e);
+    }
+    Select.init();
+    if (campaignSelect._ksRefresh) campaignSelect._ksRefresh();
+  }
+
+  try {
+    const res = await Auth.authFetch('/api/projects');
+    const data = await res.json();
+    const seen = new Set(['Default']);
+    (data.projects || []).forEach(p => {
+      if (p.status === 'active' && p.name !== 'General' && !seen.has(p.name)) {
+        seen.add(p.name);
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      }
+    });
+
+    // Always append the create action as the last option
+    appendCreateOption();
+
+    // Check URL params for pre-selected project & campaign
+    const preProject = new URLSearchParams(window.location.search).get('project');
+    if (preProject) select.value = preProject;
+    lastValidProjectValue = select.value;
+
+    // Intercept change: if user picks "+ New client", open modal and revert.
+    select.addEventListener('change', () => {
+      if (select.value === '__create__') {
+        // Revert immediately so the dropdown doesn't stay on the action label
+        select.value = lastValidProjectValue;
+        if (select._ksRefresh) select._ksRefresh();
+        openNewClientModal();
+        return;
+      }
+      lastValidProjectValue = select.value;
+      loadCampaigns(select.value);
+    });
+
+    if (select.value) await loadCampaigns(select.value);
+  } catch (e) {
+    console.error('Load projects error:', e);
+  }
+
+  // ─── New Client Modal logic ───
+  const backdrop = document.getElementById('new-client-backdrop');
+  const form = document.getElementById('new-client-form');
+  const nameInput = document.getElementById('new-client-name');
+  const descInput = document.getElementById('new-client-desc');
+  const submitBtn = document.getElementById('new-client-submit');
+  const cancelBtn = document.getElementById('new-client-cancel');
+  const errorEl = document.getElementById('new-client-error');
+  const colorsWrap = document.getElementById('new-client-colors');
+  let selectedColor = '#3B82F6';
+  let isCreating = false;
+
+  colorsWrap.addEventListener('click', (e) => {
+    const chip = e.target.closest('.kc-modal-color');
+    if (!chip) return;
+    colorsWrap.querySelectorAll('.kc-modal-color').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedColor = chip.dataset.color;
+  });
+
+  function openNewClientModal() {
+    errorEl.textContent = '';
+    form.reset();
+    selectedColor = '#3B82F6';
+    colorsWrap.querySelectorAll('.kc-modal-color').forEach((c, i) => c.classList.toggle('active', i === 0));
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    setTimeout(() => nameInput.focus(), 120);
+  }
+
+  function closeNewClientModal() {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+  }
+
+  cancelBtn.addEventListener('click', closeNewClientModal);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeNewClientModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && backdrop.classList.contains('active')) closeNewClientModal();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isCreating) return;
+    const name = nameInput.value.trim();
+    if (!name) { errorEl.textContent = 'Client name is required'; return; }
+
+    isCreating = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating…';
+    errorEl.textContent = '';
+
+    try {
+      const res = await Auth.authFetch('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify({ name, description: descInput.value.trim() || null, color: selectedColor }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.projectId) {
+        throw new Error(data.error || 'Failed to create client');
+      }
+
+      // Insert the new option before the "+ New client" action, select it,
+      // reload campaigns, refresh the enhanced select.
+      const createOpt = select.querySelector('option[data-action="create"]');
+      const opt = document.createElement('option');
+      opt.value = String(data.projectId);
+      opt.textContent = name;
+      select.insertBefore(opt, createOpt);
+      select.value = String(data.projectId);
+      lastValidProjectValue = select.value;
+      if (select._ksRefresh) select._ksRefresh();
+      await loadCampaigns(select.value);
+
+      closeNewClientModal();
+      if (typeof toast === 'function') toast(`Client "${name}" created`);
+    } catch (err) {
+      errorEl.textContent = err.message || 'Failed to create client';
+    } finally {
+      isCreating = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create client';
+    }
+  });
+
+  // Enhance selects after options are loaded
+  Select.init();
+
+  // Show studio with animation
+  const mainEl = document.getElementById('main-content');
+  mainEl.style.display = '';
+  requestAnimationFrame(() => mainEl.classList.add('visible'));
+  initStudio();
+})();
+
+function initStudio() {
+// ─── State ───
+const jobs = [];
+let format = '1:1';
+let variantCount = 1;
+let isProcessing = false;
+const SUBMIT_CONCURRENCY = 3;  // parallel submission — conservative to keep KIE/Fal createTask stable on 30+ batches
+const POLL_CONCURRENCY = 10;    // parallel polling (KIE allows 100+ concurrent)
+const SUBMIT_JITTER_MS = 400;   // random spacing to desynchronize worker bursts against provider rate limits
+
+// ─── DOM ───
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const show = (id) => document.getElementById(id)?.classList.remove('hidden');
+const hide = (id) => document.getElementById(id)?.classList.add('hidden');
+
+function getProjectId() {
+  const val = document.getElementById('project-select').value;
+  return val ? parseInt(val) : undefined;
+}
+
+function getCampaignId() {
+  const val = document.getElementById('campaign-select').value;
+  return val ? parseInt(val) : undefined;
+}
+
+// ─── File Upload ───
+const dropZone = $('#drop-zone');
+const fileInput = $('#file-input');
+
+dropZone.addEventListener('click', () => { if (!isProcessing) fileInput.click(); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (!isProcessing) dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (!isProcessing && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) addFiles(e.target.files);
+  fileInput.value = '';
+});
+
+function addFiles(fileList) {
+  let added = 0;
+  for (const file of fileList) {
+    if (!file.type.startsWith('image/')) continue;
+    if (file.size > 20 * 1024 * 1024) { toast(`${file.name} too large (max 20MB)`, true); continue; }
+    jobs.push({
+      id: crypto.randomUUID(),
+      file,
+      name: file.name,
+      preview: URL.createObjectURL(file),
+      status: 'queued',
+      uploadUrl: null,
+      resultUrl: null,
+      polishedUrl: null,
+      videoUrl: null,
+      upscaledUrl: null,
+      generationId: null,
+      error: null,
+    });
+    added++;
+  }
+  if (added) {
+    log(`${added} image${added > 1 ? 's' : ''} added`);
+    renderQueue();
+    updateDropZone();
+    show('queue-section');
+    show('format-section');
+    updateGenerateBtn();
+  }
+}
+
+function removeJob(id) {
+  const idx = jobs.findIndex(j => j.id === id);
+  if (idx > -1) {
+    URL.revokeObjectURL(jobs[idx].preview);
+    jobs.splice(idx, 1);
+  }
+  renderQueue();
+  updateDropZone();
+  updateGenerateBtn();
+  if (jobs.length === 0) { hide('queue-section'); hide('format-section'); }
+}
+window.removeJob = removeJob;
+
+$('#clear-all-btn').addEventListener('click', () => {
+  jobs.forEach(j => URL.revokeObjectURL(j.preview));
+  jobs.length = 0;
+  renderQueue(); updateDropZone();
+  hide('queue-section'); hide('format-section');
+});
+
+function renderQueue() {
+  const grid = $('#queue-grid');
+  const queued = jobs.filter(j => j.status === 'queued');
+  grid.innerHTML = queued.map(j => `
+    <div class="queue-item">
+      <img src="${j.preview}" alt="${j.name}">
+      <button class="queue-remove" onclick="removeJob('${j.id}')" aria-label="Remove from queue" title="Remove">&times;</button>
+    </div>
+  `).join('');
+  $('#queue-count').textContent = queued.length;
+}
+
+function updateDropZone() {
+  const content = $('#drop-content');
+  if (jobs.length > 0) {
+    dropZone.classList.add('compact');
+    content.innerHTML = '<p class="drop-text">+ Add more images</p>';
+  } else {
+    dropZone.classList.remove('compact');
+    content.innerHTML = '<div class="drop-icon">+</div><p class="drop-text">Drop your product images here or <span>browse</span></p>';
+  }
+}
+
+function updateGenerateBtn() {
+  const queued = jobs.filter(j => j.status === 'queued').length;
+  const total = queued * variantCount;
+  const presetInfo = activePreset !== 'custom' && PLATFORM_PRESETS[activePreset]
+    ? ` for ${PLATFORM_PRESETS[activePreset].label}` : '';
+  if (total === 0) {
+    $('#generate-btn').textContent = 'Generate Creatives';
+    $('#generate-btn').disabled = true;
+  } else if (variantCount > 1) {
+    $('#generate-btn').textContent = `Generate${presetInfo} (${queued} \u00d7 ${variantCount} = ${total})`;
+    $('#generate-btn').disabled = false;
+  } else {
+    $('#generate-btn').textContent = total > 1 ? `Generate Creatives (${total})` : 'Generate Creative';
+    $('#generate-btn').disabled = false;
+  }
+  // ── Estimator ──
+  const est = $('#estimator');
+  if (total > 0) {
+    $('#estimator-count').textContent = total === 1 ? '1 creative' : `${total} creatives`;
+    const rounds = Math.ceil(total / 60);
+    const mins = Math.round(rounds * 2.5);
+    $('#estimator-time').textContent = `~${mins} min`;
+    const cost = (total * COST_PER_CREATIVE).toFixed(2);
+    $('#estimator-cost').textContent = `$${cost}`;
+    est.style.display = '';
+  } else {
+    est.style.display = 'none';
+  }
+}
+
+// ─── Platform Presets ───
+const PLATFORM_PRESETS = {
+  'instagram-post':  { format: '1:1',  variants: 5,  label: 'Instagram Post' },
+  'instagram-story': { format: '9:16', variants: 5,  label: 'Instagram Story' },
+  'tiktok':          { format: '9:16', variants: 5,  label: 'TikTok' },
+  'facebook-ad':     { format: '16:9', variants: 5,  label: 'Facebook Ad' },
+  'pinterest':       { format: '3:4',  variants: 5,  label: 'Pinterest' },
+  'product-page':    { format: '1:1',  variants: 10, label: 'Product Page' },
+  'custom':          null,
+};
+let activePreset = 'custom';
+const COST_PER_CREATIVE = 0.09; // USD per image
+const VIDEO_COSTS = { 'grok-imagine': 0.15, 'kling-2.6': 0.55, 'kling-3.0': 0.72, 'seedance-2': 1.64, 'veo3': 1.25 };
+
+function selectPreset(presetKey) {
+  activePreset = presetKey;
+  $$('.platform-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = $(`.platform-btn[data-preset="${presetKey}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  const preset = PLATFORM_PRESETS[presetKey];
+  if (!preset) return; // custom — don't touch format/variant
+
+  // Auto-select format
+  $$('.format-btn').forEach(b => b.classList.remove('active'));
+  const fmtBtn = $(`.format-btn[data-format="${preset.format}"]`);
+  if (fmtBtn) fmtBtn.classList.add('active');
+  format = preset.format;
+
+  // Auto-select variant
+  $$('.variant-btn').forEach(b => b.classList.remove('active'));
+  const varBtn = $(`.variant-btn[data-variants="${preset.variants}"]`);
+  if (varBtn) varBtn.classList.add('active');
+  variantCount = preset.variants;
+
+  updateGenerateBtn();
+}
+
+$$('.platform-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectPreset(btn.dataset.preset);
+  });
+});
+
+// ─── Format ───
+$$('.format-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.format-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    format = btn.dataset.format;
+    // Switch to Custom if manual change doesn't match active preset
+    if (activePreset !== 'custom') {
+      const p = PLATFORM_PRESETS[activePreset];
+      if (p && (p.format !== format || p.variants !== variantCount)) selectPreset('custom');
+    }
+  });
+});
+
+// ─── Variant Selector ───
+$$('.variant-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.variant-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    variantCount = parseInt(btn.dataset.variants);
+    updateGenerateBtn();
+    // Switch to Custom if manual change doesn't match active preset
+    if (activePreset !== 'custom') {
+      const p = PLATFORM_PRESETS[activePreset];
+      if (p && (p.format !== format || p.variants !== variantCount)) selectPreset('custom');
+    }
+  });
+});
+
+// ─── Creative Direction Toggle ───
+$('#da-toggle').addEventListener('click', () => {
+  const wrap = document.getElementById('da-input-wrap');
+  const chevron = document.getElementById('da-chevron');
+  wrap.classList.toggle('hidden');
+  chevron.style.transform = wrap.classList.contains('hidden') ? '' : 'rotate(180deg)';
+});
+
+function getCreativeDirection() {
+  const el = document.getElementById('da-input');
+  return el ? el.value.trim() : '';
+}
+
+// ─── Prompt Templates ───
+const TEMPLATES = {
+  ecommerce: 'Clean white studio background, soft shadow underneath, professional e-commerce product photography, bright even lighting, minimalist composition, shot on white seamless paper',
+  food: 'Rustic wooden table setting, warm natural sunlight from window, fresh ingredients scattered artfully, steam rising, appetizing food styling, shallow depth of field, cozy restaurant atmosphere',
+  beauty: 'Soft pink and cream tones, dewy water droplets, silk fabric background, diffused studio lighting, elegant cosmetic photography, fresh flowers and natural elements',
+  realestate: 'Modern architectural interior, natural daylight flooding through windows, staged luxury furniture, wide angle perspective, real estate photography, clean lines and open space',
+  lifestyle: 'Golden hour outdoor setting, warm sunlight flares, natural environment, candid lifestyle moment, bokeh background, aspirational mood, authentic and relaxed atmosphere',
+  automotive: 'Dark moody studio with dramatic rim lighting, reflective floor, premium automotive photography, metallic highlights, cinematic atmosphere, showroom quality',
+  fashion: 'High-end editorial fashion shoot, dramatic studio lighting, bold styling, VOGUE-quality composition, strong pose, luxury brand aesthetic, professional fashion photography',
+};
+
+$$('.template-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const key = chip.dataset.tpl;
+    const textarea = $('#da-input');
+    const wasActive = chip.classList.contains('active');
+    $$('.template-chip').forEach(c => c.classList.remove('active'));
+    if (wasActive) {
+      textarea.value = '';
+    } else {
+      chip.classList.add('active');
+      textarea.value = TEMPLATES[key] || '';
+    }
+    textarea.focus();
+  });
+});
+
+// ─── Creative Direction Presets ───
+$$('.cd-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const textarea = $('#da-input');
+    if (!textarea) return;
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      textarea.value = '';
+    } else {
+      $$('.cd-preset.active').forEach(b => b.classList.remove('active'));
+      $$('.template-chip.active').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      textarea.value = btn.dataset.prompt;
+    }
+    textarea.focus();
+  });
+});
+
+// ─── Batch Generate ───
+$('#generate-btn').addEventListener('click', () => {
+  if (isProcessing) return;
+  const pending = jobs.filter(j => j.status === 'queued');
+  if (!pending.length) return;
+  processAll(pending);
+});
+
+async function processAll(pending) {
+  isProcessing = true;
+  $('#generate-btn').disabled = true;
+  $('#generate-btn').textContent = 'Generating...';
+  dropZone.style.pointerEvents = 'none';
+  dropZone.style.opacity = '.4';
+
+  // Expand variants: duplicate each job based on variantCount
+  const allJobs = [];
+  const uploadCache = new Map(); // file → uploadUrl (avoid re-uploading same image)
+  for (const job of pending) {
+    allJobs.push(job);
+    for (let v = 1; v < variantCount; v++) {
+      const clone = {
+        id: crypto.randomUUID(),
+        file: job.file,
+        name: `${job.name} (v${v + 1})`,
+        preview: job.preview,
+        status: 'queued',
+        uploadUrl: null,
+        resultUrl: null,
+        polishedUrl: null,
+        videoUrl: null,
+        upscaledUrl: null,
+        generationId: null,
+        taskId: null,
+        recordId: null,
+        error: null,
+      };
+      jobs.push(clone);
+      allJobs.push(clone);
+    }
+  }
+
+  hide('queue-section');
+  show('progress-section');
+  show('results-section');
+  // Animated entrance instead of a dry display toggle
+  const progressCard = document.getElementById('progress-section');
+  if (progressCard) {
+    progressCard.classList.remove('item-enter');
+    void progressCard.offsetWidth; // restart animation on subsequent batches
+    progressCard.classList.add('item-enter');
+  }
+
+  renderAllCards();
+  startTimer();
+
+  const projectId = getProjectId();
+  const totalLabel = variantCount > 1
+    ? `${pending.length} image${pending.length > 1 ? 's' : ''} \u00d7 ${variantCount} variants = ${allJobs.length}`
+    : `${pending.length} image${pending.length > 1 ? 's' : ''}`;
+  log(`Starting batch: ${totalLabel} (${format})${projectId ? ' — Client #' + projectId : ''}`);
+
+  // ═══ PHASE 1: Submit ALL jobs to API (fast — ~2s each) ═══
+  // This ensures all tasks exist in DB with task_ids BEFORE we start polling.
+  // If the user leaves mid-batch, resumePendingGenerations() picks them up.
+  const notice = $('#batch-notice');
+  notice.className = 'batch-notice warn';
+  notice.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Uploading your images — please don\'t close this window';
+  notice.style.display = '';
+  let submitted = 0;
+
+  const submitJob = async (job) => {
+    try {
+      // Jitter: desynchronize concurrent workers so provider createTask calls don't all fire at once
+      if (SUBMIT_JITTER_MS > 0) await new Promise(r => setTimeout(r, Math.random() * SUBMIT_JITTER_MS));
+      job.status = 'uploading';
+      updateCard(job);
+
+      // Upload with Promise de-dup + retry: only ONE upload per file,
+      // all variants of the same product await the same Promise
+      if (!uploadCache.has(job.file)) {
+        const uploadPromise = (async () => {
+          let lastErr;
+          for (let tries = 0; tries < 3; tries++) {
+            if (tries > 0) await new Promise(r => setTimeout(r, tries * 1500));
+            try {
+              const fd = new FormData();
+              fd.append('image', job.file);
+              const upRes = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
+              const upData = await upRes.json();
+              if (upData.error) throw new Error(upData.error);
+              return upData.url;
+            } catch (e) {
+              lastErr = e;
+            }
+          }
+          throw lastErr || new Error('Upload failed after 3 attempts');
+        })();
+        uploadCache.set(job.file, uploadPromise);
+      }
+      const cached = uploadCache.get(job.file);
+      job.uploadUrl = typeof cached === 'string' ? cached : await cached;
+      // Replace Promise with string URL once resolved (first success)
+      if (typeof cached !== 'string') uploadCache.set(job.file, job.uploadUrl);
+
+      job.status = 'generating';
+      updateCard(job);
+
+      // Submit to API (creates DB record + KIE task)
+      const genBody = { imgUrl: job.uploadUrl, format, idempotencyKey: job.id };
+      if (projectId) genBody.projectId = projectId;
+      const campaignId = getCampaignId();
+      if (campaignId) genBody.campaignId = campaignId;
+      const cd = getCreativeDirection();
+      if (cd) genBody.creativeDirection = cd;
+
+      // Submit with retry (up to 3 attempts with backoff for 500 errors)
+      // 60s timeout per attempt — prevents infinite hang if server doesn't respond
+      let genData, lastErr;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 2000)); // 0, 2s, 4s backoff
+          const ctrl = new AbortController();
+          const tmo = setTimeout(() => ctrl.abort(), 60000);
+          const genRes = await Auth.authFetch('/api/generate', {
+            method: 'POST',
+            body: JSON.stringify(genBody),
+            signal: ctrl.signal,
+          });
+          clearTimeout(tmo);
+          genData = await genRes.json();
+          if (genRes.status === 402) throw new Error(genData.message || genData.error || 'API error — check your API key');
+          if (genRes.status === 500 && attempt < 2) { lastErr = genData.error || 'Server error'; continue; }
+          if (genData.error) throw new Error(genData.error);
+          break; // success
+        } catch (e) {
+          lastErr = e.name === 'AbortError' ? 'Request timed out after 60s' : e.message;
+          if (e.message?.includes('API error') || e.message?.includes('check your API key')) throw e; // don't retry auth errors
+          if (attempt === 2) throw new Error(lastErr);
+        }
+      }
+
+      // Store IDs — job is now safe in DB even if user leaves
+      job.generationId = genData.generationId;
+      job.taskId = genData.taskId;
+      job.recordId = genData.recordId;
+
+    } catch (e) {
+      job.status = 'error';
+      job.error = e.message;
+      log(`${job.name}: ${e.message}`, 'error');
+
+      if (job.generationId) {
+        Auth.authFetch('/api/report-failure', {
+          method: 'POST',
+          body: JSON.stringify({ generationId: job.generationId, error: e.message }),
+        }).catch(() => {});
+      }
+    }
+    submitted++;
+    updateProgress(submitted, allJobs.length, 'Submitting');
+  };
+
+  await runPool(allJobs, submitJob, SUBMIT_CONCURRENCY);
+
+  // Auto-retry failed submissions once (pause 3s first to let any transient issues settle)
+  const firstRoundFailed = allJobs.filter(j => !j.taskId && j.status === 'error');
+  if (firstRoundFailed.length > 0) {
+    log(`Retrying ${firstRoundFailed.length} failed submission(s)...`, 'processing');
+    await new Promise(r => setTimeout(r, 3000));
+    // Reset status so submitJob runs again
+    firstRoundFailed.forEach(j => { j.status = 'queued'; j.error = null; });
+    await runPool(firstRoundFailed, submitJob, SUBMIT_CONCURRENCY);
+  }
+
+  const submittedJobs = allJobs.filter(j => j.taskId);
+  const failedSubmit = allJobs.length - submittedJobs.length;
+  if (failedSubmit > 0) {
+    log(`${failedSubmit} failed to submit (after retry)`, 'error');
+  }
+  if (submittedJobs.length > 0) {
+    log(`All ${submittedJobs.length} tasks submitted — generating...`, 'processing');
+    notice.className = 'batch-notice safe';
+    notice.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> All images submitted — you can leave this page, your creatives will be ready when you come back';
+  } else {
+    notice.style.display = 'none';
+  }
+
+  // ═══ PHASE 2: Poll ALL submitted jobs in parallel ═══
+  let completed = 0;
+
+  const pollJob = async (job) => {
+    try {
+      const pollParams = new URLSearchParams();
+      if (job.recordId) pollParams.set('recordId', job.recordId);
+      if (job.generationId) pollParams.set('generationId', job.generationId);
+      const pollQs = pollParams.toString();
+      const resultUrl = await poll(`/api/status/image/${job.taskId}${pollQs ? '?' + pollQs : ''}`, 8000, 360000);
+      job.resultUrl = resultUrl;
+      job.status = 'done';
+      log(`${job.name}: complete`, 'success');
+    } catch (e) {
+      job.status = 'error';
+      job.error = e.message;
+      log(`${job.name}: ${e.message}`, 'error');
+
+      if (job.generationId) {
+        Auth.authFetch('/api/report-failure', {
+          method: 'POST',
+          body: JSON.stringify({ generationId: job.generationId, error: e.message }),
+        }).catch(() => {});
+      }
+    }
+    completed++;
+    updateProgress(completed, submittedJobs.length, 'Generating');
+    updateCard(job);
+  };
+
+  await runPool(submittedJobs, pollJob, POLL_CONCURRENCY);
+
+  notice.style.display = 'none';
+  stopTimer();
+  isProcessing = false;
+  dropZone.style.pointerEvents = '';
+  dropZone.style.opacity = '';
+
+  const doneCount = allJobs.filter(j => j.status === 'done').length;
+  const failedCount = allJobs.length - doneCount;
+  show('batch-bar');
+  $('#done-count').textContent = doneCount;
+  const retryBtn = $('#retry-failed-btn');
+  if (failedCount > 0) {
+    retryBtn.classList.remove('hidden');
+    retryBtn.textContent = `Retry ${failedCount} failed`;
+  } else {
+    retryBtn.classList.add('hidden');
+  }
+  toast(`${doneCount}/${allJobs.length} visuals generated`);
+  log(`Batch complete: ${doneCount}/${allJobs.length}`, 'success');
+
+  $('#generate-btn').disabled = false;
+  $('#generate-btn').textContent = 'Generate Creatives';
+
+}
+
+// ─── Concurrency Pool ───
+async function runPool(items, fn, limit) {
+  let idx = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+}
+
+// ─── Polling (with auth + robust error handling) ───
+function poll(url, interval = 8000, timeout = 360000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    let attempts = 0;
+    let networkErrors = 0;
+    const MAX_NETWORK_ERRORS = 30;
+    const timeoutMin = Math.round(timeout / 60000);
+
+    const check = async () => {
+      const elapsed = Date.now() - start;
+      if (elapsed > timeout) {
+        return reject(new Error(`Timed out after ${timeoutMin} min — try again or check Library later`));
+      }
+      attempts++;
+      try {
+        const res = await Auth.authFetch(url);
+        if (!res.ok) {
+          console.warn(`[poll] attempt ${attempts}: HTTP ${res.status}`);
+          if (res.status === 401 || res.status === 403) {
+            return reject(new Error('Session expired — please refresh the page'));
+          }
+          // 5xx server error → auto retry
+          setTimeout(check, interval);
+          return;
+        }
+        // Reset network error counter on successful fetch
+        networkErrors = 0;
+        const data = await res.json();
+
+        if (data.ready && data.resultUrl) {
+          console.log(`[poll] done after ${attempts} attempts`);
+          return resolve(data.resultUrl);
+        }
+        if (data.failed) {
+          console.warn(`[poll] task failed: ${data.error}`);
+          return reject(new Error(data.error || 'Generation failed on provider'));
+        }
+        if (attempts <= 3 || attempts % 5 === 0) {
+          console.log(`[poll] attempt ${attempts}: state=${data.state || 'unknown'} ready=${data.ready}`);
+        }
+      } catch (err) {
+        networkErrors++;
+        // Backoff: after 5+ consecutive errors, slow down polling to not hammer a dead server
+        const backoff = networkErrors > 5 ? Math.min(interval * 2, 30000) : interval;
+        console.warn(`[poll] attempt ${attempts} network error (${networkErrors}/${MAX_NETWORK_ERRORS}), next in ${backoff/1000}s:`, err.message);
+        if (networkErrors >= MAX_NETWORK_ERRORS) {
+          return reject(new Error(`Network error — check your connection and try again`));
+        }
+        setTimeout(check, backoff);
+        return;
+      }
+      setTimeout(check, interval);
+    };
+    setTimeout(check, 3000);
+  });
+}
+
+// ─── Progress ───
+function updateProgress(done, total, label = '') {
+  const pct = Math.round((done / total) * 100);
+  $('#progress-fill').style.transform = 'scaleX(' + (pct / 100) + ')';
+  const prefix = label ? `${label}: ` : '';
+  $('#progress-text').textContent = `${prefix}${done} / ${total} — ${pct}%`;
+}
+
+// ─── Result Cards ───
+function renderAllCards() {
+  const grid = $('#results-grid');
+  grid.innerHTML = jobs.map(j => cardHTML(j)).join('');
+}
+
+const STATUS_LABELS = {
+  queued: 'Queued', uploading: 'Uploading...', generating: 'Generating...',
+  done: 'Complete', error: null,
+  polishing: 'Polishing...', rendering: 'Rendering video...',
+};
+const OVERLAY_STATES = new Set(['uploading', 'generating', 'polishing', 'rendering']);
+
+// ── Perceived progress: rotating step messages while generating ──
+// The wait is 30-90s; named steps make it feel like work, not silence.
+const GEN_STEPS = ['Analyzing your product...', 'Composing the scene...', 'Lighting & shadows...', 'Refining details...', 'Final render...'];
+setInterval(() => {
+  document.querySelectorAll('.result-card[data-status="generating"]').forEach(card => {
+    const start = Number(card.dataset.genStart || 0);
+    if (!start) return;
+    const idx = Math.min(Math.floor((Date.now() - start) / 12000), GEN_STEPS.length - 1);
+    const label = card.querySelector('.result-overlay span');
+    if (label && label.textContent !== GEN_STEPS[idx]) {
+      label.style.opacity = '0';
+      setTimeout(() => { label.textContent = GEN_STEPS[idx]; label.style.opacity = '1'; }, 280);
+    }
+  });
+}, 4000);
+
+// ── Liquid Glass light spill: tint the chrome with the client's own visuals ──
+// Samples the first finished result's dominant color into --spill (sidebar glow).
+// Fails silently if the asset host doesn't send CORS headers — pure enhancement.
+let spillDone = false;
+function maybeSetSpill(url) {
+  if (spillDone || !url) return;
+  spillDone = true;
+  try {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = 1;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(im, 0, 0, 1, 1);
+        const d = ctx.getImageData(0, 0, 1, 1).data;
+        document.documentElement.style.setProperty('--spill', `rgba(${d[0]},${d[1]},${d[2]},.4)`);
+      } catch (e) { /* tainted canvas — no CORS on asset host, skip */ }
+    };
+    im.onerror = () => {};
+    im.src = url;
+  } catch (e) { /* never block the reveal */ }
+}
+
+function cardHTML(job) {
+  const src = job.resultUrl || job.preview;
+  const isDone = job.status === 'done';
+  const isErr = job.status === 'error';
+  const showOverlay = OVERLAY_STATES.has(job.status);
+  const statusLabel = STATUS_LABELS[job.status] || job.status;
+  const errorMsg = isErr ? (job.error || 'Unknown error') : '';
+
+  return `
+    <div class="result-card ${isDone ? 'done' : ''} ${isErr ? 'error' : ''}" id="card-${job.id}" data-status="${job.status}">
+      <div class="result-media-wrap" ${isDone ? `onclick="openModal('${job.id}')" style="cursor:pointer"` : ''}>
+        <img src="${src}" alt="${job.name}" loading="lazy" decoding="async" onerror="imgFallback(this)">
+        <div class="result-overlay ${showOverlay ? 'active' : ''}">
+          <div class="spinner"></div>
+          <span>${statusLabel}</span>
+          <div class="ov-progress"><i></i></div>
+        </div>
+      </div>
+      <div class="result-status">
+        <span class="status-dot ${job.status}"></span>
+        <span class="status-text">${isErr ? errorMsg : (statusLabel || '')}</span>
+      </div>
+      ${isDone ? `
+      <div class="result-actions">
+        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
+        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        <button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>
+      </div>` : ''}
+      ${isErr ? `
+      <div class="result-actions">
+        <button class="action-btn" onclick="retryJob('${job.id}')">${Icons.get('refresh')} Retry</button>
+      </div>` : ''}
+    </div>`;
+}
+
+// In-place mutation — avoids HTML reparse and image re-download on every status change.
+// Only the actually-changed nodes get touched, so Safari stays fluid on 20+ concurrent cards.
+function updateCard(job) {
+  const el = document.getElementById(`card-${job.id}`);
+  if (!el) return;
+
+  const prevStatus = el.dataset.status;
+  if (prevStatus === job.status && !job.resultUrl && !job.error) return; // nothing to do
+
+  const isDone = job.status === 'done';
+  const isErr = job.status === 'error';
+  const showOverlay = OVERLAY_STATES.has(job.status);
+  const statusLabel = STATUS_LABELS[job.status] || job.status;
+
+  // Card-level classes
+  el.classList.toggle('done', isDone);
+  el.classList.toggle('error', isErr);
+  el.dataset.status = job.status;
+
+  // Media wrap (only rewire onclick when transitioning in/out of 'done')
+  const mediaWrap = el.querySelector('.result-media-wrap');
+  if (mediaWrap) {
+    if (isDone) {
+      mediaWrap.setAttribute('onclick', `openModal('${job.id}')`);
+      mediaWrap.style.cursor = 'pointer';
+    } else {
+      mediaWrap.removeAttribute('onclick');
+      mediaWrap.style.cursor = '';
+    }
+  }
+
+  // Image source — only update if it actually changed (critical: prevents re-fetch)
+  const img = el.querySelector('img');
+  if (img) {
+    const desiredSrc = job.resultUrl || job.preview;
+    if (desiredSrc && img.getAttribute('src') !== desiredSrc) {
+      const isReveal = isDone && prevStatus !== 'done' && job.resultUrl
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (isReveal) {
+        // Liquid reveal: decode off-DOM so the swap lands fully sharp,
+        // then the CSS blur→sharp dissolve plays on an already-loaded frame.
+        const pre = new Image();
+        pre.src = desiredSrc;
+        const apply = () => {
+          img.setAttribute('src', desiredSrc);
+          el.classList.add('result-reveal');
+          img.addEventListener('animationend', () => el.classList.remove('result-reveal'), { once: true });
+        };
+        (pre.decode ? pre.decode().catch(() => {}) : Promise.resolve()).then(apply);
+        maybeSetSpill(desiredSrc);
+      } else {
+        img.setAttribute('src', desiredSrc);
+        if (isDone && job.resultUrl) maybeSetSpill(desiredSrc);
+      }
+    }
+  }
+
+  // Track when generation actually started — drives the rotating step messages
+  if (job.status === 'generating' && prevStatus !== 'generating') {
+    el.dataset.genStart = String(Date.now());
+  }
+
+  // Overlay
+  const overlay = el.querySelector('.result-overlay');
+  if (overlay) {
+    overlay.classList.toggle('active', showOverlay);
+    const ovLabel = overlay.querySelector('span');
+    if (ovLabel && ovLabel.textContent !== (statusLabel || '')) ovLabel.textContent = statusLabel || '';
+  }
+
+  // Status strip (dot class + text)
+  const dot = el.querySelector('.status-dot');
+  if (dot) dot.className = `status-dot ${job.status}`;
+  const statusText = el.querySelector('.status-text');
+  if (statusText) {
+    const txt = isErr ? (job.error || 'Unknown error') : (statusLabel || '');
+    if (statusText.textContent !== txt) statusText.textContent = txt;
+  }
+
+  // Actions block — only rebuild when transitioning into/out of done/error
+  const needsActions = isDone || isErr;
+  const hadActions = !!el.querySelector('.result-actions');
+  const prevWasDone = el.querySelector('.result-actions button[onclick*="openModal"]');
+  const prevWasErr = el.querySelector('.result-actions button[onclick*="retryJob"]');
+  const actionsStateChanged = (isDone && !prevWasDone) || (isErr && !prevWasErr) || (!needsActions && hadActions);
+
+  if (actionsStateChanged) {
+    const existing = el.querySelector('.result-actions');
+    if (existing) existing.remove();
+    if (isDone) {
+      const div = document.createElement('div');
+      div.className = 'result-actions';
+      div.innerHTML = `
+        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
+        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        <button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`;
+      el.appendChild(div);
+    } else if (isErr) {
+      const div = document.createElement('div');
+      div.className = 'result-actions';
+      div.innerHTML = `<button class="action-btn" onclick="retryJob('${job.id}')">${Icons.get('refresh')} Retry</button>`;
+      el.appendChild(div);
+    }
+  }
+}
+
+// ─── Individual Actions ───
+window.polishJob = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) return;
+  job.status = 'polishing'; updateCard(job);
+  log(`${job.name}: polishing...`);
+  try {
+    const body = { imageUrl: job.resultUrl, ratio: format };
+    const projectId = getProjectId();
+    if (projectId) body.projectId = projectId;
+    const campaignId = getCampaignId();
+    if (campaignId) body.campaignId = campaignId;
+
+    const res = await Auth.authFetch('/api/polish', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.status === 402) throw new Error(data.message || data.error || 'API error — check your API key');
+    if (data.error) throw new Error(data.error);
+    const pParams = new URLSearchParams();
+    if (data.generationId) pParams.set('generationId', data.generationId);
+    if (data.recordId) pParams.set('recordId', data.recordId);
+    const pQs = pParams.toString();
+    const url = await poll(`/api/status/polish/${data.taskId}${pQs ? '?' + pQs : ''}`, 6000, 300000);
+    job.polishedUrl = url; job.resultUrl = url; job.status = 'done';
+    log(`${job.name}: polished`, 'success'); toast('Polish complete');
+  
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: polish failed — ${e.message}`, 'error'); toast('Polish failed', true);
+  }
+  updateCard(job);
+};
+
+window.videoJob = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) return;
+  job.status = 'rendering'; updateCard(job);
+  log(`${job.name}: rendering video...`);
+  try {
+    const body = { imageUrl: job.resultUrl };
+    const projectId = getProjectId();
+    if (projectId) body.projectId = projectId;
+    const campaignId = getCampaignId();
+    if (campaignId) body.campaignId = campaignId;
+
+    const res = await Auth.authFetch('/api/video', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.status === 402) throw new Error(data.message || data.error || 'API error — check your API key');
+    if (data.error) throw new Error(data.error);
+    const vParams = new URLSearchParams();
+    if (data.generationId) vParams.set('generationId', data.generationId);
+    if (data.recordId) vParams.set('recordId', data.recordId);
+    const vQs = vParams.toString();
+    const url = await poll(`/api/status/video/${data.taskId}${vQs ? '?' + vQs : ''}`, 15000, 600000);
+    job.videoUrl = url; job.status = 'done';
+    log(`${job.name}: video ready`, 'success'); toast('Video ready');
+    openModal(id, 'video');
+  
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: video failed — ${e.message}`, 'error'); toast('Video failed', true);
+  }
+  updateCard(job);
+};
+
+// ─── Video with Creative Direction (from Lightbox) ───
+window.videoJobWithCD = async (id, creativeDirection, videoModel, duration) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) return;
+  const modelLabel = videoModel === 'seedance-2' ? 'Seedance 2.0' : videoModel === 'kling-3.0' ? 'Kling 3.0' : videoModel === 'kling-2.6' ? 'Kling 2.6' : videoModel === 'veo3' ? 'Veo 3.1' : 'Grok Imagine';
+  job.status = 'rendering'; updateCard(job);
+  log(`${job.name}: rendering video (${modelLabel}, ${duration || 10}s)${creativeDirection ? ' + creative direction' : ''}...`);
+  try {
+    const body = { imageUrl: job.resultUrl };
+    const projectId = getProjectId();
+    if (projectId) body.projectId = projectId;
+    const campaignId = getCampaignId();
+    if (campaignId) body.campaignId = campaignId;
+    if (creativeDirection) body.creativeDirection = creativeDirection;
+    if (videoModel) body.videoModel = videoModel;
+    if (duration) body.duration = duration;
+
+    const res = await Auth.authFetch('/api/video', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.status === 402) throw new Error(data.message || data.error || 'API error — check your API key');
+    if (data.error) throw new Error(data.error);
+    const vParams = new URLSearchParams();
+    if (data.generationId) vParams.set('generationId', data.generationId);
+    if (data.recordId) vParams.set('recordId', data.recordId);
+    if (videoModel) vParams.set('videoModel', videoModel);
+    const vQs = vParams.toString();
+    const url = await poll(`/api/status/video/${data.taskId}${vQs ? '?' + vQs : ''}`, 15000, 600000);
+    job.videoUrl = url; job.videoModel = videoModel || 'grok-imagine'; job.status = 'done';
+    log(`${job.name}: video ready (${modelLabel})`, 'success'); toast('Video ready');
+    openModal(id, 'video');
+  
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: video failed — ${e.message}`, 'error'); toast('Video failed', true);
+  }
+  updateCard(job);
+};
+
+// ─── Upscale Video to 4K (from Lightbox) ───
+window.upscaleJob = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.videoUrl) return;
+  job.status = 'rendering'; updateCard(job);
+  log(`${job.name}: upscaling to 4K...`);
+  toast('Upscaling to 4K — this may take a few minutes');
+  try {
+    const body = { videoUrl: job.videoUrl };
+    const projectId = getProjectId();
+    if (projectId) body.projectId = projectId;
+    const campaignId = getCampaignId();
+    if (campaignId) body.campaignId = campaignId;
+
+    const res = await Auth.authFetch('/api/upscale', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const uParams = new URLSearchParams();
+    if (data.generationId) uParams.set('generationId', data.generationId);
+    if (data.recordId) uParams.set('recordId', data.recordId);
+    const uQs = uParams.toString();
+    const url = await poll(`/api/status/upscale/${data.taskId}${uQs ? '?' + uQs : ''}`, 15000, 600000);
+    job.upscaledUrl = url; job.videoUrl = url; job.status = 'done';
+    log(`${job.name}: 4K upscale ready`, 'success'); toast('4K upscale complete');
+    openModal(id, 'video');
+
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: upscale failed — ${e.message}`, 'error'); toast('Upscale failed', true);
+  }
+  updateCard(job);
+};
+
+window.retryJob = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job) return;
+  job.status = 'queued'; job.error = null; job.generationId = null;
+  updateCard(job);
+  const projectId = getProjectId();
+  await runPool([job], async (j) => {
+    try {
+      j.status = 'uploading'; updateCard(j);
+      if (!j.uploadUrl) {
+        const fd = new FormData(); fd.append('image', j.file);
+        const r = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        j.uploadUrl = d.url;
+      }
+      j.status = 'generating'; updateCard(j);
+      const genBody = { imgUrl: j.uploadUrl, format };
+      if (projectId) genBody.projectId = projectId;
+      const cId = getCampaignId();
+      if (cId) genBody.campaignId = cId;
+      const r2 = await Auth.authFetch('/api/generate', {
+        method: 'POST',
+        body: JSON.stringify(genBody),
+      });
+      const d2 = await r2.json();
+      if (r2.status === 402) throw new Error(d2.message || d2.error || 'API error — check your API key');
+      if (d2.error) throw new Error(d2.error);
+      j.generationId = d2.generationId;
+      const rParams = new URLSearchParams();
+      if (d2.recordId) rParams.set('recordId', d2.recordId);
+      if (j.generationId) rParams.set('generationId', j.generationId);
+      const rQs = rParams.toString();
+      j.resultUrl = await poll(`/api/status/image/${d2.taskId}${rQs ? '?' + rQs : ''}`, 8000, 360000);
+      j.status = 'done';
+      log(`${j.name}: retry success`, 'success');
+    
+    } catch (e) {
+      j.status = 'error'; j.error = e.message;
+      log(`${j.name}: retry failed`, 'error');
+    }
+    updateCard(j);
+  }, 1);
+};
+
+// ─── Lightbox (shared component with metadata + actions) ───
+window.openModal = (id, type) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job) return;
+  const cd = getCreativeDirection();
+  // Determine action label
+  const actionLabel = type === 'video' ? 'Video' : job.polishedUrl ? 'Polish' : job.remixed ? 'Remix' : job.adapted ? 'Adapt' : 'Generate';
+  // Determine model label
+  const MODEL_LABELS = { 'grok-imagine': 'Grok Imagine', 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2.0', 'veo3': 'Veo 3.1' };
+  const modelLabel = type === 'video' && job.videoModel ? MODEL_LABELS[job.videoModel] || job.videoModel : null;
+
+  const meta = {
+    genType: type === 'video' ? 'video' : (job.polishedUrl ? 'polish' : 'image'),
+    action: actionLabel,
+    model: modelLabel,
+    format: format,
+    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+    cost: (Auth.isCreditsMode && Auth.isCreditsMode())
+      ? (type === 'video' ? `${(window._keouPricing?.actions?.video?.[job.videoModel] ?? 10)} credits` : '1 credit')
+      : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
+    creativeDirection: cd || null,
+    inputUrl: job.uploadUrl,
+    onPolish: window.IS_OS ? undefined : () => polishJob(id),
+    onVideo: (cd, model, duration) => videoJobWithCD(id, cd, model, duration),
+    onAdapt: window.IS_OS ? undefined : () => adaptAllFormats(id),
+    onRemix: window.IS_OS ? undefined : ((remixPrompt) => remixJob(id, remixPrompt)),
+    onPack: window.IS_OS ? undefined : () => openExportPack(id, job.generationId || ''),
+    generationId: job.generationId || null,
+  };
+  if (type === 'video' && job.videoUrl) {
+    meta.genType = 'video';
+    delete meta.onAdapt;
+    delete meta.onRemix;
+    delete meta.onPolish;
+    delete meta.onPack;
+    if (!window.IS_OS) meta.onUpscale = () => upscaleJob(id);
+    Lightbox.open(job.videoUrl, 'video', meta);
+  } else if (job.resultUrl) {
+    Lightbox.open(job.resultUrl, 'image', meta);
+  }
+};
+
+// ─── Adapt All Formats ───
+window.adaptAllFormats = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) { toast('Generated image not available', true); return; }
+  const allFormats = ['1:1', '3:4', '9:16', '16:9'];
+  const formats = allFormats.filter(f => f !== format);
+  if (!formats.length) { toast('Already in all formats', true); return; }
+  const projectId = getProjectId();
+  toast(`Adapting to ${formats.length} formats...`);
+  log(`${job.name}: adapting to ${formats.length} formats...`);
+  const promises = formats.map(async (fmt) => {
+    try {
+      const body = { imageUrl: job.resultUrl, ratio: fmt };
+      if (projectId) body.projectId = projectId;
+      const cId = getCampaignId();
+      if (cId) body.campaignId = cId;
+      const res = await Auth.authFetch('/api/adapt', { method: 'POST', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return { format: fmt, ok: true };
+    } catch (e) { return { format: fmt, ok: false, error: e.message }; }
+  });
+  const results = await Promise.all(promises);
+  const ok = results.filter(r => r.ok).length;
+  if (ok > 0) { log(`${ok} format(s) submitted`, 'success'); toast(`${ok} format(s) adapting — check Library`); }
+  if (ok < formats.length) toast(`${formats.length - ok} format(s) failed`, true);
+};
+
+// ─── Remix Image ───
+window.remixJob = async (id, remixPrompt) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) return;
+  job.status = 'generating'; updateCard(job);
+  log(`${job.name}: remixing...`);
+  try {
+    const body = { imageUrl: job.resultUrl, remixPrompt, ratio: format };
+    const projectId = getProjectId();
+    if (projectId) body.projectId = projectId;
+    const cId = getCampaignId();
+    if (cId) body.campaignId = cId;
+    const res = await Auth.authFetch('/api/remix', { method: 'POST', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (res.status === 402) throw new Error(data.message || data.error || 'API error');
+    if (data.error) throw new Error(data.error);
+    const pp = new URLSearchParams();
+    if (data.generationId) pp.set('generationId', data.generationId);
+    if (data.recordId) pp.set('recordId', data.recordId);
+    const url = await poll(`/api/status/image/${data.taskId}?${pp}`, 6000, 300000);
+    job.resultUrl = url; job.status = 'done'; job.remixed = true;
+    log(`${job.name}: remix complete`, 'success'); toast('Remix complete');
+    openModal(id);
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: remix failed — ${e.message}`, 'error'); toast('Remix failed', true);
+  }
+  updateCard(job);
+};
+
+// ─── Export Pack ───
+// One source visual → multiple deliverable formats packaged as ZIP.
+// Backend orchestrates the parallel adapt() calls; this is just the UI layer.
+(function setupExportPack() {
+  const backdrop   = document.getElementById('export-pack-backdrop');
+  if (!backdrop) return; // page may not have the modal yet
+
+  const pickerEl   = document.getElementById('export-pack-picker');
+  const progressEl = document.getElementById('export-pack-progress');
+  const listEl     = document.getElementById('pack-list');
+  const errorEl    = document.getElementById('export-pack-error');
+  const errorEl2   = document.getElementById('export-pack-error-2');
+  const startBtn   = document.getElementById('export-pack-start');
+  const cancelBtn  = document.getElementById('export-pack-cancel');
+  const closeBtn   = document.getElementById('export-pack-close');
+
+  const readyEl    = document.getElementById('pack-progress-ready');
+  const totalEl    = document.getElementById('pack-progress-total');
+  const stateEl    = document.getElementById('pack-progress-state');
+  const barEl      = document.getElementById('pack-progress-bar');
+  const itemsEl    = document.getElementById('pack-progress-list');
+
+  let presets = null;            // cached preset list
+  let selectedPackId = null;
+  let activeJobId = null;        // currently chosen card jobId
+  let activeGenerationId = null; // backing generations.id
+  let activePackId = null;       // server-assigned packGroupId once started
+  let formatMap = {};            // slug name -> { label, ratio } enrichment for polling
+  let pollTimer = null;
+  let pollInFlight = false;
+  let isStarting = false;
+  let isDownloading = false;
+
+  function open() {
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+  }
+  function close() {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+    stopPolling();
+  }
+  function stopPolling() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  }
+  function showPicker() {
+    pickerEl.style.display = '';
+    progressEl.style.display = 'none';
+    errorEl.textContent = '';
+    errorEl2.textContent = '';
+  }
+  function showProgress() {
+    pickerEl.style.display = 'none';
+    progressEl.style.display = '';
+    errorEl2.textContent = '';
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function renderPicker() {
+    if (!presets || !presets.length) {
+      listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:13px">No packs available.</div>';
+      return;
+    }
+    listEl.innerHTML = presets.map((p, i) => `
+      <label class="pack-card" data-pack-id="${escapeHtml(p.id)}" style="display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.02);transition:border-color .15s ease,background .15s ease">
+        <input type="radio" name="pack-preset" value="${escapeHtml(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px;accent-color:var(--ink)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;color:var(--ink);margin-bottom:3px">${escapeHtml(p.label)}</div>
+          <div style="color:var(--ink-muted);font-size:12px;line-height:1.45">${escapeHtml(p.description || '')}</div>
+          <div style="margin-top:6px;color:var(--ink-muted);font-size:11px;letter-spacing:.3px;text-transform:uppercase">${p.formatCount} format${p.formatCount > 1 ? 's' : ''}</div>
+        </div>
+      </label>
+    `).join('');
+    selectedPackId = presets[0].id;
+    listEl.querySelectorAll('.pack-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = card.dataset.packId;
+        selectedPackId = id;
+        listEl.querySelectorAll('input[name="pack-preset"]').forEach(r => { r.checked = (r.value === id); });
+        listEl.querySelectorAll('.pack-card').forEach(c => {
+          c.style.borderColor = (c.dataset.packId === id) ? 'var(--ink)' : 'var(--border)';
+        });
+      });
+    });
+    // mark first as selected visually
+    const first = listEl.querySelector('.pack-card');
+    if (first) first.style.borderColor = 'var(--ink)';
+  }
+
+  async function loadPresets() {
+    if (presets) return presets;
+    listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:13px">Loading packs…</div>';
+    try {
+      const res = await Auth.authFetch('/api/generate/packs');
+      if (!res.ok) throw new Error('Failed to load presets');
+      const data = await res.json();
+      presets = Array.isArray(data.packs) ? data.packs : [];
+      return presets;
+    } catch (e) {
+      listEl.innerHTML = `<div style="color:var(--danger);font-size:13px">${escapeHtml(e.message)}</div>`;
+      return [];
+    }
+  }
+
+  // Map both internal ('done'/'error') and server ('completed'/'failed') statuses
+  function statusIcon(s) {
+    if (s === 'done' || s === 'completed') return '<span style="color:#10b981" aria-label="ready">●</span>';
+    if (s === 'error' || s === 'failed')   return '<span style="color:var(--danger)" aria-label="failed">●</span>';
+    return '<span style="color:var(--ink-muted)" aria-label="working">○</span>';
+  }
+
+  function renderProgressList(items) {
+    if (!Array.isArray(items) || !items.length) {
+      itemsEl.innerHTML = '<div style="color:var(--ink-muted);font-size:12px">Preparing…</div>';
+      return;
+    }
+    itemsEl.innerHTML = items.map(it => {
+      // Enrich slug-only server entries with the preset's friendly label/ratio.
+      const slug = it.formatLabel || it.name || '';
+      const meta = formatMap[slug] || {};
+      const label = it.label || meta.label || slug;
+      const ratio = it.ratio || meta.ratio || '';
+      return `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 10px;background:rgba(255,255,255,.02);border-radius:8px">
+        <span style="color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}${ratio ? ` <span style="color:var(--ink-muted);margin-left:6px">${escapeHtml(ratio)}</span>` : ''}</span>
+        <span>${statusIcon(it.status)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  async function pollOnce() {
+    if (!activePackId) return;
+    if (pollInFlight) return;
+    pollInFlight = true;
+    try {
+      const res = await Auth.authFetch(`/api/generate/pack/${encodeURIComponent(activePackId)}/status`);
+      if (!res.ok) throw new Error('Status check failed');
+      const data = await res.json();
+      const total = Number(data.total || 0);
+      const ready = Number(data.ready || 0);
+      const failed = Number(data.failed || 0);
+      readyEl.textContent = String(ready);
+      totalEl.textContent = String(total);
+      const pct = total ? Math.round((ready / total) * 100) : 0;
+      barEl.style.width = `${pct}%`;
+      renderProgressList(data.items || []);
+
+      if (data.done) {
+        stopPolling();
+        if (ready === 0) {
+          stateEl.textContent = 'Failed';
+          errorEl2.textContent = 'No formats were generated. Please try again.';
+          return;
+        }
+        if (failed > 0) {
+          stateEl.textContent = `Done — ${failed} failed`;
+        } else {
+          stateEl.textContent = 'Done';
+        }
+        await downloadZip();
+      } else {
+        stateEl.textContent = `Working… ${ready}/${total}`;
+        // Re-arm next poll. 3.5s is responsive without hammering.
+        pollTimer = setTimeout(pollOnce, 3500);
+      }
+    } catch (e) {
+      errorEl2.textContent = e.message || 'Failed to check status';
+      // Retry after 6s on transient errors instead of giving up.
+      pollTimer = setTimeout(pollOnce, 6000);
+    } finally {
+      pollInFlight = false;
+    }
+  }
+
+  async function downloadZip() {
+    if (isDownloading || !activePackId) return;
+    isDownloading = true;
+    try {
+      const res = await Auth.authFetch(`/api/generate/pack/${encodeURIComponent(activePackId)}/zip`);
+      if (!res.ok) throw new Error('ZIP download failed');
+      const blob = await res.blob();
+      // Filename comes from Content-Disposition if present, else a generic one.
+      let filename = `keou-pack-${activePackId}.zip`;
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename\s*=\s*"?([^";]+)"?/i);
+      if (m && m[1]) filename = m[1];
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      if (typeof toast === 'function') toast('Pack downloaded');
+      // Auto-close shortly after so user sees the success state briefly.
+      setTimeout(() => close(), 900);
+    } catch (e) {
+      errorEl2.textContent = e.message || 'Failed to download ZIP';
+    } finally {
+      isDownloading = false;
+    }
+  }
+
+  async function start() {
+    if (isStarting) return;
+    if (!selectedPackId) { errorEl.textContent = 'Pick a pack first.'; return; }
+    if (!activeGenerationId) { errorEl.textContent = 'Source asset is not yet saved. Wait a moment and retry.'; return; }
+    isStarting = true;
+    startBtn.disabled = true;
+    startBtn.textContent = 'Starting…';
+    errorEl.textContent = '';
+    try {
+      const body = {
+        sourceGenerationId: Number(activeGenerationId),
+        packId: selectedPackId,
+      };
+      const projectId  = getProjectId();
+      const campaignId = getCampaignId();
+      if (projectId)  body.projectId  = projectId;
+      if (campaignId) body.campaignId = campaignId;
+
+      const res = await Auth.authFetch('/api/generate/pack', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.packId) throw new Error(data.error || 'Failed to start pack');
+      activePackId = data.packId;
+
+      // Build the slug→{label,ratio} map so polling can render friendly names
+      // (the status endpoint only returns the slug formatLabel).
+      formatMap = {};
+      (data.formats || []).forEach(f => {
+        if (f && f.name) formatMap[f.name] = { label: f.label || f.name, ratio: f.ratio || '' };
+      });
+
+      // Pre-seed progress UI from the POST response (formats known upfront).
+      const items = (data.formats || []).map(f => ({
+        formatLabel: f.name,
+        label: f.label,
+        ratio: f.ratio,
+        status: f.error ? 'failed' : 'processing',
+      }));
+      readyEl.textContent = '0';
+      totalEl.textContent = String(items.length || 0);
+      barEl.style.width = '0%';
+      stateEl.textContent = 'Working…';
+      renderProgressList(items);
+      showProgress();
+
+      // If every format failed before any DB row was tagged, polling will 404.
+      // Surface the error inline instead.
+      const anyStarted = (data.formats || []).some(f => f.generationId);
+      if (!anyStarted) {
+        stateEl.textContent = 'Failed';
+        errorEl2.textContent = 'No formats could be started. Please try again.';
+        return;
+      }
+      pollOnce();
+    } catch (e) {
+      errorEl.textContent = e.message || 'Failed to start pack';
+    } finally {
+      isStarting = false;
+      startBtn.disabled = false;
+      startBtn.textContent = 'Generate pack';
+    }
+  }
+
+  cancelBtn.addEventListener('click', close);
+  closeBtn.addEventListener('click', () => {
+    // "Close (keep working in background)" — stop polling but leave server work running.
+    // The user can re-open the modal later for the same source to resume.
+    close();
+  });
+  startBtn.addEventListener('click', start);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && backdrop.classList.contains('active')) close();
+  });
+
+  // Public entry point invoked from result-card buttons.
+  // jobId is the in-memory job identifier; generationId is the persisted DB row.
+  window.openExportPack = async function(jobId, generationId) {
+    activeJobId = jobId;
+    activeGenerationId = generationId || null;
+    activePackId = null;
+    selectedPackId = null;
+    isStarting = false;
+    isDownloading = false;
+    stopPolling();
+
+    if (!activeGenerationId) {
+      // Fall back to looking up the job in memory if the inline arg was empty.
+      try {
+        const job = (typeof jobs !== 'undefined') ? jobs.find(j => j.id === jobId) : null;
+        if (job && job.generationId) activeGenerationId = job.generationId;
+      } catch {}
+    }
+    if (!activeGenerationId) {
+      if (typeof toast === 'function') toast('Source asset not yet saved — try again in a moment', true);
+      return;
+    }
+
+    showPicker();
+    open();
+    await loadPresets();
+    renderPicker();
+  };
+})();
+
+// ─── Download Single ───
+window.downloadSingle = async (url, name) => {
+  try {
+    const res = await Auth.authFetch(`/api/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}`);
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const ext = blob.type?.includes('png') ? 'png' : blob.type?.includes('webp') ? 'webp' : blob.type?.includes('mp4') ? 'mp4' : 'jpg';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch {
+    // Fallback: forced same-tab navigation rather than popup new window
+    location.assign(url);
+  }
+};
+
+// ─── Download All as ZIP ───
+// ─── Retry Failed Jobs ───
+$('#retry-failed-btn').addEventListener('click', async () => {
+  if (isProcessing) return;
+  const failed = jobs.filter(j => j.status === 'error' || !j.resultUrl);
+  if (!failed.length) return toast('Nothing to retry', true);
+  // Reset failed jobs to queued so processAll will re-run them
+  failed.forEach(j => {
+    j.status = 'queued';
+    j.error = null;
+    j.taskId = null;
+    j.recordId = null;
+    j.generationId = null;
+  });
+  $('#retry-failed-btn').classList.add('hidden');
+  hide('batch-bar');
+  processAll(failed);
+});
+
+$('#download-all-btn').addEventListener('click', async () => {
+  const done = jobs.filter(j => j.status === 'done' && j.resultUrl);
+  if (!done.length) return toast('No visuals to download', true);
+
+  const btn = $('#download-all-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing ZIP...';
+
+  try {
+    const zip = new JSZip();
+    let fetched = 0;
+
+    await Promise.all(done.map(async (j, i) => {
+      try {
+        const res = await fetch(j.resultUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const ext = blob.type?.includes('png') ? 'png' : blob.type?.includes('webp') ? 'webp' : 'jpg';
+        const name = `${String(i + 1).padStart(2, '0')}_${j.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.${ext}`;
+        zip.file(name, blob);
+        fetched++;
+        btn.textContent = `Preparing ZIP... ${fetched}/${done.length}`;
+      } catch (e) {
+        console.error(`Failed to fetch ${j.name}:`, e);
+      }
+    }));
+
+    if (!Object.keys(zip.files).length) {
+      toast('Failed to download images', true);
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.getFullYear()
+      + String(now.getMonth() + 1).padStart(2, '0')
+      + String(now.getDate()).padStart(2, '0')
+      + '_' + String(now.getHours()).padStart(2, '0')
+      + String(now.getMinutes()).padStart(2, '0');
+    const zipName = `Keou_${dateStr}_${done.length}visuals.zip`;
+
+    btn.textContent = 'Compressing...';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = zipName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    log(`Downloaded ${done.length} visuals as ${zipName}`, 'success');
+    toast(`${done.length} visuals downloaded`);
+  } catch (e) {
+    console.error('ZIP download error:', e);
+    toast('Download failed — try again', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+// ─── Timer ───
+let timerInterval = null, timerStart = 0;
+function startTimer() {
+  stopTimer();
+  timerStart = Date.now();
+  $('#progress-timer').textContent = '00:00';
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now() - timerStart) / 1000);
+    $('#progress-timer').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }, 1000);
+}
+function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+// ─── Log ───
+function log(msg, type = '', id = null) {
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  if (id) el.id = `log-${id}`;
+  const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  el.innerHTML = `<span class="log-dot ${type}"></span><span style="flex:1">${msg}</span><span class="log-time">${now}</span>`;
+  const logEl = $('#log');
+  logEl.prepend(el);
+  while (logEl.children.length > 50) logEl.lastChild.remove();
+  updateLogToggle();
+}
+
+function updateLogToggle() {
+  const logEl = $('#log');
+  const toggle = $('#log-toggle');
+  if (logEl.children.length > 6) {
+    toggle.style.display = '';
+  } else {
+    toggle.style.display = 'none';
+  }
+}
+
+// ─── Format activity_log action into readable message ───
+function formatActivity(item) {
+  const d = item.details || {};
+  const who = item.userName || 'User';
+  switch (item.action) {
+    case 'generation': {
+      const t = d.type || 'image';
+      if (t === 'video') return { msg: `${who}: video generated`, type: 'success' };
+      if (t === 'polish') return { msg: `${who}: image polished`, type: 'success' };
+      return { msg: `${who}: image generated`, type: 'success' };
+    }
+    case 'login': return { msg: `${who} logged in`, type: '' };
+    case 'project_create': return { msg: `${who}: added client "${d.name || ''}"`, type: '' };
+    case 'project_archive': return { msg: `${who}: archived client "${d.name || ''}"`, type: '' };
+    case 'employee_invite': return { msg: `${who}: invited ${d.name || d.email || 'member'}`, type: '' };
+    case 'asset_upload': return { msg: `${who}: uploaded asset "${d.name || ''}"`, type: '' };
+    case 'asset_delete': return { msg: `${who}: deleted asset "${d.name || ''}"`, type: '' };
+    case 'password_change': return { msg: `${who}: changed password`, type: '' };
+    case 'password_reset': return { msg: `${who}: reset member password`, type: '' };
+    default: return { msg: `${who}: ${item.action.replace(/_/g, ' ')}`, type: '' };
+  }
+}
+
+// ─── Load persistent activity log from backend ───
+async function loadActivityLog() {
+  try {
+    const res = await Auth.authFetch('/api/activity?limit=20');
+    if (!res.ok) return;
+    const data = await res.json();
+    const logEl = $('#log');
+
+    (data.items || []).reverse().forEach(item => {
+      const { msg, type } = formatActivity(item);
+      const el = document.createElement('div');
+      el.className = 'log-entry';
+      el.dataset.persistent = '1';
+      const ts = new Date(item.created_at);
+      const isToday = new Date().toDateString() === ts.toDateString();
+      const time = isToday
+        ? ts.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : ts.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' ' + ts.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      el.innerHTML = `<span class="log-dot ${type}"></span><span style="flex:1">${msg}</span><span class="log-time">${time}</span>`;
+      logEl.prepend(el);
+    });
+    updateLogToggle();
+  } catch (e) {
+    console.error('Activity log fetch error:', e);
+  }
+}
+
+// ─── Resume pending/processing generations ───
+async function resumePendingGenerations() {
+  try {
+    const res = await Auth.authFetch('/api/pending');
+    if (!res.ok) return;
+    const data = await res.json();
+    const pending = data.items || [];
+    if (!pending.length) return;
+
+    log(`Resuming ${pending.length} pending generation${pending.length > 1 ? 's' : ''}...`, 'processing');
+
+    // Show log entries for all pending items
+    pending.forEach(gen => {
+      const label = gen.type === 'video' ? 'Video' : gen.type === 'polish' ? 'Polish' : 'Image';
+      const logId = `pending-${gen.id}`;
+      log(`${label} #${gen.id}: generating...`, 'processing', logId);
+    });
+
+    // Poll all in parallel using runPool
+    const pollPending = async (gen) => {
+      const label = gen.type === 'video' ? 'Video' : gen.type === 'polish' ? 'Polish' : 'Image';
+      const logId = `pending-${gen.id}`;
+      const interval = gen.type === 'video' ? 15000 : gen.type === 'polish' ? 6000 : 8000;
+      const timeout = gen.type === 'video' ? 600000 : 360000;
+      const statusType = gen.type === 'video' ? 'video' : gen.type === 'polish' ? 'polish' : 'image';
+      const qs = new URLSearchParams();
+      if (gen.recordId) qs.set('recordId', gen.recordId);
+      qs.set('generationId', gen.id);
+
+      try {
+        await poll(`/api/status/${statusType}/${gen.taskId}?${qs}`, interval, timeout);
+        const logEntry = document.getElementById(logId);
+        if (logEntry) {
+          logEntry.querySelector('.log-dot').className = 'log-dot success';
+          logEntry.querySelector('span:nth-child(2)').textContent = `${label} #${gen.id}: complete`;
+        } else {
+          log(`${label} #${gen.id}: complete`, 'success');
+        }
+        toast(`${label} ready!`);
+      } catch (err) {
+        const logEntry = document.getElementById(logId);
+        if (logEntry) {
+          logEntry.querySelector('.log-dot').className = 'log-dot error';
+          logEntry.querySelector('span:nth-child(2)').textContent = `${label} #${gen.id}: ${err.message}`;
+        } else {
+          log(`${label} #${gen.id}: ${err.message}`, 'error');
+        }
+      }
+    };
+
+    await runPool(pending, pollPending, POLL_CONCURRENCY);
+  } catch (e) {
+    console.error('Resume pending error:', e);
+  }
+}
+
+log('Studio ready — drop your product images');
+if (!window.IS_OS) loadActivityLog();
+resumePendingGenerations();
+
+// Inject SVG icons into static slots
+document.querySelectorAll('.icon-slot-target').forEach(el => { el.innerHTML = Icons.get('target'); });
+
+} // end initStudio
+
+function toggleLog() {
+  const logEl = document.querySelector('#log');
+  const toggle = document.querySelector('#log-toggle');
+  logEl.classList.toggle('collapsed');
+  if (logEl.classList.contains('collapsed')) {
+    toggle.textContent = 'Show more ↓';
+  } else {
+    toggle.textContent = 'Show less ↑';
+  }
+}
+
+function imgFallback(el) {
+  if (!el._retried && el.tagName === 'IMG' && el.src) {
+    el._retried = true;
+    const src = el.src;
+    el.src = '';
+    setTimeout(() => { el.src = src; }, 1500);
+    return;
+  }
+  el.onerror = null;
+  const isVid = el.tagName === 'VIDEO';
+  const wrap = document.createElement('div');
+  wrap.className = 'img-broken';
+  wrap.style.aspectRatio = '1';
+  wrap.innerHTML = Icons.sized(isVid ? 'video' : 'image', 32, 1.2);
+  el.replaceWith(wrap);
+}
+</script>
+
+</body>
+</html>
