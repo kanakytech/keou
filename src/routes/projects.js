@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { isCommunity } from '../middleware/edition.js';
 import { query, queryOne, queryAll } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity } from '../utils/activity.js';
@@ -55,6 +56,13 @@ router.get('/', requireAuth, async (req, res) => {
       params.push(status);
     }
 
+    // Community edition: accounts are isolated — members only see their own
+    // projects. Enterprise keeps the shared agency workspace (by design).
+    if (isCommunity() && req.user.role !== 'admin') {
+      params.push(req.user.id);
+      statusFilter += ` AND p.created_by = $${params.length}`;
+    }
+
     const projects = await queryAll(`
       SELECT p.*,
         u.name as "createdByName",
@@ -89,9 +97,9 @@ router.get('/:id', requireAuth, async (req, res) => {
       FROM projects p
       JOIN users u ON u.id = p.created_by
       LEFT JOIN generations g ON g.project_id = p.id
-      WHERE p.id = $1
+      WHERE p.id = $1 ${isCommunity() && req.user.role !== 'admin' ? 'AND p.created_by = $2' : ''}
       GROUP BY p.id, u.name
-    `, [req.params.id]);
+    `, isCommunity() && req.user.role !== 'admin' ? [req.params.id, req.user.id] : [req.params.id]);
 
     if (!project) return res.status(404).json({ error: 'Project not found' });
 

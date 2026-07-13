@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { isCommunity } from '../middleware/edition.js';
 import { query, queryOne, queryAll } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity } from '../utils/activity.js';
@@ -22,9 +23,13 @@ router.post('/', requireAuth, async (req, res) => {
     if (description && description.length > MAX_DESC) return res.status(400).json({ error: `Description must be ${MAX_DESC} characters or less` });
     if (color != null && !HEX_COLOR.test(color)) return res.status(400).json({ error: 'Color must be a hex color' });
 
-    // Verify project exists
-    const project = await queryOne('SELECT id FROM projects WHERE id = $1', [projectId]);
+    // Verify project exists — and, in the community edition, that it belongs
+    // to the caller (accounts are isolated; enterprise teams share projects).
+    const project = await queryOne('SELECT id, created_by FROM projects WHERE id = $1', [projectId]);
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (isCommunity() && req.user.role !== 'admin' && project.created_by !== req.user.id) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
 
     const result = await query(
       'INSERT INTO campaigns (project_id, name, description, color, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
@@ -66,9 +71,10 @@ router.get('/', requireAuth, async (req, res) => {
       JOIN users u ON u.id = c.created_by
       LEFT JOIN generations g ON g.campaign_id = c.id
       WHERE c.project_id = $1 AND ${statusFilter}
+        ${isCommunity() && req.user.role !== 'admin' ? `AND EXISTS (SELECT 1 FROM projects p WHERE p.id = c.project_id AND p.created_by = $${params.length + 1})` : ''}
       GROUP BY c.id, u.name
       ORDER BY c.created_at DESC
-    `, params);
+    `, isCommunity() && req.user.role !== 'admin' ? [...params, req.user.id] : params);
 
     res.json({ campaigns });
   } catch (e) {
@@ -92,9 +98,9 @@ router.get('/:id', requireAuth, async (req, res) => {
       JOIN users u ON u.id = c.created_by
       JOIN projects p ON p.id = c.project_id
       LEFT JOIN generations g ON g.campaign_id = c.id
-      WHERE c.id = $1
+      WHERE c.id = $1 ${isCommunity() && req.user.role !== 'admin' ? 'AND p.created_by = $2' : ''}
       GROUP BY c.id, u.name, p.name, p.id
-    `, [req.params.id]);
+    `, isCommunity() && req.user.role !== 'admin' ? [req.params.id, req.user.id] : [req.params.id]);
 
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
