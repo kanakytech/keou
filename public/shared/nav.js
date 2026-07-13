@@ -23,6 +23,7 @@ const Nav = (() => {
     more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     pro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    donate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
   };
 
   function render(options = {}) {
@@ -61,6 +62,7 @@ const Nav = (() => {
     ];
     if (!isOS) navItems.push({ id: 'help', label: 'Help', href: '/help.html' });
     if (isCM) navItems.push({ id: 'pro', label: 'Keou Pro — lifetime license', href: '/pro.html' });
+    if (isCM) navItems.push({ id: 'donate', label: 'Support the project', href: '/donate.html' });
     if (isAdmin && !isOS) {
       navItems.push({ id: 'analytics', label: 'Profit Dashboard', href: '/analytics.html' });
       navItems.push({ id: 'dashboard', label: 'Settings', href: '/admin.html' });
@@ -194,7 +196,8 @@ const Nav = (() => {
         <span class="mobile-more-bell-count" id="mobile-bell-count" hidden></span>
       </button>
       <a class="mobile-more-item" href="/help.html">${ICONS.help}<span>Help</span></a>
-      ${isCM ? `<a class="mobile-more-item" href="/pro.html">${ICONS.pro}<span>Keou Pro</span></a>` : ''}
+      ${isCM ? `<a class="mobile-more-item" href="/pro.html">${ICONS.pro}<span>Keou Pro</span></a>
+      <a class="mobile-more-item" href="/donate.html">${ICONS.donate}<span>Support the project</span></a>` : ''}
       ${isAdmin ? `<a class="mobile-more-item" href="/analytics.html">${ICONS.analytics}<span>Profit Dashboard</span></a>
       <a class="mobile-more-item" href="/admin.html">${ICONS.dashboard}<span>Settings</span></a>` : ''}
       <div class="mobile-more-divider"></div>
