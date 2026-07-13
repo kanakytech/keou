@@ -10,7 +10,7 @@ import { config } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requirePro } from '../middleware/pro.js';
 import { requireCredits } from '../middleware/credits.js';
-import { requireEnterprise } from '../middleware/edition.js';
+import { requireMembership } from '../middleware/edition.js';
 import { billingMode } from '../utils/credits.js';
 import { logActivity } from '../utils/activity.js';
 import { query, queryOne, queryAll } from '../db.js';
@@ -170,7 +170,7 @@ router.post('/video', requireAuth, requireCredits('video', 1), async (req, res) 
 });
 
 // ─── Polish Image ───
-router.post('/polish', requireEnterprise, requireAuth, requireCredits('image', 1), async (req, res) => {
+router.post('/polish', requireMembership, requireAuth, requireCredits('image', 1), async (req, res) => {
   try {
     const { imageUrl, ratio, projectId, campaignId, idempotencyKey } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
@@ -187,7 +187,7 @@ router.post('/polish', requireEnterprise, requireAuth, requireCredits('image', 1
 });
 
 // ─── Remix Image ───
-router.post('/remix', requireEnterprise, requireAuth, requireCredits('image', 1), async (req, res) => {
+router.post('/remix', requireMembership, requireAuth, requireCredits('image', 1), async (req, res) => {
   try {
     const { imageUrl, remixPrompt, ratio, projectId, campaignId, idempotencyKey } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
@@ -205,7 +205,7 @@ router.post('/remix', requireEnterprise, requireAuth, requireCredits('image', 1)
 });
 
 // ─── Adapt Format ───
-router.post('/adapt', requireEnterprise, requireAuth, requireCredits('image', 1), async (req, res) => {
+router.post('/adapt', requireMembership, requireAuth, requireCredits('image', 1), async (req, res) => {
   try {
     const { imageUrl, ratio, projectId, campaignId, idempotencyKey } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
@@ -226,7 +226,7 @@ router.post('/adapt', requireEnterprise, requireAuth, requireCredits('image', 1)
 });
 
 // ─── Upscale Video ───
-router.post('/upscale', requireEnterprise, requireAuth, async (req, res) => {
+router.post('/upscale', requireMembership, requireAuth, async (req, res) => {
   try {
     const { videoUrl, projectId, campaignId, idempotencyKey } = req.body;
     if (!videoUrl) return res.status(400).json({ error: 'videoUrl required' });
@@ -382,7 +382,7 @@ import { listPacks, getPack, slugify, packEntryName } from '../lib/packs.js';
 import { randomBytes } from 'crypto';
 import JSZip from 'jszip';
 
-router.get('/packs', requireEnterprise, requireAuth, (req, res) => {
+router.get('/packs', requireMembership, requireAuth, (req, res) => {
   res.json({ packs: listPacks() });
 });
 
@@ -394,7 +394,7 @@ router.get('/packs', requireEnterprise, requireAuth, (req, res) => {
  * Each format is fired in parallel via executeAdapt. Each row in DB gets
  * a shared pack_id so the ZIP endpoint can group them.
  */
-router.post('/pack', requireEnterprise, requireAuth, requirePro, requireCredits('image', 1), async (req, res) => {
+router.post('/pack', requireMembership, requireAuth, requirePro, requireCredits('image', 1), async (req, res) => {
   try {
     const { sourceGenerationId, packId, projectId, campaignId } = req.body;
     const sgi = parseInt(sourceGenerationId);
@@ -547,7 +547,7 @@ router.get('/pack/:packId/zip', requireAuth, async (req, res) => {
 });
 
 // ─── Get user's pending/processing generations ───
-router.get('/pending', requireEnterprise, requireAuth, async (req, res) => {
+router.get('/pending', requireMembership, requireAuth, async (req, res) => {
   try {
     const items = await queryAll(`
       SELECT id, type, status, task_id, record_id, input_url, format, created_at, metadata

@@ -15,7 +15,12 @@ export const config = {
   // 'enterprise' (default): full platform — accounts, team, all tools, credits.
   // 'opensource': limited self-host/demo build — no login (auto-session),
   // image+video studio only, user brings their own provider key per request.
-  edition: process.env.EDITION === 'opensource' ? 'opensource' : 'enterprise',
+  // 'community': hosted free tier — public self-serve signup, full creative
+  // suite unlocked, BYOK per request (the platform's provider keys are never
+  // used). Operator/cost surfaces (assistant, billing, platform) stay off.
+  edition: ['opensource', 'community'].includes(process.env.EDITION)
+    ? process.env.EDITION
+    : 'enterprise',
 
   // ─── Billing mode (enterprise edition only) ───
   // 'quota' (default): legacy image/video quota pools — existing deployments unchanged.

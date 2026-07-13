@@ -31,6 +31,9 @@ const Auth = (() => {
   function needsPasswordChange() { return mustChangePassword; }
   function getEdition() { return edition; }
   function isOpensource() { return edition === 'opensource'; }
+  function isCommunity() { return edition === 'community'; }
+  // BYOK editions: the visitor's own provider key rides every request.
+  function isByok() { return edition === 'opensource' || edition === 'community'; }
   function getBillingMode() { return billingMode; }
   function isCreditsMode() { return billingMode === 'credits'; }
 
@@ -81,7 +84,7 @@ const Auth = (() => {
         headers['Content-Type'] = headers['Content-Type'] || 'application/json';
       }
       headers['Authorization'] = `Bearer ${accessToken}`;
-      if (edition === 'opensource') {
+      if (isByok()) {
         const pk = getProviderKey();
         if (pk) headers['X-Provider-Key'] = pk;
       }
@@ -101,6 +104,19 @@ const Auth = (() => {
       } else { redirectToLogin(); throw new Error('Not authenticated'); }
     }
     return res;
+  }
+
+  async function register(email, password, name) {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+      credentials: 'same-origin',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    setAuth(data);
+    return data;
   }
 
   async function login(email, password) {
@@ -175,9 +191,9 @@ const Auth = (() => {
 
   return {
     getToken, getUser, isLoggedIn, isAdmin, needsPasswordChange,
-    getEdition, isOpensource, getBillingMode, isCreditsMode, getProviderKey, setProviderKey,
+    getEdition, isOpensource, isCommunity, isByok, getBillingMode, isCreditsMode, getProviderKey, setProviderKey,
     setAuth, clearAuth, refresh,
-    authFetch, login, changePassword, logout,
+    authFetch, login, register, changePassword, logout,
     init, guard, adminGuard, publicGuard,
   };
 })();

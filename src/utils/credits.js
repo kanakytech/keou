@@ -1,6 +1,7 @@
 import { query, queryOne } from '../db.js';
 import { getPresignedUrl } from '../lib/r2.js';
 import { config } from '../config.js';
+import { isByok } from '../middleware/edition.js';
 
 /**
  * Billing mode of this deployment. 'quota' = legacy image/video pools,
@@ -97,6 +98,17 @@ export async function getUserUsage(userId) {
  * one-time migration done outside business hours.
  */
 export async function deductCredits(userId, creditType, amount, generationId) {
+  // BYOK editions (opensource, community): the caller pays their own provider
+  // directly — there is nothing to meter. Record the transaction for
+  // analytics, never enforce a balance or pool.
+  if (isByok()) {
+    await query(
+      `INSERT INTO credit_transactions (user_id, type, amount, reason, generation_id) VALUES ($1, $2, $3, 'generation', $4)`,
+      [userId, creditType, -amount, generationId]
+    );
+    return 999999;
+  }
+
   if (billingMode() === 'credits') {
     clearAgencyCache();
     const result = await query(
@@ -160,6 +172,15 @@ export async function deductCredits(userId, creditType, amount, generationId) {
 
 /** Refund credits (if task fails) — mirrors deductCredits' billing modes. */
 export async function refundCredits(userId, creditType, amount, generationId) {
+  // BYOK editions: nothing was enforced at debit time — journal only.
+  if (isByok()) {
+    await query(
+      `INSERT INTO credit_transactions (user_id, type, amount, reason, generation_id) VALUES ($1, $2, $3, 'refund', $4)`,
+      [userId, creditType, amount, generationId]
+    );
+    return;
+  }
+
   const agency = await getAgency();
   if (!agency) return;
 

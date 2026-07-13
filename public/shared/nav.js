@@ -22,6 +22,7 @@ const Nav = (() => {
     help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    pro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
   };
 
   function render(options = {}) {
@@ -32,6 +33,8 @@ const Nav = (() => {
     const isAdmin = user.role === 'admin';
     // Opensource edition: basic studio only - no accounts, no enterprise pages.
     const isOS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
+    // Community edition: hosted free tier - full creative suite, BYOK, Pro upsell.
+    const isCM = typeof Auth.isCommunity === 'function' && Auth.isCommunity();
 
     // Auto-detect active from URL
     let active = options.active || '';
@@ -57,6 +60,7 @@ const Nav = (() => {
       { id: 'tools', label: 'Creative Tools', href: '/tools.html' },
     ];
     if (!isOS) navItems.push({ id: 'help', label: 'Help', href: '/help.html' });
+    if (isCM) navItems.push({ id: 'pro', label: 'Keou Pro — lifetime license', href: '/pro.html' });
     if (isAdmin && !isOS) {
       navItems.push({ id: 'analytics', label: 'Profit Dashboard', href: '/analytics.html' });
       navItems.push({ id: 'dashboard', label: 'Settings', href: '/admin.html' });
@@ -190,6 +194,7 @@ const Nav = (() => {
         <span class="mobile-more-bell-count" id="mobile-bell-count" hidden></span>
       </button>
       <a class="mobile-more-item" href="/help.html">${ICONS.help}<span>Help</span></a>
+      ${isCM ? `<a class="mobile-more-item" href="/pro.html">${ICONS.pro}<span>Keou Pro</span></a>` : ''}
       ${isAdmin ? `<a class="mobile-more-item" href="/analytics.html">${ICONS.analytics}<span>Profit Dashboard</span></a>
       <a class="mobile-more-item" href="/admin.html">${ICONS.dashboard}<span>Settings</span></a>` : ''}
       <div class="mobile-more-divider"></div>
@@ -238,6 +243,10 @@ const Nav = (() => {
         }
       } catch {}
     })();
+    else if (isCM && !isAdmin) {
+      const el = document.getElementById('sidebar-credits');
+      if (el) el.innerHTML = `<a href="/pro.html" style="color:var(--ink-faint);text-decoration:none"><div style="font-weight:700;color:var(--ink);font-size:10px;letter-spacing:.5px">FREE</div><div>plan</div></a>`;
+    }
     else if (!isOS) (async () => {
       try {
         const res = await Auth.authFetch('/api/analytics/roi');
@@ -265,7 +274,7 @@ const Nav = (() => {
       if (!socials) return;
       const powered = document.createElement('div');
       powered.className = 'footer-powered';
-      if (isCreditsMode) { return; } // enterprise builds carry their own branding
+      if (isCreditsMode || isCM) { return; } // enterprise builds carry their own branding
       powered.innerHTML = `<span>Powered by</span>
         <a href="https://kie.ai" title="KIE.AI"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span>KIE.AI</span></a>
         <svg class="footer-sep" width="3" height="3" viewBox="0 0 3 3"><circle cx="1.5" cy="1.5" r="1.5" fill="currentColor"/></svg>

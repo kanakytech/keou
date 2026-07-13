@@ -25,6 +25,10 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
 .pw-wrap .form-input{padding-right:40px}
 .pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink-faint);font-size:16px;padding:2px;line-height:1;transition:color .2s}
 .pw-toggle:hover{color:var(--ink)}
+.auth-switch{display:none;gap:4px;margin:0 0 22px;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--surface-1,rgba(255,255,255,.02))}
+.auth-switch.visible{display:flex}
+.auth-switch button{flex:1;padding:9px 0;border:none;border-radius:9px;background:transparent;color:var(--ink-faint);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.auth-switch button.active{background:var(--accent);color:#fff}
 </style>
 </head>
 <body>
@@ -37,6 +41,11 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
       <div class="auth-logo">
         <img src="/logo.png" alt="Keou">
         <span id="agency-name">Keou Systems</span>
+      </div>
+
+      <div class="auth-switch" id="auth-switch">
+        <button type="button" id="tab-signin" class="active">Sign in</button>
+        <button type="button" id="tab-signup">Create account</button>
       </div>
 
       <!-- LOGIN FORM -->
@@ -61,8 +70,39 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
           <button type="submit" class="btn-primary full" id="login-btn">Sign in</button>
         </form>
 
-        <p class="auth-footer" style="color:var(--ink-faint);font-size:12px;margin-top:20px">
+        <p class="auth-footer" id="login-footer" style="color:var(--ink-faint);font-size:12px;margin-top:20px">
           Access is managed by your agency admin.
+        </p>
+      </div>
+
+      <!-- SIGNUP FORM (community edition only) -->
+      <div id="signup-section" class="hidden">
+        <h2 class="auth-title">Create your free account</h2>
+        <p class="auth-subtitle">Full creative suite — free forever, bring your own key</p>
+
+        <div id="signup-error" class="form-error" style="text-align:center;margin-bottom:16px"></div>
+
+        <form id="signup-form">
+          <div class="form-group">
+            <label class="form-label" for="signup-name">Name</label>
+            <input class="form-input" id="signup-name" type="text" placeholder="Your name" required autocomplete="name" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-email">Email</label>
+            <input class="form-input" id="signup-email" type="email" placeholder="you@studio.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup-password">Password</label>
+            <div class="pw-wrap">
+              <input class="form-input" id="signup-password" type="password" placeholder="12+ chars, mixed case, number, symbol" required minlength="12" autocomplete="new-password">
+              <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="Show password"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary full" id="signup-btn">Create free account</button>
+        </form>
+
+        <p class="auth-footer" style="color:var(--ink-faint);font-size:12px;margin-top:20px">
+          Your generations stay private to your account. Pro (lifetime license) — <a href="/pro.html" style="color:var(--accent)">learn more</a>.
         </p>
       </div>
 
@@ -93,7 +133,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
       </div>
     </div>
 
-    <div class="auth-powered">Powered by Keou Systems &mdash; Next Dimension</div>
+    <div class="auth-powered">Keou Systems</div>
   </div>
 </div>
 
@@ -102,13 +142,38 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
 <script src="/shared/auth.js"></script>
 <script>
 (async () => {
-  // Load agency name
+  // Load agency name + edition (community shows the signup tab)
+  let isCommunity = false;
   try {
     const r = await fetch('/api/auth/agency');
     const d = await r.json();
-    if (d.name) document.getElementById('agency-name').textContent = d.name;
-    document.title = `Login — ${d.name || 'Keou Systems'}`;
+    isCommunity = d.edition === 'community';
+    if (isCommunity) {
+      document.getElementById('agency-name').textContent = 'Keou Systems';
+      document.title = 'Sign in — Keou Systems';
+      document.getElementById('auth-switch').classList.add('visible');
+      document.getElementById('login-footer').innerHTML = 'Free community platform. No card, no trial clock.';
+    } else {
+      if (d.name) document.getElementById('agency-name').textContent = d.name;
+      document.title = `Login — ${d.name || 'Keou Systems'}`;
+    }
   } catch {}
+
+  // ── Tab switching (community) ──
+  const tabSignin = document.getElementById('tab-signin');
+  const tabSignup = document.getElementById('tab-signup');
+  function showTab(which) {
+    const login = document.getElementById('login-section');
+    const signup = document.getElementById('signup-section');
+    const isUp = which === 'signup';
+    login.classList.toggle('hidden', isUp);
+    signup.classList.toggle('hidden', !isUp);
+    tabSignin.classList.toggle('active', !isUp);
+    tabSignup.classList.toggle('active', isUp);
+  }
+  tabSignin?.addEventListener('click', () => showTab('signin'));
+  tabSignup?.addEventListener('click', () => showTab('signup'));
+  if (isCommunity && new URLSearchParams(location.search).get('signup') === '1') showTab('signup');
 
   // Check if already logged in
   const isLoggedIn = await Auth.refresh();
@@ -157,6 +222,47 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
       shakeEl(loginBtn);
       loginBtn.classList.remove('btn-loading');
       loginBtn.disabled = false;
+    }
+  });
+
+  // ── SIGNUP (community) ──
+  const signupForm = document.getElementById('signup-form');
+  const signupBtn = document.getElementById('signup-btn');
+  const signupError = document.getElementById('signup-error');
+
+  signupForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    signupError.classList.remove('show');
+
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+
+    if (!name || !email || !password) {
+      signupError.textContent = 'Please fill in all fields';
+      signupError.classList.add('show');
+      shakeEl(signupError);
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password) || password.length < 12) {
+      signupError.textContent = 'Password needs 12+ characters with uppercase, lowercase, number and symbol';
+      signupError.classList.add('show');
+      shakeEl(signupError);
+      return;
+    }
+
+    signupBtn.classList.add('btn-loading');
+    signupBtn.disabled = true;
+
+    try {
+      await Auth.register(email, password, name);
+      window.location.href = '/studio.html';
+    } catch (err) {
+      signupError.textContent = err.message;
+      signupError.classList.add('show');
+      shakeEl(signupBtn);
+      signupBtn.classList.remove('btn-loading');
+      signupBtn.disabled = false;
     }
   });
 

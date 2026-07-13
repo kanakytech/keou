@@ -1,5 +1,6 @@
 import { getQuotaRemaining, getUserUsage, getAgency, billingMode } from '../utils/credits.js';
 import { creditCost } from '../lib/pricing.js';
+import { isByok } from './edition.js';
 
 /**
  * Middleware factory — friendly pre-check before a generation starts.
@@ -15,6 +16,10 @@ const UNLIMITED_THRESHOLD = 999999;
 
 export function requireCredits(creditType, amount = 1) {
   return async (req, res, next) => {
+    // BYOK editions: the caller's own provider key pays for the generation —
+    // no platform balance or quota to pre-check.
+    if (isByok()) return next();
+
     if (billingMode() === 'credits') {
       const estimated = creditType === 'video'
         // /api/video sends `videoModel`; jarvis/internal callers may send `model`

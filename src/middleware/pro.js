@@ -7,9 +7,13 @@
  */
 
 import { queryOne } from '../db.js';
+import { isByok } from './edition.js';
 
 export async function requirePro(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+  // BYOK editions: every feature runs on the caller's own provider key —
+  // there is no subscription to check.
+  if (isByok()) return next();
   try {
     const u = await queryOne(
       'SELECT plan, pro_period_end FROM users WHERE id = $1',

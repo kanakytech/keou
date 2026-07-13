@@ -20,6 +20,8 @@ const router = Router();
 const loginLimiter = rateLimit(10, 15 * 60 * 1000);
 // 30 refresh attempts per 15 min per IP (prevents token brute force)
 const refreshLimiter = rateLimit(30, 15 * 60 * 1000);
+// 5 account creations per hour per IP (community edition self-serve signup)
+const registerLimiter = rateLimit(5, 60 * 60 * 1000);
 
 // Minimum password length — 12 chars per current OWASP/NIST guidance for B2B accounts.
 // We don't enforce composition (uppercase/digit/special) since long passphrases beat
@@ -83,6 +85,68 @@ router.post('/login', loginLimiter, async (req, res) => {
   } catch (e) {
     console.error('Login error:', e);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// ─── REGISTER (community edition only — public self-serve signup) ───
+router.post('/register', registerLimiter, async (req, res) => {
+  if (config.edition !== 'community') return res.status(404).json({ error: 'Not found' });
+  try {
+    const { email, password, name } = req.body;
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanEmail.length > 254) {
+      return res.status(400).json({ error: 'A valid email address is required' });
+    }
+    if (!cleanName || cleanName.length > 80) {
+      return res.status(400).json({ error: 'Name is required (max 80 characters)' });
+    }
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ error: pwError });
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, number, and special character' });
+    }
+
+    const existing = await queryOne('SELECT id FROM users WHERE LOWER(email) = $1', [cleanEmail]);
+    if (existing) return res.status(409).json({ error: 'An account with this email already exists — sign in instead' });
+
+    const hash = await hashPassword(password);
+    const inserted = await queryOne(
+      `INSERT INTO users (email, password_hash, name, role, status)
+       VALUES ($1, $2, $3, 'member', 'active')
+       RETURNING id, email, name, role`,
+      [cleanEmail, hash, cleanName]
+    );
+
+    const accessToken = signAccessToken({ userId: inserted.id, email: inserted.email, role: inserted.role });
+    const refreshToken = generateRefreshToken();
+    const refreshExpires = new Date(Date.now() + parseDuration(config.jwt.refreshExpires)).toISOString();
+    await query('INSERT INTO sessions (user_id, refresh_token, expires_at) VALUES ($1, $2, $3)', [inserted.id, hashToken(refreshToken), refreshExpires]);
+    await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [inserted.id]);
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: parseDuration(config.jwt.refreshExpires),
+      path: '/api/auth',
+    });
+
+    logActivity(inserted.id, 'register', 'user', inserted.id);
+
+    res.status(201).json({
+      accessToken,
+      user: { id: inserted.id, email: inserted.email, name: inserted.name, role: inserted.role },
+      mustChangePassword: false,
+      edition: config.edition,
+      billingMode: config.billingMode,
+    });
+  } catch (e) {
+    // Unique-constraint race between the SELECT and the INSERT
+    if (e.code === '23505') return res.status(409).json({ error: 'An account with this email already exists — sign in instead' });
+    console.error('Register error:', e);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -217,7 +281,7 @@ router.get('/agency', async (req, res) => {
       logoUrl = await getPresignedUrl(logoUrl, 604800);
     } catch { logoUrl = null; }
   }
-  res.json({ name: agency?.name || 'Agency', logoUrl });
+  res.json({ name: agency?.name || 'Agency', logoUrl, edition: config.edition, billingMode: config.billingMode });
 });
 
 export default router;

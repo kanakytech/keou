@@ -729,8 +729,13 @@ function renderByokBar() {
   // Opensource edition: basic studio (image + video only), visitor's own
   // provider key kept in this browser and sent per-request.
   window.IS_OS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
+  // Community edition: full creative suite, still BYOK — same key bar without
+  // the feature restrictions.
+  window.IS_CM = typeof Auth.isCommunity === 'function' && Auth.isCommunity();
   if (window.IS_OS) {
     document.body.classList.add('edition-opensource');
+    renderByokBar();
+  } else if (window.IS_CM) {
     renderByokBar();
   }
 

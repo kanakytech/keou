@@ -11,6 +11,7 @@ import { config } from '../../config.js';
 import { queryOne } from '../../db.js';
 import { decryptKey } from '../../utils/crypto.js';
 import { getRequestProviderKey } from '../../utils/requestContext.js';
+import { isByok } from '../../middleware/edition.js';
 
 // ─── Provider Selection ───
 
@@ -18,9 +19,10 @@ import { getRequestProviderKey } from '../../utils/requestContext.js';
 let _defaultProviderCache = { value: null, exp: 0 };
 
 export async function getProvider() {
-  // Opensource edition is BYOK: the caller's key rides each request and is
-  // always a KIE.AI key — no DB/env key lookup, no provider preference.
-  if (config.edition === 'opensource') return kie;
+  // BYOK editions (opensource, community): the caller's key rides each
+  // request and is always a KIE.AI key — no DB/env key lookup, no provider
+  // preference.
+  if (isByok()) return kie;
 
   // Determine which keys are available (DB or env)
   let hasKie = !!(config.kie?.apiKey || config.kie?.keys?.image);
@@ -72,10 +74,10 @@ export async function getProviderApiKey(providerName) {
     throw new Error(`Unknown provider: ${providerName}`);
   }
 
-  // Opensource edition: the only accepted key is the one the caller sent on
-  // this request (X-Provider-Key). Nothing is read from DB/env and nothing is
+  // BYOK editions: the only accepted key is the one the caller sent on this
+  // request (X-Provider-Key). Nothing is read from DB/env and nothing is
   // cached — keys from different visitors must never bleed into each other.
-  if (config.edition === 'opensource') {
+  if (isByok()) {
     const key = getRequestProviderKey();
     if (!key) throw new Error('API key required — paste your KIE.AI key in the studio to generate');
     return key;
