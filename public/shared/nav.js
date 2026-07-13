@@ -63,6 +63,14 @@ const Nav = (() => {
     if (!isOS) navItems.push({ id: 'help', label: 'Help', href: '/help.html' });
     if (isCM) navItems.push({ id: 'pro', label: 'Keou Pro — lifetime license', href: '/pro.html' });
     if (isCM) navItems.push({ id: 'donate', label: 'Support the project', href: '/donate.html' });
+    // Floating donate widget (community only, not on the donate page itself)
+    if (isCM && !window.__donateWidget && !location.pathname.includes('donate')) {
+      const dw = document.createElement('script');
+      dw.src = '/shared/donate-widget.js';
+      dw.dataset.lang = 'en'; dw.dataset.project = 'Keou';
+      dw.dataset.qr = '/donate-btc.svg'; dw.dataset.link = '/donate.html';
+      document.body.appendChild(dw);
+    }
     if (isAdmin && !isOS) {
       navItems.push({ id: 'analytics', label: 'Profit Dashboard', href: '/analytics.html' });
       navItems.push({ id: 'dashboard', label: 'Settings', href: '/admin.html' });
