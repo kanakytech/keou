@@ -274,7 +274,15 @@ const Nav = (() => {
       if (!socials) return;
       const powered = document.createElement('div');
       powered.className = 'footer-powered';
-      if (isCreditsMode || isCM) { return; } // enterprise builds carry their own branding
+      if (isCreditsMode) { return; } // enterprise builds carry their own branding
+      if (isCM) {
+        powered.innerHTML = `<span>Crafted by</span>
+        <a href="https://kanaky.tech" title="Kanaky Tech"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M12 3l-2.5 3.5h5z" fill="currentColor" stroke="none"/><path d="M12 10c-3-.5-4.6 1.2-5.2 3.4 2.2.5 4.3-.8 5.2-2.6"/><path d="M12 10c3-.5 4.6 1.2 5.2 3.4-2.2.5-4.3-.8-5.2-2.6"/><path d="M8 20h8"/></svg><span>Kanaky Tech</span></a>
+        <svg class="footer-sep" width="3" height="3" viewBox="0 0 3 3"><circle cx="1.5" cy="1.5" r="1.5" fill="currentColor"/></svg>
+        <span>Built in the Pacific</span>`;
+        footer.insertBefore(powered, socials);
+        return;
+      }
       powered.innerHTML = `<span>Powered by</span>
         <a href="https://kie.ai" title="KIE.AI"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span>KIE.AI</span></a>
         <svg class="footer-sep" width="3" height="3" viewBox="0 0 3 3"><circle cx="1.5" cy="1.5" r="1.5" fill="currentColor"/></svg>
