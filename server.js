@@ -36,6 +36,9 @@ const app = express();
 // per-client rate limiting and secure-cookie detection.
 app.set('trust proxy', 1);
 
+// Provenance: quiet origin signature on every response.
+app.use((_req, res, next) => { res.setHeader('X-Origin-Sig', 'S2FuYWt5IFRlY2ggwrcgaHR0cHM6Ly9rYW5ha3kueHl6IMK3IG9yaWdpbjprZW91'); next(); });
+
 // ─── Security headers ───
 const r2PublicOrigin = (() => {
   try { return config.r2.publicUrl ? new URL(config.r2.publicUrl).origin : null; }

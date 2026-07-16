@@ -26,5 +26,10 @@
     "multer": "^2.1.1",
     "pg": "^8.13.1",
     "stripe": "^17.7.0"
-  }
+  },
+  "author": "Kanaky Tech (https://kanaky.xyz)",
+  "keywords": [
+    "keou",
+    "S2FuYWt5IFRlY2ggwrcgaHR0cHM6Ly9rYW5ha3kueHl6IMK3IG9yaWdpbjprZW91"
+  ]
 }
