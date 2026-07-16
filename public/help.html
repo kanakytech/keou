@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo.png">
+<meta name="color-scheme" content="dark">
+<title>Help &amp; Docs — Keou Studio</title>
+<meta name="description" content="Everything you need to use Keou Studio: get an API key, generate product images and videos, organise projects, self-host, and troubleshoot.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+/* ── Layout: sidebar TOC + content ── */
+.help-layout{display:flex;min-height:100vh}
+.help-nav{
+  width:220px;flex-shrink:0;position:sticky;top:0;height:100vh;
+  border-right:1px solid var(--border);padding:24px 0;overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+.help-nav-back{
+  display:flex;align-items:center;gap:8px;padding:8px 20px;margin:0 12px 20px;
+  font-size:12px;font-weight:600;color:var(--ink-muted);text-decoration:none;
+  border:1px solid var(--border);border-radius:8px;transition:all .15s;
+}
+.help-nav-back:hover{background:var(--surface-2);color:var(--ink)}
+.help-nav-back svg{width:14px;height:14px;flex-shrink:0}
+.help-nav-title{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink-faint);padding:0 20px;margin-bottom:12px;
+}
+.help-nav a.help-nav-link{
+  display:flex;align-items:center;gap:10px;padding:8px 20px;
+  font-size:12px;font-weight:500;color:var(--ink-muted);text-decoration:none;
+  border-left:2px solid transparent;transition:all .15s;
+}
+.help-nav a.help-nav-link:hover{color:var(--ink);background:rgba(255,255,255,.03)}
+.help-nav a.help-nav-link.active{color:var(--ink);border-left-color:var(--ink);background:rgba(255,255,255,.04);font-weight:600}
+.help-nav a.help-nav-link svg{width:15px;height:15px;flex-shrink:0;opacity:.5}
+.help-nav a.help-nav-link.active svg{opacity:1}
+
+.help-content{flex:1;max-width:700px;padding:40px 48px 80px;margin:0 auto}
+.help-hero{margin-bottom:40px}
+.help-hero h1{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px}
+.help-hero p{color:var(--ink-muted);font-size:13px;line-height:1.6}
+.help-section{margin-bottom:48px;scroll-margin-top:24px}
+.help-section h2{
+  font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.2px;
+  margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.help-section h2 svg{width:18px;height:18px;color:var(--ink-muted);flex-shrink:0}
+.help-section h3{font-size:13px;font-weight:600;margin:20px 0 8px;color:var(--ink)}
+.help-section p{color:var(--ink-muted);font-size:13px;line-height:1.7;margin-bottom:10px}
+.help-section ul,.help-section ol{color:var(--ink-muted);font-size:13px;line-height:1.8;padding-left:18px;margin-bottom:12px}
+.help-section li{margin-bottom:3px}
+.help-section strong{color:var(--ink);font-weight:600}
+.help-section a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--ink-faint)}
+.help-section a:hover{border-bottom-style:solid}
+.help-section code{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:11.5px;font-family:ui-monospace,SFMono-Regular,monospace}
+
+.help-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 16px}
+.help-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:border-color .15s}
+.help-card:hover{border-color:var(--ink-faint)}
+.help-card-label{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.help-card-label svg{width:14px;height:14px;color:var(--ink-muted)}
+.help-card p{margin:0;font-size:11px;color:var(--ink-faint);line-height:1.5}
+.help-card a{color:var(--ink-muted);font-weight:500;text-decoration:none;border-bottom:none}
+.help-card a:hover{color:var(--ink)}
+
+.help-steps{display:flex;flex-direction:column;gap:10px;margin:12px 0 16px}
+.help-step{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.help-step-num{width:24px;height:24px;border-radius:6px;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.help-step-text{font-size:12px;color:var(--ink-muted);line-height:1.6}
+.help-step-text strong{color:var(--ink)}
+
+.help-table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:11px}
+.help-table th{text-align:left;font-weight:600;color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px;font-size:10px}
+.help-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--ink-muted)}
+.help-table td:first-child{color:var(--ink);font-weight:500}
+.help-table tr:hover td{background:rgba(255,255,255,.02)}
+
+.help-tip{
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px;
+  padding:12px 14px;margin:12px 0;font-size:12px;color:var(--ink-muted);line-height:1.6;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.help-tip svg{width:16px;height:16px;color:#22c55e;flex-shrink:0;margin-top:1px}
+.help-warn{
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18);border-radius:8px;
+  padding:12px 14px;margin:12px 0;font-size:12px;color:var(--ink-muted);line-height:1.6;
+  display:flex;gap:10px;align-items:flex-start;
+}
+.help-warn svg{width:16px;height:16px;color:#fbbf24;flex-shrink:0;margin-top:1px}
+
+/* FAQ accordion */
+.help-faq{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:12px 0 16px}
+.help-faq details{border-bottom:1px solid var(--border)}
+.help-faq details:last-child{border-bottom:none}
+.help-faq summary{padding:13px 16px;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;user-select:none;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.help-faq summary::-webkit-details-marker{display:none}
+.help-faq summary::after{content:"+";color:var(--ink-faint);font-size:15px;font-weight:400}
+.help-faq details[open] summary::after{content:"−"}
+.help-faq .faq-body{padding:0 16px 14px;font-size:12px;color:var(--ink-muted);line-height:1.7}
+
+@media(max-width:800px){
+  .help-nav{display:none}
+  .help-content{padding:24px 20px 60px}
+  .help-cards{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="help-layout">
+
+  <!-- Left nav -->
+  <aside class="help-nav">
+    <a href="/studio.html" class="help-nav-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Studio
+    </a>
+    <div class="help-nav-title">Guide</div>
+    <a href="#quickstart" class="help-nav-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Quick start
+    </a>
+    <a href="#api-key" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      Your API key
+    </a>
+    <a href="#images" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      Images
+    </a>
+    <a href="#videos" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      Videos
+    </a>
+    <a href="#projects" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Projects
+    </a>
+    <a href="#providers" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Providers
+    </a>
+    <a href="#selfhost" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Self-hosting
+    </a>
+    <a href="#faq" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      FAQ
+    </a>
+    <a href="#enterprise" class="help-nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+      Going further
+    </a>
+  </aside>
+
+  <!-- Content -->
+  <main class="help-content">
+
+    <div class="help-hero">
+      <h1>Keou Studio — Help &amp; Docs</h1>
+      <p>Everything you need to turn a product photo into professional visuals: get set up in two minutes, learn how generation works, and fix common issues. Free edition — you bring your own API key, you pay the AI provider directly, nothing else.</p>
+    </div>
+
+    <!-- 1. Quick start -->
+    <section class="help-section" id="quickstart">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Quick start
+      </h2>
+      <p>From zero to your first generated visual in about two minutes. No account, no subscription.</p>
+      <div class="help-steps">
+        <div class="help-step">
+          <div class="help-step-num">1</div>
+          <div class="help-step-text"><strong>Get a KIE.AI API key</strong> &mdash; create a free account at <a href="https://kie.ai" target="_blank" rel="noopener">kie.ai</a>, then copy your key from the API Key page. Add a few dollars of credit (a typical image costs a few cents).</div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">2</div>
+          <div class="help-step-text"><strong>Paste it in the Studio</strong> &mdash; open the <a href="/studio.html">Studio</a> and paste your key in the bar at the top, then hit Save. The key stays in your browser only.</div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">3</div>
+          <div class="help-step-text"><strong>Upload &amp; generate</strong> &mdash; drop a product photo, describe the scene you want (or pick a preset), and hit Generate. Your visual arrives in 30&ndash;90 seconds.</div>
+        </div>
+      </div>
+      <div class="help-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        Best input: a clear, well-lit photo of your product on any background. The engine keeps your product pixel-locked &mdash; shape, labels, text and logos stay untouched &mdash; and builds the scene around it.
+      </div>
+    </section>
+
+    <!-- 2. API key -->
+    <section class="help-section" id="api-key">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        Your API key &amp; costs
+      </h2>
+      <p>Keou Studio is <strong>bring-your-own-key</strong>: the platform is free, and generation is billed directly by the AI provider on your own account. No middleman, no markup.</p>
+
+      <h3>Where your key lives</h3>
+      <ul>
+        <li>Your key is stored <strong>in your browser only</strong> (localStorage on this device).</li>
+        <li>It rides each generation request as a header and is <strong>never stored on our servers</strong>.</li>
+        <li>Clear it anytime: paste over it, or clear the site data in your browser.</li>
+      </ul>
+
+      <h3>What generations cost you</h3>
+      <p>You buy credits directly at <a href="https://kie.ai" target="_blank" rel="noopener">kie.ai</a> and they are consumed per generation. Orders of magnitude (check current provider pricing for exact figures):</p>
+      <table class="help-table">
+        <thead><tr><th>Generation</th><th>Typical cost</th></tr></thead>
+        <tbody>
+          <tr><td>Product image</td><td>a few cents</td></tr>
+          <tr><td>Short video (5&ndash;10s)</td><td>from ~$0.10 to ~$1+ depending on the engine</td></tr>
+        </tbody>
+      </table>
+      <div class="help-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Treat your API key like a password. Anyone who has it can spend your provider credits. Never share it in screenshots or messages.
+      </div>
+    </section>
+
+    <!-- 3. Images -->
+    <section class="help-section" id="images">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        Generating images
+      </h2>
+      <p>The core workflow: one raw product photo in, a commercial-grade scene out. The product itself is preserved exactly &mdash; the engine builds lighting, environment and mood around it.</p>
+
+      <h3>Getting great results</h3>
+      <ul>
+        <li><strong>Start from a clean photo</strong> &mdash; sharp focus, decent lighting, the whole product visible. Phone photos work fine.</li>
+        <li><strong>Describe the scene, not the product</strong> &mdash; the product is locked. Say where it lives: "on a marble kitchen counter, soft morning light, shallow depth of field".</li>
+        <li><strong>Name a style</strong> &mdash; "editorial", "minimalist studio", "lifestyle outdoor", "luxury dark" all steer the result strongly.</li>
+        <li><strong>Iterate</strong> &mdash; small prompt changes give new takes. Generate several and keep the best.</li>
+        <li><strong>Batch it</strong> &mdash; queue multiple generations in parallel and let them run; progress updates live.</li>
+      </ul>
+
+      <h3>Aspect ratios</h3>
+      <p>Pick the ratio for the destination before generating: square for feeds, portrait 9:16 for stories and reels, landscape 16:9 for banners and web headers.</p>
+    </section>
+
+    <!-- 4. Videos -->
+    <section class="help-section" id="videos">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Generating videos
+      </h2>
+      <p>Turn a still (uploaded or generated) into a cinematic product clip. You choose the engine per generation &mdash; each has its own strengths and price point on your provider account.</p>
+
+      <table class="help-table">
+        <thead><tr><th>Engine</th><th>Best for</th><th>Cost profile</th></tr></thead>
+        <tbody>
+          <tr><td>Grok Imagine</td><td>Fast, affordable motion &mdash; great for volume and drafts</td><td>Low</td></tr>
+          <tr><td>Kling 2.6 / 3.0</td><td>Smooth, controlled product motion &mdash; the reliable default</td><td>Medium</td></tr>
+          <tr><td>Seedance 2</td><td>Dynamic, expressive movement</td><td>Medium</td></tr>
+          <tr><td>Veo 3</td><td>Top cinematic quality for hero assets</td><td>High</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Prompting motion</h3>
+      <ul>
+        <li>Describe <strong>camera movement</strong> ("slow push-in", "orbit around the bottle", "handheld drift").</li>
+        <li>Describe <strong>scene life</strong> ("steam rising", "fabric moving in a light breeze", "light flares passing").</li>
+        <li>Keep it to one or two motions per clip &mdash; simple reads better and fails less.</li>
+      </ul>
+      <div class="help-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        Workflow that works: generate the perfect still first, then animate that exact image. You control the look before paying for motion.
+      </div>
+    </section>
+
+    <!-- 5. Projects -->
+    <section class="help-section" id="projects">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Projects &amp; campaigns
+      </h2>
+      <p>Keep output organised instead of one endless feed:</p>
+      <ul>
+        <li><strong>Projects</strong> group everything for one client or product line.</li>
+        <li><strong>Campaigns</strong> sit inside a project &mdash; one per launch, season or channel.</li>
+        <li>Every generation lands in the campaign you are working in, so hand-off and retrieval stay clean.</li>
+      </ul>
+      <div class="help-warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        On the free hosted studio, download the results you want to keep. Provider-hosted files can expire after ~14 days; a self-hosted install with storage configured keeps everything durably.
+      </div>
+    </section>
+
+    <!-- 6. Providers -->
+    <section class="help-section" id="providers">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Providers
+      </h2>
+      <p>Keou is built provider-agnostic. What that means in each edition today:</p>
+
+      <div class="help-cards">
+        <div class="help-card">
+          <div class="help-card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+            Hosted studio (this site)
+          </div>
+          <p>One key: <a href="https://kie.ai" target="_blank" rel="noopener">KIE.AI</a>. It routes every engine above (images and all four video engines) through a single credit balance.</p>
+        </div>
+        <div class="help-card">
+          <div class="help-card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            Self-hosted
+          </div>
+          <p>KIE.AI and <a href="https://fal.ai" target="_blank" rel="noopener">Fal.ai</a> are both supported, with a default-provider setting and automatic fallback to whichever has a key.</p>
+        </div>
+      </div>
+
+      <h3>Why one key on the hosted studio?</h3>
+      <p>KIE.AI acts as an aggregator: a single account and credit balance covers every model the studio exposes. That keeps the free edition simple &mdash; one key to paste, one bill to watch. Broader per-user provider choice is on the roadmap; self-hosting gives you provider control today.</p>
+    </section>
+
+    <!-- 7. Self-hosting -->
+    <section class="help-section" id="selfhost">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Self-hosting
+      </h2>
+      <p>The studio is open source. Run your own instance for durable storage, your own domain, and provider control.</p>
+      <div class="help-steps">
+        <div class="help-step">
+          <div class="help-step-num">1</div>
+          <div class="help-step-text"><strong>Clone the repo</strong> &mdash; <a href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">github.com/kanakytech/keou</a> (MIT licence).</div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">2</div>
+          <div class="help-step-text"><strong>Configure</strong> &mdash; copy <code>.env.example</code> to <code>.env</code>: a PostgreSQL URL and a JWT secret are required; Cloudflare R2 keys are recommended for durable storage (free tier works).</div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">3</div>
+          <div class="help-step-text"><strong>Run</strong> &mdash; <code>npm install &amp;&amp; npm start</code>, or deploy the included Dockerfile to Railway, Fly.io or any Node 20+ host.</div>
+        </div>
+      </div>
+      <p>Full instructions, environment reference and deployment notes live in the <a href="https://github.com/kanakytech/keou#readme" target="_blank" rel="noopener">README</a>. Issues and contributions are welcome on GitHub.</p>
+    </section>
+
+    <!-- 8. FAQ -->
+    <section class="help-section" id="faq">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        FAQ &amp; troubleshooting
+      </h2>
+      <div class="help-faq">
+        <details>
+          <summary>My generation failed &mdash; what do I check first?</summary>
+          <div class="faq-body">Three usual causes, in order: <strong>1)</strong> your provider credit balance is empty &mdash; top up at kie.ai; <strong>2)</strong> the key was pasted with a space or is invalid &mdash; re-paste and Save; <strong>3)</strong> the provider rejected the content (some engines refuse faces, brands or sensitive material) &mdash; adjust the image or prompt and retry.</div>
+        </details>
+        <details>
+          <summary>Is my API key safe here?</summary>
+          <div class="faq-body">The key is kept in your browser's localStorage and sent only with your own generation requests. It is never written to our database or logs. For maximum control, self-host the studio &mdash; then nothing ever leaves your infrastructure.</div>
+        </details>
+        <details>
+          <summary>Why does my generation take several minutes?</summary>
+          <div class="faq-body">Images usually land in 30&ndash;90 seconds. Video is heavier: 2&ndash;6 minutes is normal depending on the engine and provider load. The studio polls automatically &mdash; you can queue other generations meanwhile.</div>
+        </details>
+        <details>
+          <summary>My product came back deformed or with wrong text</summary>
+          <div class="faq-body">Start from a sharper, more frontal photo &mdash; product fidelity depends heavily on input quality. Avoid photos where the product is partially cut off or heavily angled. If a label is critical, mention it: "keep the label perfectly legible".</div>
+        </details>
+        <details>
+          <summary>Where did my old results go?</summary>
+          <div class="faq-body">On the free hosted studio, results rely on provider-hosted files which can expire after roughly 14 days &mdash; download what you want to keep. Self-hosted installs with R2 storage configured keep everything durably.</div>
+        </details>
+        <details>
+          <summary>Can I use the visuals commercially?</summary>
+          <div class="faq-body">The platform places no restriction of its own &mdash; usage rights for generated content follow your AI provider's terms (KIE.AI and the underlying model licences). For client work, check the current terms of the engine you used.</div>
+        </details>
+        <details>
+          <summary>How do I report a bug or ask for a feature?</summary>
+          <div class="faq-body">Open an issue on <a href="https://github.com/kanakytech/keou/issues" target="_blank" rel="noopener">GitHub</a> &mdash; it is read. Feedback genuinely shapes what gets built next.</div>
+        </details>
+      </div>
+    </section>
+
+    <!-- 9. Going further -->
+    <section class="help-section" id="enterprise">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        Going further
+      </h2>
+      <p>This free edition covers the core studio. The full production suite &mdash; polish and remix tools, format adaptation, 30-variant export packs, voice-overs and sound effects, 8K upscaling, team workspaces, client approval portals and white-label deployment &mdash; ships with <strong>Keou Enterprise</strong>.</p>
+      <p>Agencies and businesses: see <a href="https://keou.systems" target="_blank" rel="noopener">keou.systems</a> or write to <a href="mailto:kevyn@kanaky.xyz">kevyn@kanaky.xyz</a> for a private quote (lifetime licence, deployed on your infrastructure, your branding).</p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Scroll-spy: highlight the section currently in view.
+const links = [...document.querySelectorAll('.help-nav-link')];
+const sections = links.map(l => document.querySelector(l.getAttribute('href')));
+const spy = () => {
+  let active = 0;
+  sections.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 120) active = i; });
+  links.forEach((l, i) => l.classList.toggle('active', i === active));
+};
+document.addEventListener('scroll', spy, { passive: true });
+spy();
+</script>
+
+</body>
+</html>

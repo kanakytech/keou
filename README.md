@@ -8,6 +8,10 @@ studio for AI product visuals. No account system, no billing — you paste your 
 
 ![studio](public/showcase/4.png)
 
+> **New to Keou Studio?** The full user guide — getting a key, prompting images and video,
+> providers, troubleshooting — lives at [`/help.html`](https://studio.keou.systems/help.html)
+> on the hosted studio (and ships with every self-hosted install).
+
 ## What's in this edition
 
 - **Image generation** — drop a product photo, get a commercial-grade scene around it
