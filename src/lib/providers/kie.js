@@ -26,7 +26,13 @@ async function safeJson(r) {
     const text = await r.text().catch(() => '');
     throw new Error(`KIE API ${r.status}: ${text.slice(0, 200)}`);
   }
-  return r.json();
+  const data = await r.json();
+  // KIE répond HTTP 200 avec l'erreur dans le body ({code:401/402,...})
+  const code = Number(data?.code);
+  if (code === 401) throw new Error('KIE API 401: invalid or unauthorized API key');
+  if (code === 402) throw new Error('KIE API 402: insufficient KIE.AI credits');
+  if (code && code >= 400) throw new Error(`KIE API ${code}: ${String(data?.msg || '').slice(0, 160)}`);
+  return data;
 }
 
 function kieHeaders(apiKey) {
@@ -230,6 +236,11 @@ export async function pollTask(apiKey, { taskId, recordId, metadata }) {
     if (r.status === 410) return { status: 'failed', error: 'KIE.AI task expired' };
     // Transient — keep polling
     if (!r.ok) return { status: 'processing' };
+    // KIE peut répondre 200 avec l'erreur dans le body
+    const peek = await r.clone().json().catch(() => null);
+    const bodyCode = Number(peek?.code);
+    if (bodyCode === 401) return { status: 'failed', error: 'KIE.AI auth error — check API key' };
+    if (bodyCode === 402) return { status: 'failed', error: 'KIE.AI credits exhausted — top up your account' };
 
     const data = await r.json();
     const state = data.data?.state;

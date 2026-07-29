@@ -658,3 +658,10 @@ window.addEventListener('beforeunload', () => {
     }
   });
 })();
+
+/* pastille retour kanaky.xyz (écosystème) */
+(function () {
+  var s = document.createElement('script');
+  s.src = '/shared/kanaky-badge.js'; s.defer = true;
+  document.head.appendChild(s);
+})();

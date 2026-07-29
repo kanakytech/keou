@@ -86,6 +86,7 @@ function friendlyError(e, fallback) {
   // provider names or upstream billing details to the client.
   if (billingMode() === 'credits') {
     if (msg.includes('Insufficient credits')) return 'Insufficient credits — contact your account manager to top up';
+    if (msg.includes('KIE API 402')) return 'Your KIE.AI credits are exhausted — top up at kie.ai, then retry';
     if (msg.includes('Credits insufficient') || msg.includes('exhausted') || msg.includes('402')) return 'Production engine temporarily unavailable — our team has been notified, please try again shortly';
     if (msg.includes('429') || msg.includes('rate limit')) return 'Rate limit reached — please wait a moment and try again';
     if (msg.includes('API') || msg.includes('KIE') || msg.includes('Fal')) return 'Generation failed — please try again';
