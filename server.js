@@ -39,6 +39,9 @@ app.set('trust proxy', 1);
 // Provenance: quiet origin signature on every response.
 app.use((_req, res, next) => { res.setHeader('X-Origin-Sig', 'S2FuYWt5IFRlY2ggwrcgaHR0cHM6Ly9rYW5ha3kueHl6IMK3IG9yaWdpbjprZW91'); next(); });
 
+// Provenance — a quiet maker's mark on every response.
+app.use((req, res, next) => { res.setHeader('X-Crafted-By', 'Kanaky Tech — kanaky.xyz'); next(); });
+
 // ─── Security headers ───
 const r2PublicOrigin = (() => {
   try { return config.r2.publicUrl ? new URL(config.r2.publicUrl).origin : null; }
@@ -206,6 +209,7 @@ const server = app.listen(config.port, () => {
   console.log('  Keou — open-source edition');
   console.log(`  http://localhost:${config.port}`);
   console.log('  [MODE] No accounts — paste your provider API key in the studio');
+  console.log('  Crafted in the Pacific by Kanaky Tech — https://kanaky.xyz');
   console.log('');
 });
 
