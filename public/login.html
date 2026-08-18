@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" href="/logo.png">
 <meta name="color-scheme" content="dark">
-<title>Login — Keou Systems</title>
+<title>Login — Keou Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/styles.css">
 <style>
 body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circle,var(--border) 1px,transparent 1px);background-size:24px 24px}
@@ -39,8 +39,8 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="/logo.png" alt="Keou">
-        <span id="agency-name">Keou Systems</span>
+        <img src="/logo.png" alt="Keou Studio" style="border-radius:50%">
+        <span id="agency-name">Keou Studio</span>
       </div>
 
       <div class="auth-switch" id="auth-switch">
@@ -133,7 +133,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
       </div>
     </div>
 
-    <div class="auth-powered">Keou Systems</div>
+    <div class="auth-powered">Keou Studio <a href="https://kanaky.xyz" style="color:#c8f060;text-decoration:none">by kanaky.xyz</a></div>
   </div>
 </div>
 
@@ -149,13 +149,13 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
     const d = await r.json();
     isCommunity = d.edition === 'community';
     if (isCommunity) {
-      document.getElementById('agency-name').textContent = 'Keou Systems';
-      document.title = 'Sign in — Keou Systems';
+      document.getElementById('agency-name').textContent = 'Keou Studio';
+      document.title = 'Sign in — Keou Studio';
       document.getElementById('auth-switch').classList.add('visible');
       document.getElementById('login-footer').innerHTML = 'Free community platform. No card, no trial clock.';
     } else {
       if (d.name) document.getElementById('agency-name').textContent = d.name;
-      document.title = `Login — ${d.name || 'Keou Systems'}`;
+      document.title = `Login — ${d.name || 'Keou Studio'}`;
     }
   } catch {}
 

@@ -325,6 +325,32 @@ const MIGRATIONS = [
   `ALTER TABLE agency ADD COLUMN IF NOT EXISTS credit_balance INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE credit_transactions ADD COLUMN IF NOT EXISTS balance_after INTEGER`,
   `ALTER TABLE credit_transactions ADD COLUMN IF NOT EXISTS note TEXT`,
+
+  // ═══ ESSAI COMMUNAUTAIRE (anonymous BYOK trial) ═══
+  // No user_id — the trial is account-less. id is a UUID (non-guessable, never
+  // sequential) because it is the only handle exposed publicly in the gallery
+  // and the protected image-streaming route. The visitor's API key NEVER
+  // touches this table (RAM-only inside the in-memory queue). Images live in
+  // R2 under essai/<uuid>.png, watermarked server-side before upload — the
+  // provider's temp URL is never stored.
+  `CREATE TABLE IF NOT EXISTS essai_generations (
+    id            TEXT PRIMARY KEY,
+    prompt        TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'queued',
+    format        TEXT NOT NULL DEFAULT '1:1',
+    r2_key        TEXT,
+    error         TEXT,
+    report_count  INTEGER NOT NULL DEFAULT 0,
+    hidden        BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    completed_at  TIMESTAMP
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_essai_gallery ON essai_generations(created_at DESC) WHERE status = 'completed' AND hidden = FALSE`,
+  `CREATE INDEX IF NOT EXISTS idx_essai_status ON essai_generations(status)`,
+  // Studio anonyme (BYOK, sans compte) — même table, même contrat de sortie
+  // (filigrane + galerie publique). kind distingue l'opération : text (essai
+  // simple), image (visuel produit), polish, remix, adapt.
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'text'`,
 ];
 
 export async function runMigrations() {
@@ -461,6 +487,25 @@ export async function cleanupExpiredGenerations() {
     }
   } catch (err) {
     console.error('  [DB] Cleanup error:', err.message);
+  }
+}
+
+/**
+ * Fail orphaned trial jobs at boot. The trial queue is in-memory and each job
+ * carries the visitor's API key in RAM only — after a restart those keys are
+ * gone by design, so any row still queued/processing can never finish.
+ */
+export async function cleanupStaleEssai() {
+  try {
+    const result = await query(
+      `UPDATE essai_generations SET status = 'failed', error = 'Interrompu par un redemarrage du serveur — relancez votre generation'
+        WHERE status IN ('queued', 'processing')`
+    );
+    if (result.rowCount > 0) {
+      console.log(`  [DB] ${result.rowCount} essai job(s) orphelin(s) marques failed (restart)`);
+    }
+  } catch (err) {
+    console.error('  [DB] Essai cleanup error:', err.message);
   }
 }
 

@@ -93,7 +93,7 @@ const Nav = (() => {
 
     sidebar.innerHTML = `
       <a class="app-sidebar-logo" href="/studio.html">
-        <img src="/logo.png" alt="Keou">
+        <img src="/logo.png" alt="Keou Studio">
       </a>
       <nav class="app-sidebar-nav">${navHtml}</nav>
       <div class="app-sidebar-credits" id="sidebar-credits" style="margin-top:auto;padding:8px 6px;text-align:center;font-size:9px;color:var(--ink-faint);letter-spacing:.3px;line-height:1.5">
@@ -396,7 +396,7 @@ const Nav = (() => {
     const TYPE_META = {
       approve: { label: 'Approved',          color: '#10b981' },
       reject:  { label: 'Changes requested', color: '#ef4444' },
-      comment: { label: 'Comment',           color: '#6366f1' },
+      comment: { label: 'Comment',           color: '#c8f060' },
     };
 
     // Lazy-load lightbox.js if not already loaded — pages that don't ship it

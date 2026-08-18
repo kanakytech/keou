@@ -55,6 +55,23 @@ export async function generateImage(apiKey, { prompt, imageUrls, aspectRatio, ou
   return { taskId: data.data.taskId, recordId: data.data.recordId || null };
 }
 
+// ─── Text-to-Image (nano-banana-pro, no reference image) ───
+// Used by the community trial: the visitor types a prompt, no product shot.
+
+export async function textToImage(apiKey, { prompt, aspectRatio, outputFormat, resolution }) {
+  const r = await fetchWithTimeout(`${KIE}/createTask`, {
+    method: 'POST',
+    headers: kieHeaders(apiKey),
+    body: JSON.stringify({
+      input: JSON.stringify({ aspect_ratio: aspectRatio || '1:1', output_format: outputFormat || 'png', prompt, resolution: resolution || '1K' }),
+      model: 'nano-banana-pro',
+    }),
+  });
+  const data = await safeJson(r);
+  if (!data.data?.taskId) throw new Error('No taskId returned');
+  return { taskId: data.data.taskId, recordId: data.data.recordId || null };
+}
+
 // ─── Polish (flux-2 image-to-image) ───
 
 export async function polish(apiKey, { prompt, imageUrl, aspectRatio, resolution }) {

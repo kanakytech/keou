@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" href="/logo.png">
 <meta name="color-scheme" content="dark">
-<title>Production Engine — Keou Systems</title>
+<title>Production Engine — Keou Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/styles.css">
 <style>
 /* ── Studio-specific styles ── */
@@ -21,7 +21,7 @@
 .studio-controls{display:flex;align-items:center;gap:10px}
 .project-select{
   padding:8px 14px;border:1.5px solid var(--border);border-radius:100px;
-  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;
   color:var(--ink);background:rgba(255,255,255,.04);cursor:pointer;
   min-width:160px;outline:none;transition:border-color .2s;
 }
@@ -31,7 +31,7 @@
   display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
   border:1.5px solid var(--border);border-radius:100px;background:rgba(255,255,255,.04);
   color:var(--ink-muted);font-size:12px;font-weight:500;cursor:pointer;
-  font-family:'Inter',sans-serif;transition:all .2s;text-decoration:none;
+  font-family:'Space Grotesk',sans-serif;transition:all .2s;text-decoration:none;
 }
 .btn-assets:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
 
@@ -90,7 +90,7 @@
 .format-btn{
   padding:16px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
   background:transparent;color:var(--ink-muted);cursor:pointer;
-  font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+  font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;
   transition:all .2s ease;text-align:center;
 }
 .format-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
@@ -107,7 +107,7 @@
 .variant-btn{
   padding:14px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
   background:transparent;color:var(--ink-muted);cursor:pointer;
-  font-family:'Inter',sans-serif;transition:all .2s ease;text-align:center;
+  font-family:'Space Grotesk',sans-serif;transition:all .2s ease;text-align:center;
   display:flex;flex-direction:column;align-items:center;gap:6px;
 }
 .variant-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
@@ -122,7 +122,7 @@
 .platform-btn{
   padding:14px 10px;border:1.5px solid var(--border);border-radius:var(--radius);
   background:rgba(255,255,255,.02);color:var(--ink-muted);cursor:pointer;
-  font-family:'Inter',sans-serif;transition:all .2s ease;text-align:center;
+  font-family:'Space Grotesk',sans-serif;transition:all .2s ease;text-align:center;
   display:flex;flex-direction:column;align-items:center;gap:6px;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
@@ -171,7 +171,7 @@
 .progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);background-size:200% 100%;animation:shimmer 2s ease-in-out infinite}
 .progress-stats{display:flex;justify-content:space-between;align-items:center}
 #progress-text{font-size:13px;color:var(--ink-muted);font-weight:500}
-#progress-timer{font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:1px}
+#progress-timer{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:1px}
 
 /* ── Results Grid ── */
 .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
@@ -227,7 +227,7 @@
 .action-btn{
   flex:1;padding:12px 8px;background:transparent;border:none;
   border-right:1px solid var(--border);color:var(--ink-muted);
-  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;cursor:pointer;
   transition:all .2s ease;display:flex;align-items:center;justify-content:center;
   gap:6px;text-decoration:none;
 }
@@ -241,7 +241,7 @@
 .template-chip{
   padding:6px 14px;border:1.5px solid var(--border);border-radius:100px;
   background:transparent;color:var(--ink-muted);font-size:11px;font-weight:600;
-  font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s var(--ease-out);
+  font-family:'Space Grotesk',sans-serif;cursor:pointer;transition:all .2s var(--ease-out);
   letter-spacing:0.2px;
 }
 .template-chip:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.04);transform:translateY(-1px)}
@@ -249,7 +249,7 @@
 .template-chip:active{transform:scale(0.94);transition-duration:.06s}
 
 /* ── Creative Direction Presets ── */
-.cd-preset{padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.cd-preset{padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .15s}
 .cd-preset:hover{border-color:var(--ink-faint);color:var(--ink);background:var(--surface)}
 .cd-preset.active{border-color:var(--ink);color:var(--ink);background:var(--surface-2)}
 /* ── Batch Bar ── */
@@ -369,7 +369,7 @@
 #byok-bar .byok-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 12px; background: rgba(255,255,255,.03); font-size: 12px; color: var(--ink-muted, #9a9a9a); flex-wrap: wrap; }
 #byok-bar .byok-label { font-weight: 600; color: var(--ink, #eee); letter-spacing: .3px; }
 #byok-bar input { flex: 1; min-width: 180px; background: rgba(0,0,0,.25); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 7px 10px; color: var(--ink, #eee); font-size: 12px; outline: none; }
-#byok-bar button { background: var(--accent, #d97757); color: #fff; border: 0; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+#byok-bar button { background: var(--accent, #c8f060); color: #050505; border: 0; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
 #byok-bar #byok-status.ok { color: #6fcf97; }
 #byok-bar .byok-get { color: var(--ink-muted, #9a9a9a); text-decoration: none; border-bottom: 1px dotted currentColor; }
 </style>
@@ -405,7 +405,7 @@
           <div class="kc-modal-color" data-color="#EF4444" style="background:#EF4444"></div>
           <div class="kc-modal-color" data-color="#8B5CF6" style="background:#8B5CF6"></div>
           <div class="kc-modal-color" data-color="#EC4899" style="background:#EC4899"></div>
-          <div class="kc-modal-color" data-color="#0A0A0A" style="background:#0A0A0A"></div>
+          <div class="kc-modal-color" data-color="#050505" style="background:#050505"></div>
         </div>
       </div>
       <div class="kc-modal-error" id="new-client-error" role="alert" aria-live="polite"></div>
@@ -662,7 +662,7 @@
 </main>
 
 <footer class="footer">
-  <span class="footer-tagline"><a href="https://keou.systems">Keou Systems</a> &mdash; Private Creative Infrastructure for Agencies</span>
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
   <div class="footer-socials">
     <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
     <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
@@ -672,6 +672,7 @@
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
 <script src="/shared/auth.js"></script>
+<script src="/shared/anon.js"></script>
 <script src="/shared/nav.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="/shared/lightbox.js"></script>
@@ -721,11 +722,23 @@ function renderByokBar() {
 
 // ─── Auth Guard ───
 (async () => {
-  const ok = await Auth.guard();
-  if (!ok) return;
+  // Community edition: « Launch Keou » serves the FULL studio anonymously.
+  // If no session exists and the deployment is community, AnonMode installs
+  // itself (BYOK, essai pipeline outputs: public gallery + watermark + no
+  // downloads). A logged-in visitor gets the normal studio, untouched.
+  let anon = false;
+  const hasSession = await Auth.init();
+  if (!hasSession && window.AnonMode) anon = await AnonMode.tryInstall();
+  if (!anon) {
+    const ok = await Auth.guard();
+    if (!ok) return;
+  }
+  window.IS_ANON = anon;
+  if (anon) document.body.classList.add('keou-anon');
 
-  // Render navbar
-  Nav.render({ active: 'studio' });
+  // Render navbar (anonymous mode has no user — minimal sidebar instead)
+  if (anon) AnonMode.renderNav();
+  else Nav.render({ active: 'studio' });
 
   // Opensource edition: basic studio (image + video only), visitor's own
   // provider key kept in this browser and sent per-request.
@@ -798,7 +811,9 @@ function renderByokBar() {
     if (campaignSelect._ksRefresh) campaignSelect._ksRefresh();
   }
 
-  try {
+  // Anonymous mode: no server-side workspaces — the selectors stay hidden
+  // (CSS) and empty; every output goes to the public community gallery.
+  if (!anon) try {
     const res = await Auth.authFetch('/api/projects');
     const data = await res.json();
     const seen = new Set(['Default']);
@@ -1613,9 +1628,9 @@ function cardHTML(job) {
       ${isDone ? `
       <div class="result-actions">
         ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
-        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
-        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        <button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>
+        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
+        ${(window.IS_OS || window.IS_ANON) ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`}
       </div>` : ''}
       ${isErr ? `
       <div class="result-actions">
@@ -1718,9 +1733,9 @@ function updateCard(job) {
       div.className = 'result-actions';
       div.innerHTML = `
         ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
-        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
-        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        <button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`;
+        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
+        ${(window.IS_OS || window.IS_ANON) ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`}`;
       el.appendChild(div);
     } else if (isErr) {
       const div = document.createElement('div');
@@ -1946,10 +1961,12 @@ window.openModal = (id, type) => {
     creativeDirection: cd || null,
     inputUrl: job.uploadUrl,
     onPolish: window.IS_OS ? undefined : () => polishJob(id),
-    onVideo: (cd, model, duration) => videoJobWithCD(id, cd, model, duration),
+    // Anonymous mode: video output can't carry the server watermark (no
+    // ffmpeg) — masked until an account is used.
+    onVideo: window.IS_ANON ? undefined : ((cd, model, duration) => videoJobWithCD(id, cd, model, duration)),
     onAdapt: window.IS_OS ? undefined : () => adaptAllFormats(id),
     onRemix: window.IS_OS ? undefined : ((remixPrompt) => remixJob(id, remixPrompt)),
-    onPack: window.IS_OS ? undefined : () => openExportPack(id, job.generationId || ''),
+    onPack: (window.IS_OS || window.IS_ANON) ? undefined : () => openExportPack(id, job.generationId || ''),
     generationId: job.generationId || null,
   };
   if (type === 'video' && job.videoUrl) {
@@ -1958,7 +1975,7 @@ window.openModal = (id, type) => {
     delete meta.onRemix;
     delete meta.onPolish;
     delete meta.onPack;
-    if (!window.IS_OS) meta.onUpscale = () => upscaleJob(id);
+    if (!window.IS_OS && !window.IS_ANON) meta.onUpscale = () => upscaleJob(id);
     Lightbox.open(job.videoUrl, 'video', meta);
   } else if (job.resultUrl) {
     Lightbox.open(job.resultUrl, 'image', meta);
@@ -1989,7 +2006,10 @@ window.adaptAllFormats = async (id) => {
   });
   const results = await Promise.all(promises);
   const ok = results.filter(r => r.ok).length;
-  if (ok > 0) { log(`${ok} format(s) submitted`, 'success'); toast(`${ok} format(s) adapting — check Library`); }
+  if (ok > 0) {
+    log(`${ok} format(s) submitted`, 'success');
+    toast(window.IS_ANON ? `${ok} format(s) adapting — they will appear in the community gallery` : `${ok} format(s) adapting — check Library`);
+  }
   if (ok < formats.length) toast(`${formats.length - ok} format(s) failed`, true);
 };
 
@@ -2583,10 +2603,10 @@ async function resumePendingGenerations() {
 }
 
 log('Studio ready — drop your product images');
-if (!window.IS_OS) loadActivityLog();
-// Opensource can run as a shared hosted instance — never resume another
-// visitor's jobs into this browser's grid.
-if (!window.IS_OS) resumePendingGenerations();
+if (!window.IS_OS && !window.IS_ANON) loadActivityLog();
+// Opensource can run as a shared hosted instance, and anonymous mode has no
+// per-visitor history — never resume another visitor's jobs into this grid.
+if (!window.IS_OS && !window.IS_ANON) resumePendingGenerations();
 
 // Inject SVG icons into static slots
 document.querySelectorAll('.icon-slot-target').forEach(el => { el.innerHTML = Icons.get('target'); });

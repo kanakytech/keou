@@ -156,6 +156,22 @@ export async function getPresignedUrl(key, expiresIn = 1800) {
 }
 
 /**
+ * Fetch an object from R2 as a readable stream (server-side proxying).
+ * Used by the trial's protected image route: the client never sees an R2 or
+ * provider URL — bytes are piped through our own endpoint.
+ * @param {string} key
+ * @returns {Promise<{ body: import('stream').Readable, contentType: string, contentLength?: number }>}
+ */
+export async function getObjectStream(key) {
+  const out = await r2.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+  return {
+    body: out.Body,
+    contentType: out.ContentType || 'application/octet-stream',
+    contentLength: out.ContentLength,
+  };
+}
+
+/**
  * Delete an object from R2
  * @param {string} key
  */

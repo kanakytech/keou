@@ -16,7 +16,7 @@ const Select = (() => {
       .ks-select{position:relative;display:inline-flex;width:100%}
       .ks-select-trigger{
         width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
-        cursor:pointer;user-select:none;font-family:'Inter',sans-serif;
+        cursor:pointer;user-select:none;font-family:'Space Grotesk',sans-serif;
         background:rgba(0,0,0,.02);color:var(--ink);
         border:1.5px solid var(--border);border-radius:var(--radius-sm,10px);
         padding:12px 16px;font-size:14px;font-weight:500;
@@ -26,7 +26,7 @@ const Select = (() => {
       .ks-select-trigger:hover{border-color:rgba(0,0,0,.18)}
       .ks-select.open .ks-select-trigger{
         border-color:rgba(0,0,0,.3);
-        box-shadow:0 0 0 3px rgba(99,102,241,.08),0 0 0 1px rgba(0,0,0,.08);
+        box-shadow:0 0 0 3px rgba(200,240,96,.10),0 0 0 1px rgba(0,0,0,.08);
       }
       .ks-select-arrow{
         width:16px;height:16px;flex-shrink:0;opacity:.45;
@@ -37,11 +37,11 @@ const Select = (() => {
       .ks-select-dropdown{
         position:absolute;top:calc(100% + 6px);right:0;z-index:200;
         min-width:100%;max-width:min(320px,calc(100vw - 32px));width:max-content;
-        background:rgba(255,255,255,.98);
-        border:1px solid rgba(0,0,0,.08);
+        background:rgba(20,20,20,.97);
+        border:1px solid rgba(255,255,255,.10);
         border-radius:var(--radius-sm,10px);
         backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-        box-shadow:0 12px 40px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04);
+        box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);
         padding:4px;overflow-x:hidden;overflow-y:auto;max-height:240px;
         opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);
         transition:all .2s cubic-bezier(.16,1,.3,1);
@@ -53,15 +53,15 @@ const Select = (() => {
       }
       .ks-select-option{
         padding:10px 14px;border-radius:8px;cursor:pointer;
-        font-size:13px;font-weight:500;color:rgba(0,0,0,.55);
+        font-size:13px;font-weight:500;color:rgba(240,240,236,.6);
         transition:all .12s ease;display:flex;align-items:center;gap:8px;
-        font-family:'Inter',sans-serif;
+        font-family:'Space Grotesk',sans-serif;
         white-space:nowrap;
       }
-      .ks-select-option:hover{background:rgba(0,0,0,.04);color:#1a1a1a}
-      .ks-select-option.selected{color:#1a1a1a;font-weight:600;background:rgba(0,0,0,.06)}
+      .ks-select-option:hover{background:rgba(255,255,255,.06);color:#f0f0ec}
+      .ks-select-option.selected{color:#f0f0ec;font-weight:600;background:rgba(255,255,255,.08)}
       .ks-select-option.selected::before{
-        content:'';width:4px;height:4px;border-radius:50%;background:#1a1a1a;flex-shrink:0;
+        content:'';width:4px;height:4px;border-radius:50%;background:#c8f060;flex-shrink:0;
       }
 
       /* ── Size: compact (filter-select, project-select) ── */
@@ -73,7 +73,7 @@ const Select = (() => {
       /* scrollbar */
       .ks-select-dropdown::-webkit-scrollbar{width:4px}
       .ks-select-dropdown::-webkit-scrollbar-track{background:transparent}
-      .ks-select-dropdown::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:4px}
+      .ks-select-dropdown::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
 
       @media(max-width:480px){
         .ks-select-trigger{padding:10px 14px;font-size:13px}
@@ -85,7 +85,7 @@ const Select = (() => {
       :root .ks-select-trigger:hover{border-color:rgba(255,255,255,.22)}
       :root .ks-select.open .ks-select-trigger{
         border-color:rgba(255,255,255,.3);
-        box-shadow:0 0 0 3px rgba(99,102,241,.12),0 0 0 1px rgba(255,255,255,.08);
+        box-shadow:0 0 0 3px rgba(200,240,96,.14),0 0 0 1px rgba(255,255,255,.08);
       }
 
     `;

@@ -103,7 +103,7 @@ const Lightbox = (() => {
         background:rgba(255,255,255,.10);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
         color:#fff;font-size:12px;font-weight:600;cursor:pointer;
         display:inline-flex;align-items:center;gap:6px;
-        font-family:'Inter',sans-serif;transition:all .2s ease;letter-spacing:.2px;
+        font-family:'Space Grotesk',sans-serif;transition:all .2s ease;letter-spacing:.2px;
       }
       .lb-action-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
       .lb-action-btn svg{width:14px;height:14px}
@@ -123,7 +123,7 @@ const Lightbox = (() => {
       .lb-model-chip{
         padding:7px 14px;border-radius:100px;border:1.5px solid rgba(255,255,255,.15);
         background:transparent;color:rgba(255,255,255,.65);font-size:11px;font-weight:600;
-        cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;
+        cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s;
         display:inline-flex;align-items:center;gap:5px;
       }
       .lb-model-chip:hover{border-color:rgba(255,255,255,.35);color:#fff}
@@ -133,7 +133,7 @@ const Lightbox = (() => {
       .lb-cd textarea{
         width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.15);border-radius:10px;
         background:rgba(255,255,255,.06);color:#fff;padding:10px 14px;font-size:13px;
-        font-family:'Inter',sans-serif;resize:vertical;min-height:56px;max-height:120px;
+        font-family:'Space Grotesk',sans-serif;resize:vertical;min-height:56px;max-height:120px;
         outline:none;transition:border-color .2s;
       }
       .lb-cd textarea:focus{border-color:rgba(255,255,255,.35)}
@@ -142,8 +142,8 @@ const Lightbox = (() => {
       .lb-cd-hint{font-size:10px;color:rgba(255,255,255,.4);font-style:italic}
       .lb-cd-submit{
         padding:8px 20px;border-radius:100px;border:none;
-        background:#fff;color:#0a0a0a;font-size:12px;font-weight:700;
-        cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;
+        background:#fff;color:#050505;font-size:12px;font-weight:700;
+        cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s;
       }
       .lb-cd-submit:hover{background:rgba(255,255,255,.85);transform:scale(1.03)}
 
@@ -158,7 +158,7 @@ const Lightbox = (() => {
       .lb-remix textarea{
         width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.15);border-radius:10px;
         background:rgba(255,255,255,.06);color:#fff;padding:10px 14px;font-size:13px;
-        font-family:'Inter',sans-serif;resize:vertical;min-height:56px;max-height:120px;
+        font-family:'Space Grotesk',sans-serif;resize:vertical;min-height:56px;max-height:120px;
         outline:none;transition:border-color .2s;
       }
       .lb-remix textarea:focus{border-color:rgba(255,255,255,.35)}
@@ -178,7 +178,7 @@ const Lightbox = (() => {
         padding:10px 14px;border-radius:10px;
         background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
         color:rgba(255,255,255,.85);font-size:12px;font-weight:500;cursor:pointer;
-        transition:all .2s;font-family:'Inter',sans-serif;
+        transition:all .2s;font-family:'Space Grotesk',sans-serif;
         display:flex;align-items:center;gap:8px;
       }
       .lb-move-item:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
