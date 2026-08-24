@@ -1260,5 +1260,16 @@ window.KEOU_FR_PATTERNS = {
   "{} hours with Keou": "{} heures avec Keou",
   "{} min with Keou": "{} min avec Keou",
   "{} hours": "{} heures",
-  "Generation #{}": "Génération n° {}"
+  "Generation #{}": "Génération n° {}",
+  "{} logged in": "{} s’est connecté",
+  "{}: image generated": "{} : image générée",
+  "{}: video generated": "{} : vidéo générée",
+  "{}: image polished": "{} : image retouchée",
+  "{}: added client \"{}\"": "{} : client « {} » ajouté",
+  "{}: archived client \"{}\"": "{} : client « {} » archivé",
+  "{}: invited {}": "{} : {} invité",
+  "{}: uploaded asset \"{}\"": "{} : visuel « {} » importé",
+  "{}: deleted asset \"{}\"": "{} : visuel « {} » supprimé",
+  "{}: changed password": "{} : mot de passe modifié",
+  "{}: reset member password": "{} : mot de passe d’un membre réinitialisé"
 };
