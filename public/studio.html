@@ -1781,7 +1781,7 @@ window.polishJob = async (id) => {
   
   } catch (e) {
     job.status = 'done';
-    log(`${job.name}: polish failed — ${e.message}`, 'error'); toast('Polish failed', true);
+    log(`${job.name}: polish failed — ${e.message}`, 'error');
   }
   updateCard(job);
 };
@@ -1816,7 +1816,7 @@ window.videoJob = async (id) => {
   
   } catch (e) {
     job.status = 'done';
-    log(`${job.name}: video failed — ${e.message}`, 'error'); toast('Video failed', true);
+    log(`${job.name}: video failed — ${e.message}`, 'error');
   }
   updateCard(job);
 };
@@ -1857,7 +1857,7 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration) => {
   
   } catch (e) {
     job.status = 'done';
-    log(`${job.name}: video failed — ${e.message}`, 'error'); toast('Video failed', true);
+    log(`${job.name}: video failed — ${e.message}`, 'error');
   }
   updateCard(job);
 };
@@ -1893,7 +1893,7 @@ window.upscaleJob = async (id) => {
 
   } catch (e) {
     job.status = 'done';
-    log(`${job.name}: upscale failed — ${e.message}`, 'error'); toast('Upscale failed', true);
+    log(`${job.name}: upscale failed — ${e.message}`, 'error');
   }
   updateCard(job);
 };
@@ -2043,7 +2043,7 @@ window.remixJob = async (id, remixPrompt) => {
     openModal(id);
   } catch (e) {
     job.status = 'done';
-    log(`${job.name}: remix failed — ${e.message}`, 'error'); toast('Remix failed', true);
+    log(`${job.name}: remix failed — ${e.message}`, 'error');
   }
   updateCard(job);
 };
@@ -2507,6 +2507,15 @@ function log(msg, type = '', id = null) {
   entreeJournal(el, msg, type, now);
   const logEl = $('#log');
   logEl.prepend(el);
+
+  // Le journal vit tout en bas de la page — sur un portable, plus de mille
+  // pixels sous l'écran. Une erreur y était donc INVISIBLE : l'utilisateur
+  // voyait sa liste se vider sans un mot et concluait que c'était cassé,
+  // alors que le message exact l'attendait hors champ. Toute erreur remonte
+  // désormais en notification, quel que soit le chemin qui l'a produite.
+  if (type === 'error' && typeof toast === 'function' && !el.dataset.persistent) {
+    toast(msg, true);
+  }
   while (logEl.children.length > 50) logEl.lastChild.remove();
   updateLogToggle();
 }

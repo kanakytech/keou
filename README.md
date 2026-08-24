@@ -85,8 +85,12 @@ git clone https://github.com/kanakytech/keou.git
 cd keou
 npm ci
 cp .env.example .env
+$EDITOR .env          # four values to fill in — see just below
 npm start
 ```
+
+> `npm start` refuses to boot on an empty `JWT_SECRET`, and says so. That is the
+> template doing its job: there is no default secret to leak.
 
 Four values in `.env`, and the last two matter as much as the first two:
 

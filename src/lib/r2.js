@@ -4,9 +4,19 @@ import { Readable } from 'node:stream';
 import { config } from '../config.js';
 
 // ─── R2 Client (S3-compatible) ───
+/* Tout stockage compatible S3 convient : Cloudflare R2 est le chemin
+ * documenté, pas une obligation. Poser S3_ENDPOINT suffit pour MinIO, AWS S3,
+ * Backblaze B2, Wasabi ou un endpoint local. Sans la variable, on retombe sur
+ * l'adresse Cloudflare construite à partir de R2_ACCOUNT_ID, comme avant. */
+const ENDPOINT = config.r2.endpoint
+  || `https://${config.r2.accountId}.r2.cloudflarestorage.com`;
+
 const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${config.r2.accountId}.r2.cloudflarestorage.com`,
+  region: process.env.S3_REGION || 'auto',
+  endpoint: ENDPOINT,
+  // MinIO et la plupart des stockages auto-hébergés servent le bucket dans le
+  // CHEMIN, pas dans le sous-domaine. Cloudflare accepte les deux.
+  forcePathStyle: process.env.S3_FORCE_PATH_STYLE === '1' || (!!config.r2.endpoint && /localhost|127\.0\.0\.1|:\d+/.test(config.r2.endpoint)),
   credentials: {
     accessKeyId: config.r2.accessKeyId,
     secretAccessKey: config.r2.secretAccessKey,

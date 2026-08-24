@@ -74,6 +74,11 @@ export const config = {
     accessKeyId: process.env.R2_ACCESS_KEY,
     secretAccessKey: process.env.R2_SECRET_KEY,
     bucket: process.env.R2_BUCKET || 'keou-uploads',
+    // L'endpoint était figé sur Cloudflare : un auto-hébergeur sans compte
+    // Cloudflare ne pouvait brancher NI MinIO, NI AWS S3, NI Backblaze, NI
+    // Wasabi — il devait éditer le code source pour franchir le premier geste
+    // du produit. Le repli garde Cloudflare, qui reste le chemin documenté.
+    endpoint: process.env.S3_ENDPOINT || null,
     publicUrl: process.env.R2_PUBLIC_URL || '', // e.g. https://r2.kanaky.xyz — set after enabling R2 custom domain
   },
 

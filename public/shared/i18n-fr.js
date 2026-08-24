@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1242 entrées. */
+   1238 entrées. */
 window.KEOU_FR = {
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
   "The kie.ai links on this site carry our referral code. If you sign up through one, KIE pays us a small share of what you spend in your first month. Your price is exactly the same either way, and the platform works with any key — including one created without our link. It is one of the ways an open-source project with no paid tier pays for itself, and we would rather say so than have you find out.": "Les liens kie.ai de ce site portent notre code de parrainage. Si vous vous inscrivez par l’un d’eux, KIE nous reverse une petite part de ce que vous dépensez le premier mois. Votre prix est exactement le même dans les deux cas, et la plateforme fonctionne avec n’importe quelle clé — y compris une clé créée sans passer par nous. C’est l’une des façons dont un projet open source sans palier payant se finance, et nous préférons le dire plutôt que vous le laisser découvrir.",
@@ -848,7 +848,6 @@ window.KEOU_FR = {
   "Password Reset": "Mot de passe réinitialisé",
   "Image uploaded": "Image importée",
   "Video uploaded": "Vidéo importée",
-  "Upscale failed": "Échec de l’agrandissement",
   "Remix complete": "Remix terminé",
   "Compressing...": "Compression…",
   "Failed to save": "Échec de l’enregistrement",
@@ -903,7 +902,6 @@ window.KEOU_FR = {
   "Mark resolved": "Marquer comme réglé",
   "Campaign name": "Nom de la campagne",
   "Select Client": "Sélectionner un client",
-  "Polish failed": "Échec de la retouche",
   "Validating...": "Validation…",
   "Report failed": "Échec de la génération du rapport",
   "Export failed": "Échec de l’export",
@@ -960,8 +958,6 @@ window.KEOU_FR = {
   "New Campaign": "Nouvelle campagne",
   "Share failed": "Échec du partage",
   "Name updated": "Nom mis à jour",
-  "Video failed": "Échec de la génération vidéo",
-  "Remix failed": "Échec du remix",
   "Logo updated": "Logo mis à jour",
   "CSV exported": "CSV exporté",
   "Launch Keou": "Lancer Keou",
