@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Keou documentation — install, configure, deploy and extend the open-source AI product-visual studio. Architecture, full environment reference, HTTP API and security model.">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<title>Keou Studio — Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#f0f0ec;--ink-soft:rgba(240,240,236,.74);--ink-muted:rgba(240,240,236,.56);--ink-faint:rgba(240,240,236,.38);
+  --bg:#050505;--surface:rgba(255,255,255,.035);--surface-2:rgba(255,255,255,.06);--surface-3:rgba(255,255,255,.09);
+  --border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);
+  --accent:#c8f060;--accent-soft:rgba(200,240,96,.09);--accent-line:rgba(200,240,96,.28);
+  --warn:#d97706;--warn-soft:rgba(217,119,6,.10);
+  --ok:#16a34a;--ok-soft:rgba(22,163,74,.10);
+  --radius:16px;--radius-sm:11px;
+  --sidebar:270px;
+}
+html{scroll-behavior:smooth;scroll-padding-top:88px}
+body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.68;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;line-height:1.18;letter-spacing:-.022em;font-weight:700}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.875em;background:var(--surface-2);border:1px solid var(--border);padding:1.5px 6px;border-radius:5px;color:var(--ink);white-space:nowrap}
+img{max-width:100%;display:block}
+
+.ambient{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.ambient::before{content:'';position:absolute;top:-22%;right:-8%;width:640px;height:640px;background:radial-gradient(circle,rgba(200,240,96,.055),transparent 68%);border-radius:50%}
+.ambient::after{content:'';position:absolute;bottom:-12%;left:-10%;width:520px;height:520px;background:radial-gradient(circle,rgba(255,255,255,.02),transparent 70%);border-radius:50%}
+
+.topbar{position:fixed;top:0;left:0;right:0;height:60px;z-index:120;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;background:rgba(8,8,8,.72);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);
+  border-bottom:1px solid var(--border)}
+@media (prefers-reduced-transparency:reduce){.topbar{background:rgba(8,8,8,.97);backdrop-filter:none;-webkit-backdrop-filter:none}}
+.tb-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.tb-brand:hover{text-decoration:none}
+.tb-brand img{height:28px;width:28px;border-radius:50%}
+.tb-name{display:block}
+.tb-brand b{font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.tb-brand span{font-size:9.5px;font-weight:600;color:var(--accent);letter-spacing:.7px;text-transform:uppercase;display:block;line-height:1}
+.tb-links{display:flex;gap:5px;align-items:center}
+.tb-link{padding:7px 13px;border-radius:100px;font-size:13px;font-weight:500;color:var(--ink-soft);transition:.2s;display:inline-flex;align-items:center;gap:7px}
+.tb-link:hover{color:var(--ink);background:var(--surface-2);text-decoration:none}
+.tb-link.primary{background:var(--accent);color:#050505;font-weight:600}
+.tb-link.primary:hover{background:#d6f57e}
+.tb-link svg{width:15px;height:15px}
+.menu-btn{display:none;background:var(--surface-2);border:1px solid var(--border);color:var(--ink);width:36px;height:36px;border-radius:9px;cursor:pointer;align-items:center;justify-content:center}
+.menu-btn svg{width:17px;height:17px}
+
+.shell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1340px;margin:0 auto;padding-top:60px;gap:0}
+
+.sidenav{position:sticky;top:60px;align-self:start;height:calc(100vh - 60px);overflow-y:auto;padding:30px 20px 60px;border-right:1px solid var(--border);scrollbar-width:thin}
+.sidenav::-webkit-scrollbar{width:5px}
+.sidenav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+.sn-group{margin-bottom:24px}
+.sn-title{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px;padding-left:11px}
+.sn-link{display:flex;align-items:center;gap:9px;padding:6.5px 11px;border-radius:8px;font-size:13.5px;color:var(--ink-muted);transition:.15s;border-left:2px solid transparent;margin-bottom:1px}
+.sn-link:hover{color:var(--ink);background:var(--surface);text-decoration:none}
+.sn-link.active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent)}
+.sn-link svg{width:14px;height:14px;flex-shrink:0;opacity:.8}
+
+.content{padding:44px 52px 120px;min-width:0}
+.content section{scroll-margin-top:80px;margin-bottom:64px}
+.content h2{font-size:clamp(23px,2.7vw,31px);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.content h2 .hicon{width:32px;height:32px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.content h2 .hicon svg{width:17px;height:17px}
+.content h3{font-size:17.5px;margin:32px 0 11px;color:var(--ink)}
+.content h4{font-size:14.5px;margin:22px 0 8px;color:var(--ink-soft);font-weight:600}
+.content p{color:var(--ink-soft);margin-bottom:14px;font-size:15px;max-width:76ch}
+.content ul,.content ol{color:var(--ink-soft);margin:0 0 15px 21px;font-size:15px;max-width:76ch}
+.content li{margin-bottom:6px}
+.content li::marker{color:var(--accent)}
+
+.doc-hero{padding-bottom:14px;margin-bottom:40px;border-bottom:1px solid var(--border)}
+.doc-hero .eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:11.5px;font-weight:600;letter-spacing:.35px;margin-bottom:17px}
+.doc-hero .eyebrow svg{width:13px;height:13px;color:var(--accent)}
+.doc-hero h1{font-size:clamp(31px,4.6vw,46px);font-weight:800;margin-bottom:14px;letter-spacing:-.03em}
+.doc-hero h1 em{font-style:normal;color:var(--accent)}
+.doc-hero p{font-size:16.5px;color:var(--ink-muted);max-width:70ch}
+
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:18px 0;font-size:14.5px;color:var(--ink-soft);max-width:76ch}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.note b{color:var(--ink)}
+.note p{font-size:14.5px}
+.note p:last-child{margin-bottom:0}
+
+pre{background:#0a0a0a;border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;overflow-x:auto;margin:14px 0;max-width:100%}
+pre code{background:none;border:none;padding:0;font-size:13px;line-height:1.72;white-space:pre;color:#d7d7d3}
+pre::-webkit-scrollbar{height:6px}
+pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+.tok-c{color:rgba(240,240,236,.38)}
+.tok-k{color:var(--accent)}
+.tok-s{color:#9fd0e8}
+.code-label{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 -6px}
+
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:var(--radius-sm);max-width:100%}
+table{width:100%;border-collapse:collapse;font-size:13.8px;min-width:520px}
+th{text-align:left;padding:11px 15px;background:var(--surface-2);color:var(--ink);font-weight:600;font-size:12.5px;letter-spacing:.2px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 15px;border-bottom:1px solid var(--border);color:var(--ink-soft);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.018)}
+td code,th code{font-size:12.4px;white-space:nowrap}
+.req{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-line)}
+.opt{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:var(--surface-3);color:var(--ink-muted);border:1px solid var(--border)}
+.verb{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.4px}
+.verb.get{background:rgba(80,160,255,.13);color:#7fb8ff}
+.verb.post{background:var(--accent-soft);color:var(--accent)}
+.verb.del{background:rgba(220,38,38,.13);color:#f08b8b}
+.verb.put{background:rgba(217,119,6,.14);color:#e8a854}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:13px;margin:18px 0}
+.card{padding:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);transition:.22s}
+.card:hover{border-color:var(--border-strong);background:var(--surface-2);transform:translateY(-2px)}
+.card-ico{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.card-ico svg{width:17px;height:17px}
+.card h4{font-size:14.5px;margin:0 0 6px;color:var(--ink);font-weight:600}
+.card p{font-size:13px;color:var(--ink-muted);margin:0;line-height:1.6}
+
+.steps{counter-reset:s;margin:20px 0;padding:0;list-style:none}
+.steps li{counter-increment:s;position:relative;padding-left:46px;margin-bottom:22px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:30px;height:30px;border-radius:9px;background:var(--accent);color:#050505;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13.5px;font-family:'Space Grotesk',sans-serif}
+.steps li h4{margin:3px 0 6px;font-size:15px;color:var(--ink);font-weight:600}
+.steps li p{margin-bottom:8px}
+
+figure{margin:22px 0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+figure img{width:100%}
+figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:1px solid var(--border);background:var(--surface-2)}
+.diagram{margin:22px 0;padding:26px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow-x:auto}
+.diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}
+
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;color:var(--ink-soft)}
+.pill svg{width:12px;height:12px;color:var(--accent)}
+
+.doc-footer{border-top:1px solid var(--border);padding:30px 0 0;margin-top:70px;color:var(--ink-faint);font-size:13px}
+.doc-footer a{color:var(--ink-muted)}
+
+@media (max-width:1020px){
+  .shell{grid-template-columns:1fr}
+  .sidenav{position:fixed;top:60px;left:0;width:280px;background:#080808;z-index:110;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);border-right:1px solid var(--border)}
+  .sidenav.open{transform:translateX(0)}
+  .menu-btn{display:flex}
+  .content{padding:32px 22px 90px}
+  .scrim{position:fixed;inset:60px 0 0;background:rgba(0,0,0,.6);z-index:105;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.open{opacity:1;pointer-events:auto}
+}
+@media (max-width:640px){
+  .tb-link.hide-sm{display:none}
+  .content h2{font-size:22px}
+}
+</style>
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<link rel="alternate" hreflang="en" href="https://studio.kanaky.xyz/docs.html">
+<link rel="alternate" hreflang="fr" href="https://studio.kanaky.xyz/docs.html?lang=fr">
+<link rel="alternate" hreflang="x-default" href="https://studio.kanaky.xyz/docs.html">
+</head>
+<body>
+<div class="ambient"></div>
+
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="menu-btn" id="menu-btn" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <a href="/" class="tb-brand">
+      <img src="/logo-keou.png" alt="">
+      <span class="tb-name"><b>Keou Studio</b><span>by kanaky.xyz</span></span>
+    </a>
+  </div>
+  <nav class="tb-links">
+    <a class="tb-link hide-sm" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+      GitHub
+    </a>
+    <a class="tb-link hide-sm" href="/custom.html">Custom builds</a>
+    <a class="tb-link primary" href="/launch">Launch Keou</a>
+  </nav>
+</header>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+
+<aside class="sidenav" id="sidenav">
+  <div class="sn-group">
+    <div class="sn-title">Start</div>
+    <a class="sn-link" href="#what"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>What Keou is</a>
+    <a class="sn-link" href="#features"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>What it does</a>
+    <a class="sn-link" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Install</a>
+    <a class="sn-link" href="#first"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>First visual</a>
+  </div>
+  <div class="sn-group">
+    <div class="sn-title">Operate</div>
+    <a class="sn-link" href="#architecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="M6 10v4a2 2 0 0 0 2 2h6"/></svg>Architecture</a>
+    <a class="sn-link" href="#config"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M2 12h4m12 0h4M4.2 19.8 7 17m10-10 2.8-2.8"/></svg>Configuration</a>
+    <a class="sn-link" href="#deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>Deploy</a>
+    <a class="sn-link" href="#security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Keys &amp; security</a>
+  </div>
+  <div class="sn-group">
+    <div class="sn-title">Build on it</div>
+    <a class="sn-link" href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>HTTP API</a>
+    <a class="sn-link" href="#assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Assistant</a>
+    <a class="sn-link" href="#troubleshoot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Troubleshooting</a>
+  </div>
+  <div class="sn-group">
+    <div class="sn-title">Project</div>
+    <a class="sn-link" href="#licence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Licence &amp; use</a>
+    <a class="sn-link" href="#custom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Custom builds</a>
+  </div>
+</aside>
+
+<main class="content">
+
+<div class="doc-hero">
+  <span class="eyebrow">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    MIT open source · every feature, nothing held back
+  </span>
+  <h1>Keou Studio <em>documentation</em></h1>
+  <p>Everything needed to install, configure, deploy, secure and extend the studio. Written for someone who has never seen the codebase.</p>
+</div>
+
+<section id="what">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>What Keou is</h2>
+  <p>Keou turns one raw product photograph into a finished commercial campaign: images, cinematic video, voice-over, sound design, and every delivery format your channels need. It is a full studio, not a wrapper around a generation endpoint.</p>
+  <p>The thing that makes it useful for product work is that <b>the product itself is pixel-locked</b>. The scene around it is generated; the shape, text, labels and logos on the object are not redrawn. That is the difference between a usable packshot and an image that merely resembles your product.</p>
+
+  <div class="note ok">
+    <p><b>Everything ships in the public repository.</b> Polish, remix, format adaptation, export packs, voice, sound, upscaling, teams, sharing — and the production prompt stack that makes the output good. There is no paid tier holding features back.</p>
+    <p style="margin-top:9px">Two files stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills <i>our</i> hosted instance. Nothing in the studio reads them.</p>
+  </div>
+
+  <h3>Three ways to run it</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      <h4>Hosted, no account</h4>
+      <p>Open <a href="/launch">studio.kanaky.xyz/launch</a>, paste your provider key, produce. Creations join a public gallery and carry a watermark.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <h4>Hosted, free account</h4>
+      <p>Same studio, but your work stays private, you get a library, downloads, projects and share links.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+      <h4>Self-hosted</h4>
+      <p>Your servers, your database, your storage, your brand. Identical feature set. This documentation is mostly about this path.</p>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>What it does</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>
+      <h4>Product images</h4>
+      <p>A commercial scene built around your photograph. The object stays untouched.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+      <h4>Cinematic video</h4>
+      <p>Clips from a still. Grok Imagine, Kling 2.6 / 3.0, Seedance 2, Veo 3.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></div>
+      <h4>Polish</h4>
+      <p>Retouch a render without regenerating it — lighting, blemishes, background.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></div>
+      <h4>Remix</h4>
+      <p>Same product, new creative direction, in one action.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1"/><rect x="9" y="10" width="13" height="10" rx="1"/></svg></div>
+      <h4>Format adapt</h4>
+      <p>Every aspect ratio your channels need — recomposed, not cropped.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></div>
+      <h4>Export packs</h4>
+      <p>Platform-ready variants from one approved visual, in one action.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></div>
+      <h4>Voice &amp; sound</h4>
+      <p>Voice-overs and sound effects, in the same pipeline as the visuals.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></div>
+      <h4>Upscaling</h4>
+      <p>Images and video to 8K.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+      <h4>Clients &amp; campaigns</h4>
+      <p>Output organised by client, campaign and approval state.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+      <h4>Share links</h4>
+      <p>Client review links that collect structured feedback.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div>
+      <h4>Teams</h4>
+      <p>Accounts, roles and quotas for a studio of more than one.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <h4>Assistant</h4>
+      <p>A chat agent that drives the whole toolset. Needs your own Anthropic key.</p>
+    </div>
+  </div>
+
+  <figure>
+    <img src="/docs-img/studio.png" alt="The Keou production engine: key bar, upload area and live activity log">
+    <figcaption>The production engine. The key bar at the top is where your provider key goes — it stays in this browser.</figcaption>
+  </figure>
+</section>
+
+<section id="install">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Install</h2>
+
+  <h3>What you need</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:170px">Requirement</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Node.js</b> <span class="req">required</span></td><td>Version 20 or later.</td></tr>
+      <tr><td><b>PostgreSQL</b> <span class="req">required</span></td><td>Any recent version. Migrations run automatically at first boot — you do not create tables by hand.</td></tr>
+      <tr><td><b>Provider key</b> <span class="req">required</span></td><td>A <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">KIE.AI</a> or <a href="https://fal.ai" target="_blank" rel="noopener">Fal.ai</a> account. Each user pastes their own in the studio — the server does not need one.</td></tr>
+      <tr><td><b>Cloudflare R2</b> <span class="req">required</span></td><td>Free tier is enough. Without it every upload returns 503 — and uploading a photo is the first thing the studio does. It also keeps results alive past the ~14 days a provider URL lasts.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>From source</h3>
+  <span class="code-label">terminal</span>
+<pre><code><span class="tok-c"># clone and install</span>
+git clone https://github.com/kanakytech/keou.git
+cd keou
+npm ci
+cp .env.example .env
+
+<span class="tok-c"># four values matter, not two</span>
+DATABASE_URL=postgresql://…
+JWT_SECRET=…                  <span class="tok-c"># openssl rand -hex 32</span>
+ADMIN_EMAIL=you@example.com   <span class="tok-c"># seeds your account on first boot</span>
+ADMIN_PASSWORD=…              <span class="tok-c"># 12+ chars</span>
+
+npm start</code></pre>
+  <div class="note warn">
+    <p><b>Set <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> before the first boot.</b> Public self-serve signup is off in a self-hosted deployment, on purpose — so without a seeded account the instance comes up with no way to sign in, and you have to drop the database to try again.</p>
+  </div>
+  <p>Open <code>http://localhost:3401</code> and sign in. Migrations run on boot.</p>
+
+  <h3>With Docker</h3>
+  <span class="code-label">terminal</span>
+<pre><code>docker build -t keou .
+docker run -p 3401:3401 --env-file .env keou</code></pre>
+  <p>The image is multi-stage, runs as a non-root user, and exposes a healthcheck on <code>/health</code>. It sets <code>NODE_ENV=production</code>, which turns Postgres TLS on — add <code>DATABASE_SSL=0</code> to your <code>.env</code> if your database is local and speaks plain TCP.</p>
+
+  <h3>On Railway</h3>
+  <ol class="steps">
+    <li><h4>Create the project</h4><p>New project → <b>Deploy from GitHub</b> → this repository, or your fork of it.</p></li>
+    <li><h4>Add PostgreSQL</h4><p>Add a PostgreSQL service in the same project. Railway injects <code>DATABASE_URL</code> for you — do not set it by hand.</p></li>
+    <li><h4>Set the variables</h4><p><code>JWT_SECRET</code>, and the four <code>R2_*</code> values if you are using storage.</p></li>
+    <li><h4>Deploy</h4><p><code>railway.json</code> and the healthcheck are already in the repository. Enable auto-deploy on <code>main</code> to receive upstream updates automatically.</p></li>
+  </ol>
+</section>
+
+<section id="first">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>Your first visual</h2>
+  <ol class="steps">
+    <li><h4>Get a provider key</h4><p>Sign up at <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">kie.ai</a> — they give you free credits. Copy the long API key string.</p></li>
+    <li><h4>Paste it in the key bar</h4><p>Top of the studio. Press <b>Save</b>. It is written to this browser's <code>localStorage</code> and nowhere else.</p></li>
+    <li><h4>Drop a product photo</h4><p>Any reasonably lit shot works. A plain background helps but is not required — the scene gets rebuilt anyway.</p></li>
+    <li><h4>Describe the scene, not the product</h4><p>Say where it sits and how it is lit: <i>"on wet volcanic stone at dawn, sea mist behind, low warm sun from the left"</i>. Do not describe the object — it is already in the photo and it will not be redrawn.</p></li>
+    <li><h4>Generate, then refine</h4><p>Use <b>Polish</b> to fix a detail, <b>Remix</b> for a different direction, <b>Adapt</b> for other ratios, <b>Pack</b> for the multi-format set.</p></li>
+  </ol>
+
+    <div class="note">
+    <p><b>Affiliate disclosure.</b> The kie.ai links on this site carry our referral code. If you sign up through one, KIE pays us a small share of what you spend in your first month. Your price is exactly the same either way, and the platform works with any key — including one created without our link. It is one of the ways an open-source project with no paid tier pays for itself, and we would rather say so than have you find out.</p>
+  </div>
+
+<div class="note">
+    <p><b>Prompting note.</b> The production prompt stack already handles product fidelity, composition and commercial framing. Your brief should add context, not instructions — the more you fight the stack with technical directives, the worse the output gets.</p>
+  </div>
+</section>
+
+<section id="architecture">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="M6 10v4a2 2 0 0 0 2 2h6"/></svg></span>Architecture</h2>
+  <p>An Express server, a PostgreSQL database, an object store, and a background poller. No queue broker, no microservices, no build step for the frontend — the pages are plain HTML and vanilla JavaScript served statically.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 860 380" role="img" aria-label="Architecture: the browser holds the provider key and sends it per request to the Express API, which drives the generation engine, PostgreSQL, R2 storage and the provider. A poller completes asynchronous jobs.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(240,240,236,.45)"/>
+        </marker>
+        <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#c8f060"/>
+        </marker>
+      </defs>
+      <style>
+        .bx{fill:rgba(255,255,255,.045);stroke:rgba(255,255,255,.14);stroke-width:1.2;rx:11}
+        .bxa{fill:rgba(200,240,96,.09);stroke:rgba(200,240,96,.42);stroke-width:1.4;rx:11}
+        .st{fill:rgba(255,255,255,.028);stroke:rgba(255,255,255,.12);stroke-width:1.2;rx:11}
+        .t{fill:#f0f0ec;font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;text-anchor:middle}
+        .ts{fill:rgba(240,240,236,.5);font-family:'Space Grotesk',sans-serif;font-size:10.5px;text-anchor:middle}
+        .ln{stroke:rgba(240,240,236,.28);stroke-width:1.3;fill:none;marker-end:url(#ar)}
+        .lna{stroke:#c8f060;stroke-width:1.6;fill:none;marker-end:url(#ara)}
+        .lnd{stroke:rgba(240,240,236,.22);stroke-width:1.3;fill:none;stroke-dasharray:4 4;marker-end:url(#ar)}
+        .lbl{fill:rgba(240,240,236,.55);font-family:'JetBrains Mono',monospace;font-size:9.5px;text-anchor:middle}
+        .lbla{fill:#c8f060;font-family:'JetBrains Mono',monospace;font-size:9.5px;text-anchor:middle}
+      </style>
+
+      <rect class="bxa" x="8" y="120" width="140" height="72"/>
+      <text class="t" x="78" y="150">Browser</text>
+      <text class="ts" x="78" y="168">your provider key</text>
+      <text class="ts" x="78" y="181">lives here only</text>
+
+      <rect class="bx" x="255" y="120" width="150" height="72"/>
+      <text class="t" x="330" y="150">Express API</text>
+      <text class="ts" x="330" y="168">routes · auth</text>
+      <text class="ts" x="330" y="181">rate limits</text>
+
+      <rect class="bx" x="255" y="248" width="150" height="72"/>
+      <text class="t" x="330" y="278">Engine</text>
+      <text class="ts" x="330" y="296">keou-actions</text>
+      <text class="ts" x="330" y="309">orchestration</text>
+
+      <rect class="bxa" x="655" y="120" width="170" height="72"/>
+      <text class="t" x="740" y="150">Provider</text>
+      <text class="ts" x="740" y="168">KIE.AI · Fal.ai</text>
+      <text class="ts" x="740" y="181">image · video · audio</text>
+
+      <rect class="st" x="470" y="248" width="150" height="72"/>
+      <text class="t" x="545" y="278">PostgreSQL</text>
+      <text class="ts" x="545" y="296">users · jobs</text>
+      <text class="ts" x="545" y="309">projects · history</text>
+
+      <rect class="st" x="470" y="30" width="150" height="72"/>
+      <text class="t" x="545" y="60">R2 storage</text>
+      <text class="ts" x="545" y="78">uploads</text>
+      <text class="ts" x="545" y="91">durable results</text>
+
+      <rect class="bx" x="655" y="248" width="170" height="72"/>
+      <text class="t" x="740" y="278">Poller</text>
+      <text class="ts" x="740" y="296">completes async jobs</text>
+      <text class="ts" x="740" y="309">needs a server-side key</text>
+
+      <path class="lna" d="M152 150 L251 150"/>
+      <text class="lbla" x="201" y="141">X-Provider-Key</text>
+      <path class="ln" d="M330 194 L330 244"/>
+      <path class="lna" d="M407 268 C520 268 566 205 653 168"/>
+      <text class="lbla" x="536" y="243">your key, never stored</text>
+      <path class="ln" d="M407 290 L466 290"/>
+      <path class="ln" d="M382 246 C400 190 430 128 466 92"/>
+      <text class="lbl" x="404" y="163" transform="rotate(-54 404 163)">store</text>
+      <path class="lnd" d="M740 244 L740 196"/>
+      <text class="lbl" x="770" y="224">poll</text>
+      <path class="ln" d="M651 290 L624 290"/>
+      <path class="ln" d="M700 246 C672 180 648 128 624 96"/>
+      <path class="ln" d="M470 50 L78 50 L78 116"/>
+      <text class="lbl" x="276" y="41">durable URLs, straight to the browser</text>
+    </svg>
+  </div>
+
+  <h3>What happens during a generation</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 800 300" role="img" aria-label="Sequence: you upload a photo and brief, Keou stores the source in R2, calls the provider with your key, receives a task id, your browser drives the polling, the result is copied to R2 and a durable URL is returned.">
+      <style>
+        .lane{stroke:rgba(255,255,255,.10);stroke-width:1;stroke-dasharray:3 5}
+        .hd{fill:rgba(255,255,255,.05);stroke:rgba(255,255,255,.14);stroke-width:1.1;rx:8}
+        .hdt{fill:#f0f0ec;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;text-anchor:middle}
+        .msg{stroke:rgba(240,240,236,.32);stroke-width:1.2;fill:none;marker-end:url(#ar)}
+        .msga{stroke:#c8f060;stroke-width:1.4;fill:none;marker-end:url(#ara)}
+        .mt{fill:rgba(240,240,236,.72);font-family:'Space Grotesk',sans-serif;font-size:10.5px}
+        .mta{fill:#c8f060;font-family:'Space Grotesk',sans-serif;font-size:10.5px}
+        .nt{fill:rgba(240,240,236,.42);font-family:'Space Grotesk',sans-serif;font-size:10px;font-style:italic}
+      </style>
+      <rect class="hd" x="30" y="14" width="96" height="28"/><text class="hdt" x="78" y="33">You</text>
+      <rect class="hd" x="248" y="14" width="96" height="28"/><text class="hdt" x="296" y="33">Keou</text>
+      <rect class="hd" x="466" y="14" width="96" height="28"/><text class="hdt" x="514" y="33">Provider</text>
+      <rect class="hd" x="662" y="14" width="96" height="28"/><text class="hdt" x="710" y="33">R2</text>
+      <line class="lane" x1="78" y1="46" x2="78" y2="288"/>
+      <line class="lane" x1="296" y1="46" x2="296" y2="288"/>
+      <line class="lane" x1="514" y1="46" x2="514" y2="288"/>
+      <line class="lane" x1="710" y1="46" x2="710" y2="288"/>
+
+      <path class="msg" d="M78 72 L292 72"/><text class="mt" x="96" y="66">photo + brief</text>
+      <path class="msg" d="M296 100 L706 100"/><text class="mt" x="330" y="94">store the source</text>
+      <path class="msga" d="M296 128 L510 128"/><text class="mta" x="316" y="122">generate — with your key</text>
+      <path class="msg" d="M514 156 L300 156"/><text class="mt" x="340" y="150">task id</text>
+      <text class="nt" x="300" y="178">your browser drives the polling — the key never leaves it</text>
+      <path class="msg" d="M296 204 L510 204"/><text class="mt" x="330" y="198">status? (repeat)</text>
+      <path class="msg" d="M514 232 L300 232"/><text class="mt" x="330" y="226">result URL (expires)</text>
+      <path class="msg" d="M296 260 L706 260"/><text class="mt" x="330" y="254">copy to durable storage</text>
+      <path class="msga" d="M292 284 L82 284"/><text class="mta" x="100" y="278">durable URL</text>
+    </svg>
+  </div>
+
+  <h3>Where things live in the repository</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:220px">Path</th><th>What it holds</th></tr></thead>
+    <tbody>
+      <tr><td><code>index.js</code></td><td>Entry point. Pins the edition, then loads the server.</td></tr>
+      <tr><td><code>server.js</code></td><td>Express setup: security headers, rate limits, route mounting, boot.</td></tr>
+      <tr><td><code>src/config.js</code></td><td>Every environment variable, read in one place.</td></tr>
+      <tr><td><code>src/migrate.js</code></td><td>Schema migrations. Run automatically at boot.</td></tr>
+      <tr><td><code>src/poller.js</code></td><td>Background completion of asynchronous provider jobs.</td></tr>
+      <tr><td><code>src/routes/</code></td><td>One file per API surface.</td></tr>
+      <tr><td><code>src/lib/keou-actions.js</code></td><td>The generation engine — validation, persistence, provider dispatch.</td></tr>
+      <tr><td><code>src/lib/studio-prompts.js</code></td><td>The production prompt stack.</td></tr>
+      <tr><td><code>src/lib/providers/</code></td><td>KIE.AI and Fal.ai adapters behind one interface.</td></tr>
+      <tr><td><code>public/</code></td><td>The whole frontend. No build step.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="config">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M2 12h4m12 0h4M4.2 19.8 7 17m10-10 2.8-2.8"/></svg></span>Configuration</h2>
+  <p>Copy <code>.env.example</code> to <code>.env</code>. Two values are mandatory; everything else has a working default.</p>
+
+  <h3>Required</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:210px">Variable</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATABASE_URL</code></td><td>PostgreSQL connection string. Migrations run automatically at boot.</td></tr>
+      <tr><td><code>JWT_SECRET</code></td><td>Session signing secret, 16 characters minimum. Generate with <code>openssl rand -hex 32</code>.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Storage — required to upload</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:210px">Variable</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>R2_ACCOUNT_ID</code></td><td>Cloudflare account identifier.</td></tr>
+      <tr><td><code>R2_ACCESS_KEY</code><br><code>R2_SECRET_KEY</code></td><td>R2 API token pair.</td></tr>
+      <tr><td><code>R2_BUCKET</code></td><td>Bucket name. Defaults to <code>keou</code>.</td></tr>
+      <tr><td><code>R2_PUBLIC_URL</code></td><td>Public bucket domain, e.g. <code>https://assets.example.com</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn">
+    <p><b>Storage is not optional in practice.</b> Without the four <code>R2_*</code> variables, <code>POST /api/upload</code> answers 503 and names what is missing — and since every generation starts from an uploaded photo, nothing in the studio works. Configure it before your first login. The free tier is enough.</p>
+  </div>
+
+  <h3>Optional</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:215px">Variable</th><th style="width:130px">Default</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>PORT</code></td><td><code>3401</code></td><td>HTTP port.</td></tr>
+      <tr><td><code>EDITION</code></td><td><code>opensource</code></td><td>Set by <code>index.js</code>. Leave it alone.</td></tr>
+      <tr><td><code>DEFAULT_PROVIDER</code></td><td><code>kie</code></td><td><code>kie</code> or <code>fal</code>.</td></tr>
+      <tr><td><code>KIE_API_KEY</code><br><code>FAL_API_KEY</code></td><td>—</td><td>A server-side fallback key, for a private instance where you would rather not hand a key to each user. Leave unset for pure bring-your-own-key.</td></tr>
+      <tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td>Enables the assistant. Without it the chat returns a clear error and nothing else is affected.</td></tr>
+      <tr><td><code>ANTHROPIC_MODEL</code></td><td><code>claude-sonnet-5</code></td><td>Model backing the assistant.</td></tr>
+      <tr><td><code>OPENAI_API_KEY</code></td><td>—</td><td>Speech-to-text for voice input in the assistant.</td></tr>
+      <tr><td><code>ADMIN_EMAIL</code><br><code>ADMIN_PASSWORD</code></td><td>—</td><td><b>Effectively required.</b> Seeds your account when the database comes up empty. Without them a self-hosted instance has no way to sign in — public self-serve signup is off by default on purpose.</td></tr>
+      <tr><td><code>DATABASE_SSL</code></td><td>—</td><td>Set to <code>0</code> to disable Postgres TLS. The Docker image sets <code>NODE_ENV=production</code>, which turns TLS on; a local database speaking plain TCP needs this.</td></tr>
+      <tr><td><code>AGENCY_NAME</code></td><td><code>Keou</code></td><td>Shown throughout the interface.</td></tr>
+      <tr><td><code>AGENCY_IMAGE_QUOTA</code><br><code>AGENCY_VIDEO_QUOTA</code></td><td><code>999999</code></td><td>Internal counters only. There is no billing in this edition — leave them high.</td></tr>
+      <tr><td><code>JWT_EXPIRES</code><br><code>REFRESH_EXPIRES</code></td><td><code>15m</code> / <code>30d</code></td><td>Token lifetimes.</td></tr>
+      <tr><td><code>DATABASE_SSL_STRICT</code><br><code>DATABASE_CA</code></td><td>—</td><td>Certificate pinning for managed PostgreSQL.</td></tr>
+      <tr><td><code>DISABLE_POLLER</code></td><td>—</td><td>Set to <code>1</code> on every replica but one, so a single instance polls providers.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="deploy">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg></span>Running it in production</h2>
+
+  <h3>Before you expose it</h3>
+  <ul>
+    <li><b>Set a real <code>JWT_SECRET</code></b> — 32 bytes of randomness, not a word.</li>
+    <li><b>Terminate TLS in front</b> — the app trusts one proxy hop (<code>trust proxy: 1</code>), which is what rate limiting and secure cookies rely on. Put exactly one reverse proxy in front, no more.</li>
+    <li><b>Set <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> for the first boot</b>, then change the password and remove them.</li>
+    <li><b>Configure storage.</b> See the warning above.</li>
+  </ul>
+
+  <h3>Scaling to more than one instance</h3>
+  <p>The app is stateless apart from PostgreSQL and R2, so you can run several replicas behind a load balancer. One thing does not parallelise: the poller.</p>
+  <div class="note">
+    <p>Set <code>DISABLE_POLLER=1</code> on every replica except one. Several pollers racing on the same jobs will duplicate provider calls and burn credits.</p>
+  </div>
+
+  <h3>Staying up to date</h3>
+  <p>The public repository is rebuilt from the Keou core on every change — engine improvements, provider updates and security fixes land as commits on <code>main</code>.</p>
+  <div class="pills">
+    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Railway: enable auto-deploy on <code>main</code></span>
+    <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Self-host: <code>git pull &amp;&amp; npm ci</code>, restart</span>
+  </div>
+</section>
+
+<section id="security">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Keys &amp; security</h2>
+
+  <h3>Where your provider key lives</h3>
+  <p>In your browser's <code>localStorage</code>, and nowhere else. Each generation request carries it in an <code>X-Provider-Key</code> header; the server uses it for that single provider call and never writes it to disk, to the database, or to logs.</p>
+  <div class="note warn">
+    <p><b>The trade-off, stated plainly.</b> Because the key exists only inside a request, the background poller has no key of its own in a bring-your-own-key deployment — it cannot finish a job on your behalf. Your browser drives the polling and the result is stored the moment it lands. Close the tab mid-generation and the job stays pending until you return, and the provider's own URL expires after about fourteen days.</p>
+    <p style="margin-top:9px">Want the server to complete jobs unattended? Set a server-side <code>KIE_API_KEY</code> or <code>FAL_API_KEY</code>. The poller then works normally — at the cost of the guarantee above. That choice is yours, and it is the reason the guarantee is real rather than marketing.</p>
+  </div>
+  <div class="note ok">
+    <p>This is worth verifying rather than believing. Grep the source for <code>X-Provider-Key</code> — you will find it read into a per-request context and passed straight to the provider adapter. That is the whole path.</p>
+  </div>
+
+  <h3>Account security</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:190px">Mechanism</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td>Password storage</td><td>bcrypt hashes. Plaintext is never stored.</td></tr>
+      <tr><td>Sessions</td><td>Short-lived JWT access token plus a refresh token. Lifetimes are configurable.</td></tr>
+      <tr><td>API keys</td><td>Format <code>keou_&lt;32 hex&gt;</code>, 128 bits of entropy. The plaintext is shown once at creation; only the SHA-256 hash is stored. Ten per user.</td></tr>
+      <tr><td>Share links</td><td>128-bit random token, expiry capped at 90 days, optional access code.</td></tr>
+      <tr><td>Rate limiting</td><td>Per-route. Auth is strict (15/min), generation is polling-tolerant, uploads support batch work.</td></tr>
+      <tr><td>Headers</td><td>Helmet, with a content security policy that includes your R2 domain automatically.</td></tr>
+      <tr><td>Outbound URLs</td><td>User-supplied URLs are checked against private and link-local ranges before reaching a provider; the download proxy uses a host allowlist over HTTPS only.</td></tr>
+      <tr><td>Prompt filtering</td><td>Requests for sexual content, minors, violence, hate, real people and identity documents are refused before reaching a provider.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Programmatic access</h3>
+  <span class="code-label">terminal</span>
+<pre><code><span class="tok-c"># 1 — sign in</span>
+TOKEN=$(curl -s -X POST https://your-host/api/auth/login \
+  -H <span class="tok-s">'Content-Type: application/json'</span> \
+  -d <span class="tok-s">'{"email":"you@example.com","password":"…"}'</span> | jq -r .accessToken)
+
+<span class="tok-c"># 2 — mint a long-lived key (shown once)</span>
+curl -s -X POST https://your-host/api/keys \
+  -H <span class="tok-s">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="tok-s">'Content-Type: application/json'</span> \
+  -d <span class="tok-s">'{"label":"ci-pipeline"}'</span></code></pre>
+</section>
+
+<section id="api">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>HTTP API</h2>
+  <p>Everything is under <code>/api</code>. The generation routes sit directly on <code>/api</code> — <code>/api/video</code>, not <code>/api/generate/video</code>. Authenticated routes accept <code>Authorization: Bearer &lt;token&gt;</code> — either a session token from <code>/api/auth/login</code> or a long-lived key from <code>/api/keys</code>.</p>
+
+  <h3>Generation</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:70px">Method</th><th style="width:230px">Path</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/generate</code></td><td>Image from a source photo and a brief.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/video</code></td><td>Video from a still.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/polish</code></td><td>Retouch an existing render.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/remix</code></td><td>Re-imagine in a new direction.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/adapt</code></td><td>Recompose to other aspect ratios.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/upscale</code></td><td>Upscale a render.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/status/:type/:taskId</code></td><td>Poll a running job.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/packs</code></td><td>Available pack definitions.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/pack</code></td><td>Start an export pack.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/pack/:packId/status</code></td><td>Progress of a running pack.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/pack/:packId/zip</code></td><td>Download the finished pack.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/pending</code></td><td>Your unfinished jobs — used to resume after a reload.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/report-failure</code></td><td>Report a generation that came back wrong.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Content and organisation</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:170px">Route</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/upload</code></td><td>Source images and video.</td></tr>
+      <tr><td><code>/api/download</code></td><td>Signed download of a result.</td></tr>
+      <tr><td><code>/api/history</code></td><td>Your library — list, tag, bulk-move, delete.</td></tr>
+      <tr><td><code>/api/projects</code></td><td>Clients.</td></tr>
+      <tr><td><code>/api/campaigns</code></td><td>Campaigns within a client.</td></tr>
+      <tr><td><code>/api/share</code></td><td>Review links and structured client feedback.</td></tr>
+      <tr><td><code>/api/tools</code></td><td>Voice-over, sound effects, image and video upscaling.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Account and team</h3>
+  <div class="tw"><table>
+    <thead><tr><th style="width:170px">Route</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/auth</code></td><td>Register, login, refresh, logout, change password.</td></tr>
+      <tr><td><code>/api/profile</code></td><td>Read and update your profile.</td></tr>
+      <tr><td><code>/api/keys</code></td><td>Long-lived API keys for scripts and MCP clients.</td></tr>
+      <tr><td><code>/api/team</code></td><td>Invite members, set roles, reset, remove.</td></tr>
+      <tr><td><code>/api/admin</code></td><td>Instance settings, quotas, branding. Admin only.</td></tr>
+      <tr><td><code>/api/analytics</code></td><td>ROI, clients, velocity, campaigns, savings. Admin only.</td></tr>
+      <tr><td><code>/api/activity</code></td><td>Instance activity log. Admin only.</td></tr>
+      <tr><td><code>/api/dashboard</code></td><td>Dashboard aggregates.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>A generation, end to end</h3>
+  <span class="code-label">terminal</span>
+<pre><code><span class="tok-c"># upload a source image (field name is "image")</span>
+curl -s -X POST https://your-host/api/upload \
+  -H <span class="tok-s">"Authorization: Bearer $TOKEN"</span> \
+  -F <span class="tok-s">"image=@bottle.jpg"</span>
+
+<span class="tok-c"># generate — your provider key rides the request, it is never stored</span>
+curl -s -X POST https://your-host/api/generate \
+  -H <span class="tok-s">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="tok-s">"X-Provider-Key: $KIE_KEY"</span> \
+  -H <span class="tok-s">'Content-Type: application/json'</span> \
+  -d <span class="tok-s">'{"imgUrl":"…","creativeDirection":"on wet volcanic stone at dawn"}'</span>
+
+<span class="tok-c"># poll until it lands — pass generationId so the result is persisted</span>
+curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generationId=$GEN"</span> \
+  -H <span class="tok-s">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="tok-s">"X-Provider-Key: $KIE_KEY"</span></code></pre>
+  <div class="note">
+    <p>Pass <code>generationId</code> when polling. Without it the call still returns the result, but the row is never marked complete and the image is never copied to durable storage — you get a provider URL that expires.</p>
+  </div>
+</section>
+
+<section id="assistant">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>The assistant</h2>
+  <p>A chat agent with the entire toolset wired in as tools: it can generate, polish, remix, adapt, build packs, produce voice and sound, and file the results under the right client — from a sentence.</p>
+  <p>It runs on <b>your own Anthropic key</b>, set either as <code>ANTHROPIC_API_KEY</code> or from <b>Settings → API Keys</b> inside the app. Without a key the chat returns a clear error and nothing else is affected.</p>
+  <div class="tw"><table>
+    <thead><tr><th style="width:70px">Method</th><th style="width:180px">Path</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/jarvis/chat</code></td><td>Streaming agent loop with the full toolset.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/jarvis/stt</code></td><td>Speech to text. Needs <code>OPENAI_API_KEY</code>.</td></tr>
+      <tr><td><span class="verb post">POST</span></td><td><code>/api/jarvis/tts</code></td><td>Text to speech.</td></tr>
+      <tr><td><span class="verb get">GET</span></td><td><code>/api/conversations</code></td><td>Chat history — list, create, rename, delete.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="troubleshoot">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Troubleshooting</h2>
+  <div class="tw"><table>
+    <thead><tr><th style="width:250px">Symptom</th><th>Cause and fix</th></tr></thead>
+    <tbody>
+      <tr><td><b>Boot fails on migration</b><br><span style="color:var(--ink-faint);font-size:12.5px">role … does not exist</span></td><td><code>DATABASE_URL</code> points at a reachable server but with wrong credentials or a database that does not exist. Create the database and the role first; Keou creates tables, not databases.</td></tr>
+      <tr><td><b>Uploads fail</b></td><td>Storage is not configured. Set the four <code>R2_*</code> variables.</td></tr>
+      <tr><td><b>History shows a result, the image is gone</b></td><td>The result was never copied to storage, so the row points at the provider's temporary URL — those expire after about 14 days. Configure the <code>R2_*</code> variables; new results are then copied the moment they land.</td></tr>
+      <tr><td><b>Generation returns 401 or 403</b></td><td>The provider rejected the key. Check it is pasted whole, is for the right provider, and still has credit.</td></tr>
+      <tr><td><b>Jobs stay pending forever</b></td><td>Two causes. In a bring-your-own-key deployment this is expected when the tab was closed mid-generation — the poller has no key and cannot finish the job; reopen the studio and it resumes from <code>/api/pending</code>. Otherwise the poller is not running: check <code>DISABLE_POLLER</code> is not set on the only instance you have.</td></tr>
+      <tr><td><b>Duplicate generations, credit burning fast</b></td><td>Several replicas are polling. Set <code>DISABLE_POLLER=1</code> on all but one.</td></tr>
+      <tr><td><b>Rate limits trip behind a proxy</b></td><td>The app trusts exactly one proxy hop. More than one reverse proxy makes every request look like it comes from the same address.</td></tr>
+      <tr><td><b>Assistant returns a key error</b></td><td>No Anthropic key. Set <code>ANTHROPIC_API_KEY</code>, or add one in Settings → API Keys.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="licence">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Licence &amp; use</h2>
+  <p>MIT. In plain terms: run it, modify it, self-host it, fork it, use it for client work, charge for that work, and keep the money. You do not owe us a licence fee, a revenue share, or a mention.</p>
+  <p>Attribution is appreciated and not required.</p>
+  <div class="note">
+    <p><b>One thing to know before you deploy</b>, because we would rather say it than have you find it. The build carries a provenance mark in three places: a <code>.origin</code> dotfile, an <code>X-Origin-Sig</code> response header sent on every request, and a keyword in <code>package.json</code>. All three decode to the same string naming Kanaky Tech as the author.</p>
+    <p style="margin-top:9px">It phones nothing home and it gates nothing. You can delete all three — the header is a two-line middleware at the top of <code>server.js</code>, the rest are plain files. We put this in the documentation rather than leaving it to be discovered in a diff.</p>
+  </div>
+</section>
+
+<section id="custom">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>Custom builds</h2>
+  <p>Generic software solves the generic eighty per cent. The remaining twenty — your naming rules, your catalogue schema, your approval chain — is where the hours actually go. Closing that gap is the work we sell, scoped with you rather than priced off a list.</p>
+  <p>3D models, music, sound design, editing, VFX. Features that don't exist yet, integration with the systems you already run, deployment on your own ground, your own models and endpoints, and a handover meant to make you independent of us. You own what we write, under the same MIT terms.</p>
+  <div class="pills">
+    <a class="pill" href="/custom.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>The custom builds page</a>
+    <a class="pill" href="mailto:kevyn@kanaky.xyz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>kevyn@kanaky.xyz</a>
+  </div>
+</section>
+
+<footer class="doc-footer">
+  <p style="margin-bottom:6px"><a href="https://github.com/kanakytech/keou">Source</a> · <a href="/custom.html">Custom builds</a> · <a href="/install.html">Claude MCP</a> · <a href="mailto:kevyn@kanaky.xyz">Contact</a></p>
+  <p style="font-size:12.5px">MIT © Kanaky Tech · Built in Auckland, Aotearoa</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+(() => {
+  const links = [...document.querySelectorAll('.sn-link')];
+  const map = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      links.forEach(a => a.classList.remove('active'));
+      map.get(e.target.id)?.classList.add('active');
+    });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  document.querySelectorAll('.content section[id]').forEach(s => obs.observe(s));
+
+  const nav = document.getElementById('sidenav');
+  const scrim = document.getElementById('scrim');
+  const btn = document.getElementById('menu-btn');
+  const close = () => { nav.classList.remove('open'); scrim.classList.remove('open'); };
+  btn?.addEventListener('click', () => {
+    nav.classList.toggle('open'); scrim.classList.toggle('open');
+  });
+  scrim?.addEventListener('click', close);
+  links.forEach(a => a.addEventListener('click', close));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+</script>
+</body>
+</html>

@@ -212,30 +212,3 @@ export async function refundCredits(userId, creditType, amount, generationId) {
     [userId, creditType, amount, generationId]
   );
 }
-
-/**
- * Manual credit top-up / adjustment by the platform operator (bank transfer
- * received → credits allocated). `amount` may be negative for corrections but
- * the balance never goes below zero. Journaled as purchase|adjustment against
- * the bootstrap admin (credit_transactions.user_id is NOT NULL).
- */
-export async function adjustCreditBalance(amount, note = null) {
-  const admin = await queryOne(`SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1`);
-  if (!admin) throw new Error('No admin user to attribute the transaction to');
-
-  clearAgencyCache();
-  const result = await query(
-    `UPDATE agency SET credit_balance = GREATEST(0, credit_balance + $1), updated_at = NOW()
-     WHERE id = 1 RETURNING credit_balance as balance`,
-    [amount]
-  );
-  if (result.rowCount === 0) throw new Error('Agency row not found');
-  const balance = parseInt(result.rows[0].balance);
-
-  await query(
-    `INSERT INTO credit_transactions (user_id, type, amount, reason, balance_after, note)
-     VALUES ($1, 'credit', $2, $3, $4, $5)`,
-    [admin.id, amount, amount >= 0 ? 'purchase' : 'adjustment', balance, note]
-  );
-  return balance;
-}

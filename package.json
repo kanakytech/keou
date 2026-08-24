@@ -1,7 +1,7 @@
 {
   "name": "keou",
   "version": "1.0.0",
-  "description": "Keou open-source studio — AI product visuals (images + video), self-hosted, bring your own key",
+  "description": "Keou — open-source AI product-visual studio (images + video), self-hosted, bring your own key",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -9,10 +9,12 @@
   },
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "test": "npm run check:syntax && node scripts/smoke.js",
+    "check:syntax": "find src scripts -name '*.js' | xargs -n1 node --check"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/sdk": "^0.120.0",
     "@aws-sdk/client-s3": "^3.1009.0",
     "@aws-sdk/s3-request-presigner": "^3.1009.0",
     "bcryptjs": "^3.0.3",
@@ -25,12 +27,21 @@
     "jszip": "^3.10.1",
     "multer": "^2.1.1",
     "pg": "^8.13.1",
-    "sharp": "^0.34.5",
-    "stripe": "^17.7.0"
+    "sharp": "^0.35.3"
   },
   "author": "Kanaky Tech (https://kanaky.xyz)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kanakytech/keou"
+  },
+  "homepage": "https://studio.kanaky.xyz",
   "keywords": [
     "keou",
+    "ai",
+    "image-generation",
+    "video-generation",
+    "self-hosted",
+    "byok",
     "S2FuYWt5IFRlY2ggwrcgaHR0cHM6Ly9rYW5ha3kueHl6IMK3IG9yaWdpbjprZW91"
   ]
 }

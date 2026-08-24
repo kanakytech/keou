@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Settings — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+.welcome-section{margin-bottom:32px}
+.welcome-section h1{margin-bottom:4px}
+
+/* ── Cost Overview Cards ── */
+.cost-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.cost-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 24px;text-align:center;
+}
+.cost-card .cost-value{
+  font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:800;color:var(--ink);
+  letter-spacing:-0.5px;animation:countIn .5s var(--ease-out) both;
+}
+@keyframes countIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.cost-card .cost-label{font-size:11px;color:var(--ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.cost-card .cost-sub{font-size:11px;color:var(--ink-faint);margin-top:2px}
+
+/* ── Dashboard Grid ── */
+.dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px}
+.dashboard-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;
+}
+.dashboard-card h3{font-size:15px;margin-bottom:16px}
+
+/* ── Usage Curve Chart ── */
+.chart-wrap{position:relative;margin-top:12px}
+.chart-svg{width:100%;height:160px;display:block}
+.chart-line{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart-area{fill:url(#chartGrad);opacity:.15}
+.chart-dot{fill:var(--surface);stroke:var(--ink);stroke-width:2;cursor:pointer;transition:r .15s ease}
+.chart-dot:hover{r:5}
+.chart-label-x{font-size:9px;fill:var(--ink-faint);text-anchor:middle;font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
+.chart-label-y{font-size:9px;fill:var(--ink-faint);text-anchor:end;font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
+.chart-grid{stroke:var(--border);stroke-width:0.5;stroke-dasharray:4 4}
+.chart-tooltip{
+  position:absolute;pointer-events:none;opacity:0;transition:opacity .15s;
+  background:rgba(30,30,30,.95);color:#e5e5e5;padding:6px 12px;border-radius:8px;
+  font-size:11px;font-weight:600;white-space:nowrap;z-index:10;
+  font-family:'Space Grotesk',sans-serif;transform:translate(-50%,-100%);
+  box-shadow:0 4px 16px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.chart-tooltip.visible{opacity:1}
+@keyframes drawLine{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+.chart-line-anim{stroke-dasharray:1000;animation:drawLine 1.2s var(--ease-out) forwards}
+
+/* ── Leaderboard ── */
+.leaderboard-item{
+  display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-bottom:1px solid var(--border);font-size:13px;
+}
+.leaderboard-item:last-child{border-bottom:none}
+.leaderboard-rank{
+  width:24px;height:24px;border-radius:50%;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:var(--ink-muted);flex-shrink:0;
+}
+.leaderboard-rank.gold{background:rgba(217,119,6,.12);color:#fbbf24}
+.leaderboard-rank.silver{background:var(--surface-3);color:var(--ink-soft)}
+.leaderboard-rank.bronze{background:rgba(217,119,6,.15);color:#fb923c}
+.leaderboard-name{flex:1;font-weight:500}
+.leaderboard-count{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.leaderboard-cost{font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+
+/* ── Per-user cost table ── */
+.cost-table{width:100%;border-collapse:collapse;font-size:13px}
+.cost-table th{text-align:left;font-size:11px;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.5px;padding:10px 12px;border-bottom:1.5px solid var(--border)}
+.cost-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+.cost-table tr:last-child td{border-bottom:none}
+.cost-table .num{text-align:right}
+.cost-table th.num{text-align:right}
+.cost-table tr.totals-row td{background:var(--surface-2);font-weight:700;border-top:1.5px solid var(--border);border-bottom:none}
+.dash-spinner{display:inline-block;width:12px;height:12px;border:1.5px solid var(--border);border-top-color:var(--ink-muted);border-radius:50%;vertical-align:-2px;animation:dash-spin .9s linear infinite;margin-right:6px}
+@keyframes dash-spin{to{transform:rotate(360deg)}}
+.empty-inline.error-inline{color:#f87171}
+
+.empty-inline{font-size:12px;color:var(--ink-faint);text-align:center;padding:20px 0}
+
+/* ── Recent Generations (small) ── */
+.recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+.recent-thumb{
+  aspect-ratio:1;border-radius:var(--radius-xs);overflow:hidden;
+  border:1px solid var(--border);transition:all .2s;cursor:pointer;
+}
+.recent-thumb:hover{border-color:var(--ink);transform:translateY(-1px)}
+.recent-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.recent-thumb-audio{
+  aspect-ratio:1;border-radius:var(--radius-xs);overflow:hidden;
+  border:1px solid var(--border);transition:all .2s;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--surface-2);gap:4px;
+}
+.recent-thumb-audio:hover{border-color:var(--ink);transform:translateY(-1px);background:var(--surface-3)}
+.recent-thumb-audio svg{opacity:.5}
+.recent-thumb-audio span{font-size:9px;color:var(--ink-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+@media(max-width:768px){
+  .cost-grid{grid-template-columns:repeat(2,1fr)}
+  .dashboard-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .cost-grid{grid-template-columns:1fr 1fr}
+}
+
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container hidden" id="content">
+  <!-- Welcome -->
+  <div class="welcome-section">
+    <h1 id="welcome-name">Cost Dashboard</h1>
+    <p class="text-muted">Track your API spend and team usage</p>
+  </div>
+
+  <!-- Cost Overview -->
+  <div class="cost-grid stagger-in">
+    <div class="cost-card stat-card">
+      <div class="cost-value stat-value" id="cost-total">$0.00</div>
+      <div class="cost-label stat-label" title="Includes images, videos, polish, upscales, TTS & SFX">Total spend (30d)</div>
+    </div>
+    <div class="cost-card stat-card">
+      <div class="cost-value stat-value" id="cost-images">0</div>
+      <div class="cost-label stat-label">Images generated</div>
+      <div class="cost-sub" id="cost-images-usd">$0.00</div>
+    </div>
+    <div class="cost-card stat-card">
+      <div class="cost-value stat-value" id="cost-videos">0</div>
+      <div class="cost-label stat-label">Videos generated</div>
+      <div class="cost-sub" id="cost-videos-usd">$0.00</div>
+    </div>
+    <div class="cost-card stat-card">
+      <div class="cost-value stat-value" id="cost-team">0</div>
+      <div class="cost-label stat-label">Team members</div>
+      <div class="cost-sub" id="cost-projects">0 active clients</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid stagger-in">
+    <!-- Usage Chart -->
+    <div class="dashboard-card">
+      <h3>Daily usage — Last 14 days</h3>
+      <div class="chart-wrap" id="chart-wrap">
+        <div id="usage-chart">
+          <p class="empty-inline" style="width:100%">Loading...</p>
+        </div>
+        <div class="chart-tooltip" id="chart-tooltip"></div>
+      </div>
+    </div>
+
+    <!-- Top Producers + cost -->
+    <div class="dashboard-card">
+      <h3>Top Producers (30d)</h3>
+      <div id="leaderboard">
+        <p class="empty-inline">No activity yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-user cost breakdown -->
+  <div class="dashboard-card reveal" style="margin-bottom:24px">
+    <div class="flex items-center justify-between mb-16">
+      <h3 style="margin-bottom:0">Per-member cost breakdown</h3>
+      <button class="btn-secondary btn-sm" id="export-csv-btn">View Report</button>
+    </div>
+    <div class="table-container">
+      <table class="cost-table" id="cost-table">
+        <thead><tr><th>Member</th><th class="num" style="text-align:right">Images</th><th class="num" style="text-align:right">Videos</th><th class="num" style="text-align:right">Polish</th><th class="num" style="text-align:right">Cost</th></tr></thead>
+        <tbody id="cost-tbody"><tr><td colspan="5" class="empty-inline"><span class="dash-spinner" aria-hidden="true"></span> Loading usage…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Generations thumbnail strip -->
+  <div class="dashboard-card reveal reveal-delay-1" style="margin-bottom:32px">
+    <h3>Recent Generations</h3>
+    <div class="recent-grid" id="recent-grid">
+      <p class="empty-inline" style="grid-column:1/-1">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Not admin fallback -->
+<div id="not-admin" class="page-container hidden" style="text-align:center;padding:80px 24px">
+  <h2>Admin only</h2>
+  <p class="text-muted" style="margin-bottom:24px">The cost dashboard is only accessible to admins.</p>
+  <a href="/studio.html" class="btn-primary">Back to Studio</a>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/lightbox.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script>
+let dashboardData = null;
+const _recentItems = new Map();
+
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  Nav.render({ active: 'dashboard' });
+
+  // Admin only
+  if (!Auth.isAdmin()) {
+    document.getElementById('not-admin').classList.remove('hidden');
+    return;
+  }
+
+  const contentEl = document.getElementById('content');
+  contentEl.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      contentEl.classList.add('page-enter');
+    });
+  });
+
+  const user = Auth.getUser();
+  document.getElementById('welcome-name').textContent = `Cost Dashboard`;
+
+  // Load dashboard data
+  try {
+    const res = await Auth.authFetch('/api/dashboard');
+    dashboardData = await res.json();
+    renderDashboard(dashboardData);
+  } catch (e) {
+    console.error('Dashboard error:', e);
+  }
+
+  // Open HTML report
+  document.getElementById('export-csv-btn').addEventListener('click', async () => {
+    try {
+      const res = await Auth.authFetch('/api/admin/report');
+      if (!res.ok) { toast('Report failed', true); return; }
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `keou-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      toast('Report downloaded');
+    } catch { toast('Report failed', true); }
+  });
+})();
+
+// Fixed API pricing (hardcoded — models are predefined)
+const PRICES = { image: 0.09, video: 0.15, polish: 0.09, 'img-upscale': 0.12, 'vid-upscale': 0.70, tts: 0.05, sfx: 0.05 };
+const VIDEO_COSTS = { 'grok-imagine': 0.15, 'kling-2.6': 0.55, 'kling-3.0': 0.72, 'seedance-2': 1.64, 'veo3': 1.25 };
+function formatDuration(createdAt, completedAt) {
+  if (!createdAt || !completedAt) return '';
+  const ms = new Date(completedAt) - new Date(createdAt);
+  if (ms <= 0 || ms > 3600000) return '';
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+function getPrices() { return PRICES; }
+function getGenCost(g) {
+  if (g.type === 'video') {
+    const m = g.metadata?.videoModel || 'grok-imagine';
+    return `$${(VIDEO_COSTS[m] || 0.15).toFixed(2)}`;
+  }
+  return '$0.09';
+}
+
+function renderDashboard(data) {
+  const prices = getPrices();
+
+  // Gen stats
+  const gs = data.genStats || {};
+  const imgCount = (gs.images || 0);
+  const vidCount = (gs.videos || 0);
+  const polCount = (gs.polished || 0);
+
+  const imgUpCount = (gs.imgUpscale || 0);
+  const vidUpCount = (gs.vidUpscale || 0);
+  const ttsCount = (gs.tts || 0);
+  const sfxCount = (gs.sfx || 0);
+
+  const imgCost = imgCount * prices.image;
+  const vidCost = vidCount * prices.video;
+  const polCost = polCount * prices.polish;
+  const totalCost = imgCost + vidCost + polCost
+    + imgUpCount * prices['img-upscale']
+    + vidUpCount * prices['vid-upscale']
+    + ttsCount * prices.tts
+    + sfxCount * prices.sfx;
+
+  document.getElementById('cost-total').textContent = `$${totalCost.toFixed(2)}`;
+  document.getElementById('cost-images').textContent = imgCount;
+  document.getElementById('cost-images-usd').textContent = `$${imgCost.toFixed(2)}`;
+  document.getElementById('cost-videos').textContent = vidCount;
+  document.getElementById('cost-videos-usd').textContent = `$${vidCost.toFixed(2)}`;
+  document.getElementById('cost-team').textContent = data.teamStats?.totalMembers || 0;
+  document.getElementById('cost-projects').textContent = `${data.activeProjects || 0} active clients`;
+
+  // Usage chart — SVG smooth curve
+  if (data.usageByDay?.length) {
+    renderCurveChart(data.usageByDay, prices);
+  } else {
+    document.getElementById('usage-chart').innerHTML = '<p class="empty-inline" style="width:100%">No data yet</p>';
+  }
+
+  // Leaderboard with cost
+  if (data.leaderboard?.length) {
+    const rankClass = ['gold', 'silver', 'bronze'];
+    document.getElementById('leaderboard').innerHTML = data.leaderboard.map((u, i) => {
+      const uCost = (u.genCount || 0) * prices.image; // approximate
+      return `
+        <div class="leaderboard-item">
+          <span class="leaderboard-rank ${rankClass[i] || ''}">${i + 1}</span>
+          <span class="leaderboard-name">${escapeHtml(u.name)}</span>
+          <span class="leaderboard-count">${u.genCount || 0}</span>
+          <span class="leaderboard-cost">~$${uCost.toFixed(2)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Per-user cost table
+  loadUserCosts(prices);
+
+  // Recent generations
+  if (data.recentGenerations?.length) {
+    _recentItems.clear();
+    data.recentGenerations.filter(g => g.result_url).forEach(g => _recentItems.set(g.id, g));
+
+    document.getElementById('recent-grid').innerHTML = data.recentGenerations.map(g => {
+      if (!g.result_url) return '';
+      const isAudio = g.type === 'tts' || g.type === 'sfx';
+      const isVideo = g.type === 'video' || g.type === 'vid-upscale';
+
+      if (isAudio) {
+        const icon = g.type === 'tts'
+          ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`
+          : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+        const label = g.type === 'tts' ? 'TTS' : 'SFX';
+        return `
+          <div class="recent-thumb-audio" onclick="openRecentLB(${g.id})">
+            ${icon}
+            <span>${label}</span>
+          </div>
+        `;
+      }
+      if (isVideo) {
+        return `
+          <div class="recent-thumb" onclick="openRecentLB(${g.id})">
+            <video src="${escapeHtml(g.result_url)}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"></video>
+          </div>
+        `;
+      }
+      return `
+        <div class="recent-thumb" onclick="openRecentLB(${g.id})">
+          <img src="${escapeHtml(g.result_url)}" alt="${escapeHtml(g.type)}" loading="lazy">
+        </div>
+      `;
+    }).filter(Boolean).join('') || '<p class="empty-inline" style="grid-column:1/-1">No results yet</p>';
+  }
+}
+
+// ─── SVG Curve Chart ───
+function renderCurveChart(days, prices) {
+  const W = 520, H = 140, PAD_L = 32, PAD_R = 16, PAD_T = 16, PAD_B = 28;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  const points = days.map((d, i) => {
+    const imgs = parseInt(d.images || 0, 10);
+    const vids = parseInt(d.videos || 0, 10);
+    const total = imgs + vids;
+    const cost = (imgs * prices.image + vids * prices.video).toFixed(2);
+    const raw = (d.day || d.date || '').slice(0, 10);
+    const label = raw.slice(5).replace('-', '/');
+    return { total, cost, label, images: imgs, videos: vids };
+  });
+
+  const maxVal = Math.max(...points.map(p => p.total), 1);
+  const coords = points.map((p, i) => ({
+    x: PAD_L + (i / Math.max(points.length - 1, 1)) * plotW,
+    y: PAD_T + plotH - (p.total / maxVal) * plotH,
+    ...p,
+  }));
+
+  // Catmull-Rom to cubic bezier
+  function catmullRom(pts) {
+    if (pts.length < 2) return `M${pts[0].x},${pts[0].y}`;
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(i - 1, 0)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(i + 2, pts.length - 1)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    }
+    return d;
+  }
+
+  const linePath = catmullRom(coords);
+  const areaPath = linePath + ` L${coords[coords.length-1].x},${PAD_T+plotH} L${coords[0].x},${PAD_T+plotH} Z`;
+
+  // Y-axis grid lines (3 levels)
+  const gridSteps = [0.25, 0.5, 0.75, 1];
+  const gridLines = gridSteps.map(s => {
+    const y = PAD_T + plotH - s * plotH;
+    const val = Math.round(s * maxVal);
+    return `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" class="chart-grid"/>
+            <text x="${PAD_L - 6}" y="${y + 3}" class="chart-label-y">${val}</text>`;
+  }).join('');
+
+  // X labels (show every 2nd if many)
+  const skip = points.length > 10 ? 2 : 1;
+  const xLabels = coords.filter((_, i) => i % skip === 0 || i === coords.length - 1)
+    .map(c => `<text x="${c.x}" y="${H - 4}" class="chart-label-x">${c.label}</text>`).join('');
+
+  // Dots
+  const dots = coords.map((c, i) =>
+    `<circle cx="${c.x}" cy="${c.y}" r="3.5" class="chart-dot" data-idx="${i}"/>`
+  ).join('');
+
+  document.getElementById('usage-chart').innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--ink)" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="var(--ink)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      <path d="${areaPath}" class="chart-area"/>
+      <path d="${linePath}" class="chart-line chart-line-anim"/>
+      ${dots}
+      ${xLabels}
+    </svg>
+  `;
+
+  // Tooltip interaction
+  const tooltip = document.getElementById('chart-tooltip');
+  const wrap = document.getElementById('chart-wrap');
+  document.querySelectorAll('.chart-dot').forEach(dot => {
+    dot.addEventListener('mouseenter', (e) => {
+      const idx = parseInt(dot.dataset.idx);
+      const p = coords[idx];
+      tooltip.textContent = `${p.total} gens · $${p.cost}`;
+      tooltip.classList.add('visible');
+      const rect = wrap.getBoundingClientRect();
+      const svgRect = wrap.querySelector('svg').getBoundingClientRect();
+      const scaleX = svgRect.width / W;
+      const scaleY = svgRect.height / H;
+      tooltip.style.left = (p.x * scaleX) + 'px';
+      tooltip.style.top = (p.y * scaleY - 8) + 'px';
+    });
+    dot.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+  });
+}
+
+async function loadUserCosts(prices) {
+  try {
+    const res = await Auth.authFetch('/api/admin/usage');
+    const data = await res.json();
+    const users = data.users || data.usage || [];
+
+    if (!users.length) {
+      document.getElementById('cost-tbody').innerHTML = '<tr><td colspan="5" class="empty-inline">No usage data</td></tr>';
+      return;
+    }
+
+    let totImgs = 0, totVids = 0, totPols = 0, totCost = 0;
+    const rows = users.map(u => {
+      const imgs = parseInt(u.images || u.imageCount || 0, 10);
+      const vids = parseInt(u.videos || u.videoCount || 0, 10);
+      const pols = parseInt(u.polished || u.polishCount || 0, 10);
+      const cost = imgs * prices.image + vids * prices.video + pols * prices.polish;
+      totImgs += imgs; totVids += vids; totPols += pols; totCost += cost;
+      return `
+        <tr>
+          <td><strong>${escapeHtml(u.name)}</strong></td>
+          <td class="num">${imgs}</td>
+          <td class="num">${vids}</td>
+          <td class="num">${pols}</td>
+          <td class="num"><strong>$${cost.toFixed(2)}</strong></td>
+        </tr>
+      `;
+    }).join('');
+    const totalsRow = `
+      <tr class="totals-row">
+        <td>Total</td>
+        <td class="num">${totImgs}</td>
+        <td class="num">${totVids}</td>
+        <td class="num">${totPols}</td>
+        <td class="num">$${totCost.toFixed(2)}</td>
+      </tr>
+    `;
+    document.getElementById('cost-tbody').innerHTML = rows + totalsRow;
+  } catch {
+    document.getElementById('cost-tbody').innerHTML = '<tr><td colspan="5" class="empty-inline error-inline">Failed to load usage. <a href="#" onclick="event.preventDefault();loadUserCosts(getPrices())" style="text-decoration:underline">Retry</a></td></tr>';
+  }
+}
+
+// ─── Lightbox for recent generations ───
+function openRecentLB(genId) {
+  const g = _recentItems.get(genId);
+  if (!g || !g.result_url) return;
+  let pm = {};
+  try { pm = typeof g.metadata === 'string' ? JSON.parse(g.metadata || '{}') : (g.metadata || {}); } catch {}
+  const date = g.created_at ? new Date(g.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '';
+
+  const isAudio = g.type === 'tts' || g.type === 'sfx';
+  const isVideo = g.type === 'video' || g.type === 'vid-upscale';
+
+  // Derive action and model labels
+  const ACTION_MAP = { 'image': 'Generate', 'polish': 'Polish', 'video': 'Video', 'img-upscale': 'Upscale', 'vid-upscale': 'Upscale', 'tts': 'Voice-over', 'sfx': 'Sound Effect' };
+  const MODEL_LABELS = { 'grok-imagine': 'Grok Imagine', 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2.0', 'veo3': 'Veo 3.1' };
+  const actionLabel = pm.remixPrompt ? 'Remix' : (ACTION_MAP[g.type] || g.type);
+  const modelLabel = pm.videoModel ? (MODEL_LABELS[pm.videoModel] || pm.videoModel) : null;
+
+  const meta = {
+    generationId: genId,
+    genType: g.type,
+    action: actionLabel,
+    model: modelLabel,
+    format: g.format || null,
+    date,
+    duration: formatDuration(g.created_at, g.completed_at),
+    cost: getGenCost(g),
+    userName: g.userName || g.name || '',
+    creativeDirection: pm.creativeDirection || null,
+    inputUrl: g.input_url || null,
+  };
+  if (g.type === 'video') {
+    meta.onUpscale = () => upscaleFromDashboard(genId, g.result_url);
+  }
+  const lbType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
+  Lightbox.open(g.result_url, lbType, meta);
+}
+
+// ─── Upscale Video 4K from Dashboard ───
+async function pollTask(url, interval, timeout) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeout;
+    const check = async () => {
+      if (Date.now() > deadline) return reject(new Error('Timeout'));
+      try {
+        const r = await Auth.authFetch(url);
+        const d = await r.json();
+        if (d.failed) return reject(new Error(d.error || 'Task failed'));
+        if (d.ready && d.resultUrl) return resolve(d.resultUrl);
+      } catch {}
+      setTimeout(check, interval);
+    };
+    setTimeout(check, 3000);
+  });
+}
+
+async function upscaleFromDashboard(genId, videoUrl) {
+  toast('Upscaling to 4K — this may take a few minutes');
+  try {
+    const res = await Auth.authFetch('/api/upscale', {
+      method: 'POST',
+      body: JSON.stringify({ videoUrl }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const up = new URLSearchParams();
+    if (data.generationId) up.set('generationId', data.generationId);
+    if (data.recordId) up.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/upscale/${data.taskId}?${up}`, 15000, 600000);
+    toast('4K upscale complete!');
+    Lightbox.open(resultUrl, 'video', { genType: 'upscale', cost: '$0.70', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+  } catch (e) {
+    toast(`Upscale failed: ${e.message}`, true);
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,37 +1,48 @@
 /**
- * Keou Actions — open-source edition execution layer.
+ * Keou Actions — Internal execution layer for Jarvis mode
  *
- * Image and video generation only. The enterprise edition ships additional
- * tools (polish, remix, format adapt, packs, TTS, SFX, upscaling) and a
- * production-tuned prompt stack — https://keou.systems for details.
+ * Orchestrator: handles validation, DB, credits, logging.
+ * Delegates API calls to the active provider (KIE or Fal).
  */
 
-import { query, queryOne } from '../db.js';
-import { deductCredits, refundCredits, getQuotaRemaining } from '../utils/credits.js';
+import { config } from '../config.js';
+import { isCommunity } from '../middleware/edition.js';
+import { query, queryOne, queryAll } from '../db.js';
+import { deductCredits, refundCredits, getQuotaRemaining, billingMode } from '../utils/credits.js';
+import { creditCost } from './pricing.js';
 import { logActivity } from '../utils/activity.js';
 import { getProvider, getProviderApiKey } from './providers/index.js';
 import { persistFromUrl } from './r2.js';
 import { assertSafeUrl } from '../utils/safeUrl.js';
+import { IMAGE_PROMPT, VIDEO_PROMPT, POLISH_PROMPT, ADAPT_PROMPT, buildImagePrompt } from './studio-prompts.js';
 
-// ─── Prompts (community edition) ───
+/**
+ * Units to bill for an action.
+ * quota mode  : 1 unit per image/video generation, tools are free (legacy).
+ * credits mode: Keou credit price from pricing.js — tools are billed too.
+ */
+function billedUnits(type, params = {}) {
+  if (billingMode() === 'credits') return creditCost(type, params);
+  return ['image', 'polish', 'remix', 'adapt', 'video'].includes(type) ? 1 : 0;
+}
 
-const IMAGE_PROMPT = [
-  'You are a commercial product photographer. Place the product from the reference',
-  'image into a clean, professional commercial scene. The product itself is locked:',
-  'keep its shape, colors, text, labels and logos exactly as in the reference —',
-  'never redraw or alter the product. Only generate a realistic environment around',
-  'it: natural lighting, believable surfaces, subtle depth of field. Photorealistic',
-  'output, no cartoon or CGI look.',
-].join(' ');
+/**
+ * Debit before the provider call. The generation row already exists, so if
+ * the atomic debit loses a balance race we mark the row failed instead of
+ * leaving it pending forever, then rethrow for the route's error mapping.
+ */
+async function debitOrFail(userId, type, units, genId) {
+  try {
+    await deductCredits(userId, type, units, genId);
+  } catch (err) {
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
 
-const VIDEO_PROMPT = [
-  'You are a commercial video director. The product in the reference image must stay',
-  'exactly as shown — identical geometry, colors, text and logos at all times. Do not',
-  'rotate it, reveal unseen angles or reinterpret it. Create motion only through',
-  'camera movement, lighting transitions and environment: smooth cinematic moves,',
-  'realistic shadows and reflections. Polished, ad-ready result with no warping or',
-  'flickering.',
-].join(' ');
+// ─── Prompts ───
+// Moved to src/lib/studio-prompts.js so the anonymous studio (essai pipeline)
+// uses the exact same director's briefs. Imported at the top of this file.
 
 // ─── Helpers ───
 
@@ -41,6 +52,34 @@ async function getDefaultProjectId() {
   const row = await queryOne("SELECT id FROM projects WHERE name = 'General' ORDER BY id LIMIT 1");
   if (row) _defaultProjectId = row.id;
   return _defaultProjectId;
+}
+
+// Community edition: workspaces are per-account. A caller may only attach
+// work to a project they created; anything else (including no project at
+// all) lands in their own "My workspace" project, created on first use.
+// Enterprise/opensource keep the shared-agency behavior unchanged.
+const _personalProjectIds = new Map();
+async function resolveOwnedProjectId(userId, projectId) {
+  if (!isCommunity()) return projectId || await getDefaultProjectId();
+
+  if (projectId) {
+    const p = await queryOne('SELECT created_by FROM projects WHERE id = $1', [projectId]);
+    if (p && p.created_by === userId) return projectId;
+  }
+  if (_personalProjectIds.has(userId)) return _personalProjectIds.get(userId);
+  let row = await queryOne(
+    "SELECT id FROM projects WHERE created_by = $1 AND name = 'My workspace' ORDER BY id LIMIT 1",
+    [userId]
+  );
+  if (!row) {
+    row = await queryOne(
+      `INSERT INTO projects (name, description, color, created_by)
+       VALUES ('My workspace', 'Default workspace', '#0A0A0A', $1) RETURNING id`,
+      [userId]
+    );
+  }
+  _personalProjectIds.set(userId, row.id);
+  return row.id;
 }
 
 async function resolveEffectiveCampaignId(projectId, campaignId) {
@@ -55,9 +94,14 @@ async function resolveEffectiveCampaignId(projectId, campaignId) {
 }
 
 /**
- * Shared idempotency check. If a row already exists for this
- * (user, idempotencyKey) and a provider task was created (task_id present)
- * or the row completed, return it so the route can short-circuit.
+ * Shared idempotency check for all creative-tool routes.
+ * If a row already exists for this (user, idempotencyKey) AND a provider task
+ * was successfully created (task_id present) OR the row is already completed,
+ * return the existing record so the route can short-circuit. Otherwise null.
+ *
+ * Rows where task_id is still null (first attempt died before KIE response)
+ * are treated as stale — we return null so the route can proceed with a fresh
+ * insert, and the 23505 unique-violation handler in the route catches any race.
  */
 export async function findIdempotent(userId, idempotencyKey) {
   if (!idempotencyKey) return null;
@@ -74,9 +118,15 @@ export async function findIdempotent(userId, idempotencyKey) {
 }
 
 /**
- * Persist a provider result URL to R2 (if configured) and mark the generation
- * completed. Only fires for rows still pending/processing, so a concurrent
- * winner's write is preserved.
+ * Persist a provider result URL to R2 and mark the generation completed.
+ * Safe to call from any worker (client poll, server poller, sync handler):
+ * the UPDATE only fires for rows still in pending/processing state, so a
+ * concurrent winner's write is preserved.
+ *
+ * @param {number} genId
+ * @param {string} resultUrl - Raw provider URL (KIE temp, Fal output)
+ * @param {string} type - generation type (image/video/polish/…)
+ * @returns {Promise<string>} final URL written to DB (R2 if persist succeeded, else raw)
  */
 export async function persistAndComplete(genId, resultUrl, type) {
   const ext = type.includes('video') || type === 'vid-upscale' ? 'mp4'
@@ -91,6 +141,7 @@ export async function persistAndComplete(genId, resultUrl, type) {
   } catch (r2Err) {
     console.error('[R2 PERSIST]', r2Err.message);
   }
+  // Only update if still pending/processing — preserves a concurrent winner's data
   await query(
     `UPDATE generations
        SET status='completed', result_url=$1, r2_key=COALESCE($2, r2_key), completed_at=NOW()
@@ -100,28 +151,23 @@ export async function persistAndComplete(genId, resultUrl, type) {
   return finalUrl;
 }
 
-/** Handle provider result: immediate or async (store taskId for polling). */
+/**
+ * Handle provider result: immediate (Fal sync) or async (KIE / Fal queue)
+ * Updates DB accordingly and optionally persists to R2.
+ */
 async function handleProviderResult(genId, result, providerName, type) {
   if (result.immediate && result.resultUrl) {
     await persistAndComplete(genId, result.resultUrl, type);
   } else {
+    // Async — store taskId for polling, include provider info in metadata
     const metaUpdate = { provider: providerName };
     if (result.falEndpoint) metaUpdate.falEndpoint = result.falEndpoint;
+
     await query(
       `UPDATE generations SET status=$1, task_id=$2, record_id=$3,
        metadata = metadata::jsonb || $4::jsonb WHERE id=$5`,
       ['processing', result.taskId, result.recordId || null, JSON.stringify(metaUpdate), genId]
     );
-  }
-}
-
-/** Debit before the provider call; mark the row failed if the debit loses a race. */
-async function debitOrFail(userId, type, units, genId) {
-  try {
-    await deductCredits(userId, type, units, genId);
-  } catch (err) {
-    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
-    throw err;
   }
 }
 
@@ -132,7 +178,7 @@ export async function executeGenerateImage(userId, { imgUrl, format, creativeDir
   assertSafeUrl(imgUrl);
   const provider = await getProvider();
   const apiKey = await getProviderApiKey(provider.name);
-  const effectiveProjectId = projectId || await getDefaultProjectId();
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
   const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
 
   const metadata = { provider: provider.name };
@@ -145,10 +191,7 @@ export async function executeGenerateImage(userId, { imgUrl, format, creativeDir
   );
   const genId = gen.rows[0].id;
 
-  let finalPrompt = IMAGE_PROMPT;
-  if (creativeDirection) {
-    finalPrompt += ` CREATIVE DIRECTION: ${creativeDirection}. Blend it into the scene, lighting and mood — never alter the product itself.`;
-  }
+  const finalPrompt = buildImagePrompt(creativeDirection);
 
   // Deduct BEFORE provider call — refund on failure
   await debitOrFail(userId, 'image', 1, genId);
@@ -163,10 +206,11 @@ export async function executeGenerateImage(userId, { imgUrl, format, creativeDir
 
     await handleProviderResult(genId, result, provider.name, 'image');
 
+    // Calculate and store real API cost
     const cost = provider.calculateCost('image', { resolution: '2K' });
     await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
 
-    logActivity(userId, 'generation', 'generation', genId, { type: 'image', provider: provider.name });
+    logActivity(userId, 'generation', 'generation', genId, { type: 'image', source: 'jarvis', provider: provider.name });
 
     return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'image' };
   } catch (err) {
@@ -182,24 +226,25 @@ export async function executeGenerateVideo(userId, { imageUrl, videoModel, creat
   const provider = await getProvider();
   const apiKey = await getProviderApiKey(provider.name);
   const model = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2'].includes(videoModel) ? videoModel : 'grok-imagine';
-  const effectiveProjectId = projectId || await getDefaultProjectId();
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
   const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
 
   const metadata = { videoModel: model, provider: provider.name };
   if (creativeDirection) metadata.creativeDirection = creativeDirection;
+  const units = billedUnits('video', { model, duration });
 
   const gen = await query(
     `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, credits_used, metadata, idempotency_key)
-     VALUES ($1, $2, $3, 'video', 'pending', $4, 1, $5, $6) RETURNING id`,
-    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, JSON.stringify(metadata), idempotencyKey || null]
+     VALUES ($1, $2, $3, 'video', 'pending', $4, $5, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, units, JSON.stringify(metadata), idempotencyKey || null]
   );
   const genId = gen.rows[0].id;
 
   let finalPrompt = VIDEO_PROMPT;
-  if (creativeDirection) finalPrompt += ` CREATIVE DIRECTION: ${creativeDirection}. Apply it through camera, lighting and atmosphere while keeping the product locked.`;
+  if (creativeDirection) finalPrompt += ` ADDITIONAL CREATIVE DIRECTION: ${creativeDirection}. Integrate this into camera, lighting, atmosphere while keeping product locked.`;
 
   // Deduct BEFORE provider call — refund on failure
-  await debitOrFail(userId, 'video', 1, genId);
+  await debitOrFail(userId, 'video', units, genId);
   try {
     const result = await provider.generateVideo(apiKey, {
       model, prompt: finalPrompt, imageUrl, duration, resolution, mode, sound, aspectRatio, generateAudio, variant,
@@ -207,36 +252,262 @@ export async function executeGenerateVideo(userId, { imageUrl, videoModel, creat
 
     await handleProviderResult(genId, result, provider.name, 'video');
 
+    // Calculate and store real API cost
     const cost = provider.calculateCost('video', { model, duration });
     await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
 
-    logActivity(userId, 'generation', 'generation', genId, { type: 'video', model, provider: provider.name });
+    logActivity(userId, 'generation', 'generation', genId, { type: 'video', model, source: 'jarvis', provider: provider.name });
 
     return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'video' };
   } catch (err) {
-    await refundCredits(userId, 'video', 1, genId);
+    if (units > 0) await refundCredits(userId, 'video', units, genId);
     await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
     throw err;
   }
 }
 
-// ─── Enterprise-only tools ───
-// These endpoints are 404-gated in this edition; the stubs exist so shared
-// modules import cleanly. The full suite lives in Keou Enterprise.
+export async function executePolish(userId, { imageUrl, ratio, projectId, campaignId, idempotencyKey }) {
+  if (!imageUrl) throw new Error('Image URL required');
+  assertSafeUrl(imageUrl);
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
 
-const enterpriseOnly = (name) => async () => {
-  throw new Error(`${name} is part of Keou Enterprise — see https://keou.systems`);
-};
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, format, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'polish', 'pending', $4, $5, 1, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, ratio || '1:1', JSON.stringify({ provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
 
-export const executePolish = enterpriseOnly('Polish');
-export const executeRemix = enterpriseOnly('Remix');
-export const executeAdapt = enterpriseOnly('Format adapt');
-export const executeTts = enterpriseOnly('Text-to-speech');
-export const executeSfx = enterpriseOnly('Sound effects');
-export const executeImageUpscale = enterpriseOnly('Image upscale');
-export const executeVideoUpscale = enterpriseOnly('Video upscale');
+  // Deduct BEFORE provider call — refund on failure
+  await debitOrFail(userId, 'image', 1, genId);
+  try {
+    const result = await provider.polish(apiKey, { prompt: POLISH_PROMPT, imageUrl, aspectRatio: ratio || '1:1', resolution: '2K' });
+    await handleProviderResult(genId, result, provider.name, 'polish');
 
-// ─── Compat exports ───
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('polish', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'polish' };
+  } catch (err) {
+    await refundCredits(userId, 'image', 1, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeRemix(userId, { imageUrl, remixPrompt, ratio, projectId, campaignId, idempotencyKey }) {
+  if (!imageUrl) throw new Error('Image URL required');
+  assertSafeUrl(imageUrl);
+  if (!remixPrompt) throw new Error('Remix prompt required');
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, format, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'image', 'pending', $4, $5, 1, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, ratio || '1:1', JSON.stringify({ remixPrompt, provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  // Deduct BEFORE provider call — refund on failure
+  await debitOrFail(userId, 'image', 1, genId);
+  try {
+    const result = await provider.remix(apiKey, { prompt: remixPrompt, imageUrl, aspectRatio: ratio || '1:1', resolution: '2K' });
+    await handleProviderResult(genId, result, provider.name, 'image');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('remix', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'remix' };
+  } catch (err) {
+    await refundCredits(userId, 'image', 1, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeAdapt(userId, { imageUrl, ratio, projectId, campaignId, idempotencyKey }) {
+  if (!imageUrl) throw new Error('Image URL required');
+  assertSafeUrl(imageUrl);
+  if (!ratio) throw new Error('Target ratio required');
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, format, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'image', 'pending', $4, $5, 1, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, ratio, JSON.stringify({ adaptedFrom: 'original', targetRatio: ratio, provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  // Deduct BEFORE provider call — refund on failure
+  await debitOrFail(userId, 'image', 1, genId);
+  try {
+    const result = await provider.adapt(apiKey, { prompt: ADAPT_PROMPT, imageUrl, aspectRatio: ratio });
+    await handleProviderResult(genId, result, provider.name, 'image');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('adapt', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'adapt' };
+  } catch (err) {
+    await refundCredits(userId, 'image', 1, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeTts(userId, { text, voice, stability, similarity_boost, style, speed, projectId, campaignId, idempotencyKey }) {
+  if (!text) throw new Error('Text required');
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+
+  const units = billedUnits('tts');
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'tts', 'pending', $4, $5, $6) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, units, JSON.stringify({ toolType: 'tts', voice: voice || 'Rachel', charCount: text.length, provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  if (units > 0) await debitOrFail(userId, 'tts', units, genId);
+  try {
+    const result = await provider.tts(apiKey, { text, voice, stability, similarity_boost, style, speed });
+    await handleProviderResult(genId, result, provider.name, 'tts');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('tts', { charCount: text.length });
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    logActivity(userId, 'tool_use', 'generation', genId, { tool: 'tts', voice, provider: provider.name });
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'tts' };
+  } catch (err) {
+    if (units > 0) await refundCredits(userId, 'tts', units, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeSfx(userId, { text, duration_seconds, projectId, campaignId, idempotencyKey }) {
+  if (!text) throw new Error('Sound description required');
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+
+  const units = billedUnits('sfx');
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'sfx', 'pending', $4, $5, $6) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, units, JSON.stringify({ toolType: 'sfx', provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  if (units > 0) await debitOrFail(userId, 'sfx', units, genId);
+  try {
+    const result = await provider.sfx(apiKey, { text, duration_seconds });
+    await handleProviderResult(genId, result, provider.name, 'sfx');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('sfx', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    logActivity(userId, 'tool_use', 'generation', genId, { tool: 'sfx', provider: provider.name });
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'sfx' };
+  } catch (err) {
+    if (units > 0) await refundCredits(userId, 'sfx', units, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeImageUpscale(userId, { imageUrl, upscaleFactor, projectId, campaignId, idempotencyKey }) {
+  if (!imageUrl) throw new Error('Image URL required');
+  assertSafeUrl(imageUrl);
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+  const factor = upscaleFactor === '8' ? '8' : '4';
+
+  const units = billedUnits('img-upscale');
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'img-upscale', 'pending', $4, $5, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, imageUrl, units, JSON.stringify({ toolType: 'img-upscale', factor, provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  if (units > 0) await debitOrFail(userId, 'img-upscale', units, genId);
+  try {
+    const result = await provider.upscaleImage(apiKey, { imageUrl, upscaleFactor: factor });
+    await handleProviderResult(genId, result, provider.name, 'img-upscale');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('img-upscale', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    logActivity(userId, 'tool_use', 'generation', genId, { tool: 'image-upscale', factor, provider: provider.name });
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'img-upscale' };
+  } catch (err) {
+    if (units > 0) await refundCredits(userId, 'img-upscale', units, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+export async function executeVideoUpscale(userId, { videoUrl, upscaleFactor, projectId, campaignId, idempotencyKey }) {
+  if (!videoUrl) throw new Error('Video URL required');
+  assertSafeUrl(videoUrl);
+  const provider = await getProvider();
+  const apiKey = await getProviderApiKey(provider.name);
+  const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
+  const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
+  const factor = upscaleFactor === '2' ? '2' : '4';
+
+  const units = billedUnits('vid-upscale');
+  const gen = await query(
+    `INSERT INTO generations (user_id, project_id, campaign_id, type, status, input_url, credits_used, metadata, idempotency_key)
+     VALUES ($1, $2, $3, 'vid-upscale', 'pending', $4, $5, $6, $7) RETURNING id`,
+    [userId, effectiveProjectId, effectiveCampaignId, videoUrl, units, JSON.stringify({ toolType: 'vid-upscale', factor, provider: provider.name }), idempotencyKey || null]
+  );
+  const genId = gen.rows[0].id;
+
+  if (units > 0) await debitOrFail(userId, 'vid-upscale', units, genId);
+  try {
+    const result = await provider.upscaleVideo(apiKey, { videoUrl, upscaleFactor: factor });
+    await handleProviderResult(genId, result, provider.name, 'vid-upscale');
+
+    // Calculate and store real API cost
+    const cost = provider.calculateCost('vid-upscale', {});
+    await query('UPDATE generations SET api_cost = $1 WHERE id = $2', [cost, genId]);
+
+    logActivity(userId, 'tool_use', 'generation', genId, { tool: 'video-upscale', factor, provider: provider.name });
+
+    return { taskId: result.taskId || null, recordId: result.recordId || null, generationId: genId, type: 'vid-upscale' };
+  } catch (err) {
+    if (units > 0) await refundCredits(userId, 'vid-upscale', units, genId);
+    await query('UPDATE generations SET status = $1, error = $2 WHERE id = $3', ['failed', err.message, genId]);
+    throw err;
+  }
+}
+
+// ─── Exports kept for backward compat (jarvis.js imports getApiKey) ───
 
 export async function getApiKey() {
   const prov = await getProvider();

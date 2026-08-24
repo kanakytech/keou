@@ -162,11 +162,23 @@ const Select = (() => {
     // Build options from native select
     function buildOptions() {
       const opts = Array.from(sel.options);
-      dropdown.innerHTML = opts.map((opt, i) => `
-        <div class="ks-select-option${sel.selectedIndex === i ? ' selected' : ''}" data-index="${i}" data-value="${opt.value}">
-          ${opt.textContent}
-        </div>
-      `).join('');
+      // Construit en DOM, jamais en innerHTML.
+      //
+      // La version précédente faisait `dropdown.innerHTML = … ${opt.textContent} …`.
+      // Or textContent rend le texte DÉCODÉ : une page qui écrivait correctement
+      // « &lt;img&gt; » dans son <option> le voyait ressortir en « <img> » vivant.
+      // Ce composant annulait donc l'échappement de TOUTES les pages qui
+      // l'utilisent, si soigneux fût le travail en amont. opt.value entrait de
+      // même brut dans un attribut.
+      dropdown.textContent = '';
+      opts.forEach((opt, i) => {
+        const d = document.createElement('div');
+        d.className = 'ks-select-option' + (sel.selectedIndex === i ? ' selected' : '');
+        d.dataset.index = String(i);
+        d.dataset.value = opt.value;
+        d.textContent = opt.textContent;
+        dropdown.appendChild(d);
+      });
 
       // Update trigger text
       const selected = opts[sel.selectedIndex];

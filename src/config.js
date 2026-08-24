@@ -13,11 +13,15 @@ export const config = {
 
   // ─── Edition ───
   // 'enterprise' (default): full platform — accounts, team, all tools, credits.
-  // 'opensource': limited self-host/demo build — no login (auto-session),
-  // image+video studio only, user brings their own provider key per request.
-  // 'community': hosted free tier — public self-serve signup, full creative
-  // suite unlocked, BYOK per request (the platform's provider keys are never
-  // used). Operator/cost surfaces (assistant, billing, platform) stay off.
+  // 'opensource': the self-hosted build. Every feature of the suite is
+  //   unlocked — nothing is held back. Accounts ARE required: the edition used
+  //   to hand out a session with no identifier at all, which was removed for
+  //   security, so a deployment seeds its first account from ADMIN_EMAIL /
+  //   ADMIN_PASSWORD and signs in normally. Each request carries the caller's
+  //   own provider key (BYOK).
+  // 'community': hosted free tier — public self-serve signup, same full suite,
+  //   BYOK per request (the platform's provider keys are never used).
+  // Operator and cost surfaces (billing, platform) stay off outside enterprise.
   edition: ['opensource', 'community'].includes(process.env.EDITION)
     ? process.env.EDITION
     : 'enterprise',
@@ -28,7 +32,7 @@ export const config = {
   // topped up manually through /api/platform/credits.
   billingMode: process.env.BILLING_MODE === 'credits' ? 'credits' : 'quota',
 
-  platformAdminToken: null, // not used in the open-source edition
+  platformAdminToken: null, // commercial deployments only
 
   agency: {
     name: process.env.AGENCY_NAME || 'Agency',
@@ -70,7 +74,7 @@ export const config = {
     accessKeyId: process.env.R2_ACCESS_KEY,
     secretAccessKey: process.env.R2_SECRET_KEY,
     bucket: process.env.R2_BUCKET || 'keou-uploads',
-    publicUrl: process.env.R2_PUBLIC_URL || '', // e.g. https://r2.keou.systems — set after enabling R2 custom domain
+    publicUrl: process.env.R2_PUBLIC_URL || '', // e.g. https://r2.kanaky.xyz — set after enabling R2 custom domain
   },
 
   cf: {
@@ -80,34 +84,23 @@ export const config = {
 
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
+    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
   },
 
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
   },
 
-  // ─── Stripe (Keou Pro subscription) ───
+  // ─── Stripe — instance hébergée uniquement ───
+  // Sert à facturer NOTRE déploiement managé. Aucune fonctionnalité du studio
+  // ne lit ce bloc ; il est vidé dans la construction open source.
   // sk_live_* in production, sk_test_* in dev. Webhook secret comes from
   // `stripe listen --forward-to ...` for local, or the Stripe dashboard
   // (Webhooks → Add endpoint) for prod.
-  stripe: {
-    secretKey: process.env.STRIPE_SECRET_KEY,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-    proPriceId: process.env.STRIPE_PRO_PRICE_ID, // recurring $19/mo Stripe Price ID
-    portalReturnUrl: process.env.STRIPE_PORTAL_RETURN_URL || 'https://keou.systems/dashboard',
-    successUrl: process.env.STRIPE_SUCCESS_URL || 'https://keou.systems/pro?session=success',
-    cancelUrl: process.env.STRIPE_CANCEL_URL || 'https://keou.systems/pro?session=cancelled',
-  },
+  // Payment plumbing belongs to our hosted commercial instance and is not
+  // part of the open-source edition. Nothing in the studio reads it.
+  stripe: {},
 
-  pro: {
-    // Pro plan grants: extra image quota per month + unlocks premium tools
-    monthlyImageBonus: parseInt(process.env.PRO_MONTHLY_IMAGE_BONUS) || 500,
-    monthlyVideoBonus: parseInt(process.env.PRO_MONTHLY_VIDEO_BONUS) || 30,
-    // Free trial: how many generations a free user gets before being asked to upgrade
-    freeMonthlyImages: parseInt(process.env.FREE_MONTHLY_IMAGES) || 15,
-  },
 };
 
 // ─── Startup validation ───

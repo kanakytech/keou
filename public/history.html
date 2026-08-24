@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Content Library — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+.history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.filters{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+.filter-select{
+  padding:8px 14px;border:1.5px solid var(--border);border-radius:100px;
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;
+  color:var(--ink-muted);background:var(--surface);cursor:pointer;outline:none;
+  transition:border-color .2s var(--ease-out);
+}
+.filter-select:focus{border-color:rgba(255,255,255,.2)}
+.filter-select option{background:#141414;color:#e5e5e5}
+
+/* ── Filter Toggle Button ── */
+.filter-toggle{
+  padding:7px 16px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink-muted);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s var(--ease-out);
+  display:inline-flex;align-items:center;gap:6px;
+}
+.filter-toggle:hover{border-color:rgba(255,255,255,.18);color:var(--ink)}
+.filter-toggle.active{border-color:rgba(255,255,255,.2);color:var(--ink);background:var(--surface-2)}
+.filter-toggle svg{width:14px;height:14px;transition:transform .2s}
+.filter-toggle.active svg{transform:rotate(180deg)}
+.filter-panel{
+  display:none;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:center;
+  animation:fadeInUp .2s var(--ease-out);
+}
+.filter-panel.open{display:flex}
+
+.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.history-item{
+  border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;transition:all .3s var(--ease-out);position:relative;cursor:pointer;
+  background:rgba(255,255,255,.03);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.history-item:hover{border-color:rgba(255,255,255,.15);transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.history-item:active{transform:scale(0.97);transition-duration:.1s}
+.history-item.expired{opacity:.4;filter:grayscale(.3)}
+.history-item.expired img{filter:grayscale(0.3)}
+.history-thumb{width:100%;aspect-ratio:1;overflow:hidden;background:var(--surface-2);position:relative}
+.history-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s var(--ease-out)}
+.history-thumb video{width:100%;height:100%;object-fit:cover;display:block;background:#000;transition:transform .35s var(--ease-out)}
+.history-item:hover .history-thumb img,.history-item:hover .history-thumb video{transform:scale(1.05)}
+.history-item.video-item .history-thumb::after{content:'▶';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#e5e5e5;font-size:14px;backdrop-filter:blur(4px);opacity:1;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;justify-content:center;z-index:1}
+.history-item.video-item:hover .history-thumb::after{opacity:0}
+.history-thumb .placeholder{
+  width:100%;height:100%;display:flex;
+  align-items:center;justify-content:center;font-size:32px;color:var(--ink-faint);
+}
+.history-meta{padding:12px;border-top:1px solid var(--border)}
+.history-meta .type{font-size:12px;font-weight:600;text-transform:capitalize;margin-bottom:2px}
+.history-meta .date{font-size:11px;color:var(--ink-muted)}
+.history-meta .meta-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.history-meta .status-tag{
+  display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;
+  border-radius:100px;
+}
+.history-meta .status-tag.completed{background:rgba(34,197,94,.15);color:#4ade80}
+.history-meta .status-tag.processing{background:rgba(245,158,11,.15);color:#fbbf24}
+
+/* ── Expiry Badges ── */
+.expiry-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;
+  transition:background .3s var(--ease-out), color .3s var(--ease-out), opacity .3s var(--ease-out);
+}
+.expiry-badge.ok,.expiry-badge.warning,.expiry-badge.critical{background:rgba(255,255,255,.04);color:var(--ink)}
+.expiry-badge.expired{background:rgba(255,255,255,.03);color:var(--ink-muted)}
+
+.user-tag{font-size:10px;color:var(--ink-faint);font-weight:500}
+
+/* ── Tag Badges ── */
+/* ── Action Buttons ── */
+.history-actions{display:flex;border-top:1px solid var(--border)}
+.h-action{
+  flex:1;padding:9px 6px;background:transparent;border:none;
+  border-right:1px solid var(--border);color:var(--ink-muted);
+  font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;cursor:pointer;
+  transition:all .2s var(--ease-out);display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.h-action:last-child{border-right:none}
+.h-action:hover{background:var(--surface-2);color:var(--ink)}
+.h-action.danger:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.h-action:active{transform:scale(0.94);transition-duration:.06s}
+.h-action.processing{opacity:.5;pointer-events:none}
+
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:32px;flex-wrap:wrap}
+.page-btn{
+  min-width:40px;height:40px;padding:0 14px;
+  border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink-muted);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.page-btn:hover:not(:disabled):not(.active){border-color:var(--ink);background:var(--surface-2);color:var(--ink)}
+.page-btn:active:not(:disabled){transform:scale(0.95);transition-duration:.08s}
+.page-btn:disabled{opacity:.3;cursor:not-allowed}
+.page-btn.active{background:var(--ink);color:#050505;border-color:var(--ink);font-weight:700}
+.page-btn.nav{padding:0 16px}
+.page-ellipsis{font-size:13px;color:var(--ink-faint);padding:0 4px;user-select:none}
+/* empty-state styles handled by design system (styles.css) */
+
+/* ── Audio Card ── */
+.audio-thumb{
+  width:100%;aspect-ratio:1;overflow:hidden;background:var(--surface-2);position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;
+}
+.audio-thumb .audio-icon{color:var(--ink-faint);transition:color .3s}
+.history-item:hover .audio-thumb .audio-icon{color:var(--ink)}
+.audio-thumb .audio-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink-faint);transition:color .3s;
+}
+.history-item:hover .audio-thumb .audio-label{color:var(--ink-muted)}
+.audio-player{
+  width:100%;padding:8px 12px;border-top:1px solid var(--border);
+  box-sizing:border-box;
+}
+.audio-player audio{width:100%;height:28px;border-radius:6px}
+
+/* ── Processing overlay on card ── */
+.history-item .gen-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,0.2);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  z-index:5;
+}
+.gen-overlay .spinner{width:24px;height:24px;border:2.5px solid rgba(255,255,255,.1);border-top-color:#e5e5e5;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-overlay span{font-size:11px;color:var(--ink-muted);font-weight:500}
+
+@media(max-width:768px){
+  .history-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+  /* Touch targets >=44px (WCAG 2.5.5) on mobile */
+  .page-btn{min-width:44px;height:44px;font-size:14px}
+  .filter-toggle{min-height:44px;padding:10px 16px}
+  /* Action row taller for thumbs */
+  .h-action{min-height:44px;padding:12px 6px;font-size:12px}
+}
+@media(max-width:480px){
+  .history-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .history-header{flex-direction:column;align-items:stretch;gap:10px}
+  .filters{gap:8px;display:flex;flex-wrap:wrap}
+  .filter-select{font-size:14px;padding:10px 12px;flex:1;min-width:0;min-height:44px}
+  /* Stack page header items so user keeps full screen for grid */
+  .h-action{font-size:11px;padding:11px 4px;gap:3px}
+  .h-action svg{width:14px;height:14px}
+  /* Make pagination buttons more thumb-friendly with extra spacing */
+  .pagination{gap:8px;margin-top:24px}
+}
+
+
+/* ── Multi-select ── */
+.select-check{position:absolute;top:8px;left:8px;z-index:5;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:none;align-items:center;justify-content:center;transition:all .15s}
+.select-mode .select-check{display:flex}
+.select-check.checked{background:var(--ink);border-color:var(--ink)}
+.select-check.checked::after{content:'';width:6px;height:10px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-2px}
+.select-mode .history-item{cursor:pointer}
+.history-item.selected{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+/* "+ New client" action option styled in shared/styles.css */
+
+/* ── Floating action bar — sticky pill au top de la liste, toujours visible ── */
+.bulk-bar-wrap{
+  position:sticky;top:12px;z-index:50;
+  text-align:center;
+  pointer-events:none;
+  margin:-8px 0 16px;
+  height:0; /* le wrap ne prend pas de place dans le flow */
+  overflow:visible;
+}
+.bulk-bar{
+  pointer-events:auto;
+  display:inline-flex;align-items:center;gap:4px;
+  padding:6px 6px 6px 18px;
+  background:rgba(20,20,20,.92);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:100px;
+  backdrop-filter:blur(20px) saturate(140%);
+  -webkit-backdrop-filter:blur(20px) saturate(140%);
+  box-shadow:0 18px 48px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.04);
+  opacity:0;
+  transform:translateY(-12px) scale(.96);
+  transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);
+  max-width:calc(100vw - 32px);
+}
+.bulk-bar.visible{opacity:1;transform:translateY(0) scale(1)}
+.bulk-bar:not(.visible){pointer-events:none}
+.bulk-bar .bulk-count{
+  font-size:13px;font-weight:600;color:var(--ink);
+  padding-right:14px;margin-right:4px;
+  border-right:1px solid rgba(255,255,255,.1);
+  white-space:nowrap;
+}
+.bulk-bar .bulk-btn{
+  padding:8px 14px;border-radius:100px;border:none;
+  background:transparent;color:var(--ink);
+  font-size:12px;font-weight:500;cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;transition:background .15s,color .15s;
+  white-space:nowrap;
+}
+.bulk-bar .bulk-btn:hover{background:rgba(255,255,255,.08)}
+.bulk-bar .bulk-btn.danger{color:#f87171}
+.bulk-bar .bulk-btn.danger:hover{background:rgba(248,113,113,.14)}
+.bulk-bar .bulk-btn.cancel{
+  width:30px;height:30px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-left:4px;color:var(--ink-muted);font-size:18px;line-height:1;
+  border:1px solid rgba(255,255,255,.08);
+}
+.bulk-bar .bulk-btn.cancel:hover{color:var(--ink);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18)}
+
+@media(max-width:768px){
+  .bulk-bar-wrap{top:8px}
+  .bulk-bar{
+    padding:5px 5px 5px 14px;gap:2px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+  }
+  .bulk-bar::-webkit-scrollbar{display:none}
+  .bulk-bar .bulk-count{font-size:12px;padding-right:10px;margin-right:2px}
+  .bulk-bar .bulk-btn{padding:7px 11px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- Ambient glow background -->
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container" id="content" style="display:none">
+  <div class="history-header">
+    <h2>Content Library</h2>
+    <span class="nav-tag" id="total-count">0 items</span>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-type="">All</button>
+      <button class="tab-btn" data-type="image">Images</button>
+      <button class="tab-btn" data-type="video">Videos</button>
+      <button class="tab-btn" data-type="audio">Audio</button>
+      <button class="tab-btn" data-type="polish">Polished</button>
+    </div>
+    <button class="filter-toggle" id="filter-toggle" onclick="toggleFilterPanel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      Filter
+    </button>
+    <button class="filter-toggle" id="select-toggle">Select</button>
+  </div>
+  <div class="filter-panel" id="filter-panel">
+    <select class="filter-select" id="filter-project">
+      <option value="">All clients</option>
+    </select>
+    <select class="filter-select" id="filter-campaign" style="display:none">
+      <option value="">All campaigns</option>
+    </select>
+    <select class="filter-select" id="filter-user" style="display:none">
+      <option value="">All members</option>
+    </select>
+  </div>
+
+  <!-- Sticky pill — flotte au top de la liste pendant tout le scroll -->
+  <div class="bulk-bar-wrap">
+    <div class="bulk-bar" id="bulk-bar" role="toolbar" aria-label="Bulk actions">
+      <span class="bulk-count" id="bulk-count">0 selected</span>
+      <button class="bulk-btn" id="bulk-download">Download</button>
+      <button class="bulk-btn" id="bulk-share">Share</button>
+      <button class="bulk-btn" id="bulk-move">Move to client</button>
+      <button class="bulk-btn danger" id="bulk-delete">Delete</button>
+      <button class="bulk-btn cancel" id="bulk-cancel" aria-label="Exit selection mode" title="Exit selection mode">&times;</button>
+    </div>
+  </div>
+
+  <div class="history-grid" id="history-grid"></div>
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-icon" id="empty-icon-slot"></div>
+    <h3 id="empty-title">No assets yet</h3>
+    <p id="empty-subtitle">Start creating in the <a href="/studio.html" style="font-weight:600;text-decoration:underline">Studio</a></p>
+    <button id="empty-clear-btn" class="btn-secondary btn-sm" style="margin-top:16px;display:none">Clear filters</button>
+  </div>
+
+  <div class="pagination" id="pagination" style="display:none"></div>
+</div>
+
+<!-- Bulk Move Modal — pick destination project + campaign -->
+<div class="kc-modal-backdrop" id="bulk-move-backdrop" aria-hidden="true">
+  <div class="kc-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-move-title">
+    <h3 class="kc-modal-title" id="bulk-move-title">Move assets</h3>
+    <p class="kc-modal-sub"><span id="bulk-move-count">0</span> selected — choose destination client.</p>
+    <form id="bulk-move-form" autocomplete="off">
+      <div class="kc-modal-field">
+        <label for="bulk-move-project">Client</label>
+        <select id="bulk-move-project" class="form-input" required>
+          <option value="">Select a client…</option>
+        </select>
+      </div>
+      <div class="kc-modal-field" id="bulk-move-campaign-wrap" style="display:none">
+        <label for="bulk-move-campaign">Campaign (optional)</label>
+        <select id="bulk-move-campaign" class="form-input">
+          <option value="">General (default)</option>
+        </select>
+      </div>
+      <div class="kc-modal-error" id="bulk-move-error" role="alert" aria-live="polite"></div>
+      <div class="kc-modal-actions">
+        <button type="button" class="kc-modal-btn secondary" id="bulk-move-cancel">Cancel</button>
+        <button type="submit" class="kc-modal-btn primary" id="bulk-move-submit">Move</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Quick Create Client Modal — invoked from Move dropdown "+ New client" -->
+<div class="kc-modal-backdrop" id="quick-client-backdrop" aria-hidden="true">
+  <div class="kc-modal" role="dialog" aria-modal="true" aria-labelledby="quick-client-title">
+    <h3 class="kc-modal-title" id="quick-client-title">New Client</h3>
+    <p class="kc-modal-sub">Create a client to move your assets into. A default campaign is added.</p>
+    <form id="quick-client-form" autocomplete="off">
+      <div class="kc-modal-field">
+        <label for="quick-client-name">Client name</label>
+        <input id="quick-client-name" type="text" placeholder="e.g. Nike NZ" required maxlength="60">
+      </div>
+      <div class="kc-modal-error" id="quick-client-error" role="alert" aria-live="polite"></div>
+      <div class="kc-modal-actions">
+        <button type="button" class="kc-modal-btn secondary" id="quick-client-cancel">Cancel</button>
+        <button type="submit" class="kc-modal-btn primary" id="quick-client-submit">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="/shared/lightbox.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/confirm.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/modal.js"></script>
+<script>
+let currentPage = 1;
+let currentType = '';
+let currentProject = '';
+let currentCampaign = '';
+let currentUser = '';
+let totalPages = 1;
+const _historyItems = new Map(); // id → generation data for lightbox
+
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  Nav.render({ active: 'history' });
+  const contentEl = document.getElementById('content');
+  contentEl.style.display = '';
+  requestAnimationFrame(() => contentEl.classList.add('page-enter'));
+
+  // Filter panel toggle
+  window.toggleFilterPanel = function() {
+    const btn = document.getElementById('filter-toggle');
+    const panel = document.getElementById('filter-panel');
+    btn.classList.toggle('active');
+    panel.classList.toggle('open');
+  };
+
+  // Empty state icon
+  document.getElementById('empty-icon-slot').innerHTML = Icons.empty('image');
+
+  // Show user filter for admins
+  if (Auth.isAdmin()) {
+    const fu = document.getElementById('filter-user');
+    fu.style.display = '';
+    if (fu._ksWrap) fu._ksWrap.style.display = '';
+  }
+
+  // Type filters
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentType = btn.dataset.type;
+      currentPage = 1;
+      loadHistory();
+    });
+  });
+
+  // Project filter → cascade load campaigns
+  const campaignSelect = document.getElementById('filter-campaign');
+  async function loadCampaignFilter(projectId) {
+    campaignSelect.innerHTML = '<option value="">All campaigns</option>';
+    currentCampaign = '';
+    if (!projectId) {
+      campaignSelect.style.display = 'none';
+      if (campaignSelect._ksWrap) campaignSelect._ksWrap.style.display = 'none';
+      Select.init();
+      return;
+    }
+    try {
+      const cRes = await Auth.authFetch(`/api/campaigns?projectId=${projectId}`);
+      const cData = await cRes.json();
+      (cData.campaigns || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        campaignSelect.appendChild(opt);
+      });
+      campaignSelect.style.display = '';
+      if (campaignSelect._ksWrap) campaignSelect._ksWrap.style.display = '';
+      Select.init();
+      Select.refresh(campaignSelect);
+    } catch (e) {
+      console.error('Load campaign filter error:', e);
+    }
+  }
+
+  document.getElementById('filter-project').addEventListener('change', (e) => {
+    currentProject = e.target.value;
+    currentPage = 1;
+    loadCampaignFilter(currentProject);
+    loadHistory();
+  });
+
+  // Campaign filter
+  campaignSelect.addEventListener('change', (e) => {
+    currentCampaign = e.target.value;
+    currentPage = 1;
+    loadHistory();
+  });
+
+  // User filter (admin)
+  document.getElementById('filter-user').addEventListener('change', (e) => {
+    currentUser = e.target.value;
+    currentPage = 1;
+    loadHistory();
+  });
+
+  loadHistory();
+})();
+
+async function loadHistory() {
+  try {
+    const params = new URLSearchParams({ page: currentPage, limit: 24 });
+    if (currentType) params.set('type', currentType);
+    if (currentProject) params.set('projectId', currentProject);
+    if (currentCampaign) params.set('campaignId', currentCampaign);
+    if (currentUser) params.set('userId', currentUser);
+
+    const res = await Auth.authFetch(`/api/history?${params}`);
+    const data = await res.json();
+
+    const grid = document.getElementById('history-grid');
+    const emptyState = document.getElementById('empty-state');
+    const pagination = document.getElementById('pagination');
+
+    // Populate filter dropdowns
+    if (data.filters) {
+      if (data.filters.projects?.length) {
+        const projectSelect = document.getElementById('filter-project');
+        const currentVal = projectSelect.value;
+        projectSelect.innerHTML = '<option value="">All clients</option>' +
+          data.filters.projects.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+        projectSelect.value = currentVal;
+      }
+      if (data.filters.users?.length && Auth.isAdmin()) {
+        const userSelect = document.getElementById('filter-user');
+        const currentVal = userSelect.value;
+        userSelect.innerHTML = '<option value="">All members</option>' +
+          data.filters.users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+        userSelect.value = currentVal;
+      }
+      // Refresh custom selects after dynamic options
+      Select.init();
+      Select.refresh(document.getElementById('filter-project'));
+      const fu = document.getElementById('filter-user');
+      if (fu._ksEnhanced) Select.refresh(fu);
+    }
+
+    document.getElementById('total-count').textContent = `${data.pagination?.total || 0} items`;
+
+    if (!data.items?.length) {
+      grid.innerHTML = '';
+      // Distinguish "never created anything" from "filters returned zero results"
+      const hasActiveFilter = !!(currentType || currentProject || currentCampaign || currentUser);
+      const titleEl = document.getElementById('empty-title');
+      const subEl = document.getElementById('empty-subtitle');
+      const clearBtn = document.getElementById('empty-clear-btn');
+      if (hasActiveFilter) {
+        titleEl.textContent = 'No assets match these filters';
+        subEl.innerHTML = 'Try clearing filters to see all your assets.';
+        clearBtn.style.display = '';
+        clearBtn.onclick = () => {
+          currentType = ''; currentProject = ''; currentCampaign = ''; currentUser = '';
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelector('.tab-btn[data-type=""]')?.classList.add('active');
+          const projEl = document.getElementById('filter-project'); if (projEl) projEl.value = '';
+          const campEl = document.getElementById('filter-campaign'); if (campEl) campEl.value = '';
+          const userEl = document.getElementById('filter-user'); if (userEl) userEl.value = '';
+          if (typeof Select !== 'undefined') Select.init();
+          loadHistory(1);
+        };
+      } else {
+        titleEl.textContent = 'No assets yet';
+        subEl.innerHTML = 'Start creating in the <a href="/studio.html" style="font-weight:600;text-decoration:underline">Studio</a>';
+        clearBtn.style.display = 'none';
+      }
+      emptyState.classList.remove('hidden');
+      pagination.style.display = 'none';
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    // Remove stagger class before re-rendering so animation replays
+    grid.classList.remove('stagger-in');
+
+    // Filter out expired items — they get auto-purged by the backend
+    const activeItems = data.items.filter(g => !(g.expiry && g.expiry.isExpired));
+
+    // Store items for lightbox
+    _historyItems.clear();
+    activeItems.forEach(g => _historyItems.set(g.id, g));
+
+    grid.innerHTML = activeItems.map(g => {
+      const date = new Date(g.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = new Date(g.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const durationStr = formatDuration(g.created_at, g.completed_at);
+
+      // Expiry badge — skip if stored on R2/Cloudflare (permanent storage)
+      const resultUrl = g.result_url || '';
+      const isR2 = resultUrl.includes('.r2.dev') || resultUrl.includes('.cloudflare') || resultUrl.includes('r2.cloudflarestorage');
+      const expiry = g.expiry || {};
+      const cls = expiry.urgency === 'critical' ? 'critical' : expiry.urgency === 'warning' ? 'warning' : 'ok';
+      const expiryBadge = (!isR2 && expiry.daysLeft !== undefined) ? `<span class="expiry-badge ${cls}">${expiry.daysLeft}d left</span>` : '';
+      const userName = g.userName ? `<span class="user-tag">${escapeHtml(g.userName)}</span>` : '';
+
+      const isAudio = g.type === 'tts' || g.type === 'sfx';
+      const audioIcon = g.type === 'tts'
+        ? `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="audio-icon"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`
+        : `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="audio-icon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+      const audioLabel = g.type === 'tts' ? 'Text to Speech' : 'Sound Effect';
+      const typeLabel = g.type === 'tts' ? 'TTS' : g.type === 'sfx' ? 'SFX' : g.type;
+
+      let thumbHtml;
+      if (isAudio && g.result_url) {
+        thumbHtml = `
+          <div class="audio-thumb" onclick="openLB(${g.id},'audio')">
+            ${audioIcon}
+            <span class="audio-label">${audioLabel}</span>
+          </div>
+          <div class="audio-player" onclick="event.stopPropagation()">
+            <audio controls preload="none" src="${escapeHtml(g.result_url)}"></audio>
+          </div>`;
+      } else if (g.result_url) {
+        const isVid = g.type === 'video' || g.type === 'vid-upscale';
+        thumbHtml = isVid
+          ? `<div class="history-thumb"><video src="${escapeHtml(g.result_url)}" onclick="openLB(${g.id},'video')" style="cursor:pointer" playsinline preload="metadata" muted loop onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0" onerror="imgFallback(this)"></video></div>`
+          : `<div class="history-thumb"><img src="${escapeHtml(g.result_url)}" alt="${escapeHtml(g.type)}" loading="lazy" onclick="openLB(${g.id})" style="cursor:pointer" onerror="imgFallback(this)"></div>`;
+      } else {
+        thumbHtml = `<div class="history-thumb"><div class="placeholder">${Icons.sized('hourglass', 32, 1.2)}</div></div>`;
+      }
+
+      return `
+        <div class="history-item ${(g.type === 'video' || g.type === 'vid-upscale') ? 'video-item' : ''}" id="hist-${g.id}">
+          <div class="select-check" data-id="${g.id}"></div>
+          ${thumbHtml}
+          <div class="history-meta">
+            <div class="type">${typeLabel}</div>
+            <div class="date">${date} · ${time}${durationStr ? ` · <span style="font-weight:600;color:var(--ink)">${durationStr}</span>` : ''}</div>
+            <div class="meta-row">
+              ${expiryBadge}
+              ${userName}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Trigger stagger animation on grid children
+    requestAnimationFrame(() => grid.classList.add('stagger-in'));
+
+    // Pagination
+    totalPages = data.pagination.pages;
+    renderPagination();
+  } catch (e) {
+    console.error('History load error:', e);
+  }
+}
+
+function renderPagination() {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+
+  // Build page numbers: first 2, last 2, ±2 around current
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i <= 2 || i > totalPages - 2 || Math.abs(i - currentPage) <= 2) pages.push(i);
+  }
+
+  let html = `<button class="page-btn nav" ${currentPage <= 1 ? 'disabled' : ''} onclick="goPage(${currentPage - 1})">Previous</button>`;
+
+  let last = 0;
+  for (const p of pages) {
+    if (last && p - last > 1) html += '<span class="page-ellipsis">...</span>';
+    html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    last = p;
+  }
+
+  html += `<button class="page-btn nav" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goPage(${currentPage + 1})">Next</button>`;
+  el.innerHTML = html;
+}
+
+function goPage(p) {
+  if (p < 1 || p > totalPages || p === currentPage) return;
+  currentPage = p;
+  loadHistory();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── Lightbox with metadata ───
+function formatDuration(createdAt, completedAt) {
+  if (!createdAt || !completedAt) return '';
+  const ms = new Date(completedAt) - new Date(createdAt);
+  if (ms <= 0 || ms > 3600000) return '';
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+const VIDEO_COSTS = { 'grok-imagine': 0.15, 'kling-2.6': 0.55, 'kling-3.0': 0.72, 'seedance-2': 1.64, 'veo3': 1.25 };
+function _parseMeta(g) {
+  try { return typeof g.metadata === 'string' ? JSON.parse(g.metadata || '{}') : (g.metadata || {}); } catch { return {}; }
+}
+function getGenCost(g) {
+  if (g.type === 'video') { const m = _parseMeta(g).videoModel || 'grok-imagine'; return `$${(VIDEO_COSTS[m] || 0.15).toFixed(2)}`; }
+  return '$0.09';
+}
+
+function openLB(genId, type) {
+  // In select mode, clicks toggle selection only — don't open the lightbox.
+  // The grid-level click handler will run and update _selected.
+  if (typeof selectMode !== 'undefined' && selectMode) return;
+  const g = _historyItems.get(genId);
+  if (!g || !g.result_url) return;
+  const date = new Date(g.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  const isImage = g.type === 'image' || g.type === 'polish' || g.type === 'img-upscale';
+  const isVideo = g.type === 'video' || g.type === 'vid-upscale';
+  const isAudio = g.type === 'tts' || g.type === 'sfx';
+  const pm = _parseMeta(g);
+  // Derive action and model labels
+  const ACTION_MAP = { 'image': 'Generate', 'polish': 'Polish', 'video': 'Video', 'img-upscale': 'Upscale', 'vid-upscale': 'Upscale', 'tts': 'Voice-over', 'sfx': 'Sound Effect' };
+  const MODEL_LABELS = { 'grok-imagine': 'Grok Imagine', 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2.0', 'veo3': 'Veo 3.1' };
+  const actionLabel = pm.remixPrompt ? 'Remix' : (ACTION_MAP[g.type] || g.type);
+  const modelLabel = pm.videoModel ? (MODEL_LABELS[pm.videoModel] || pm.videoModel) : null;
+
+  const meta = {
+    generationId: genId,
+    genType: g.type,
+    action: actionLabel,
+    model: modelLabel,
+    format: g.format || null,
+    date,
+    duration: formatDuration(g.created_at, g.completed_at),
+    cost: getGenCost(g),
+    userName: g.userName || '',
+    creativeDirection: pm.creativeDirection || pm.remixPrompt || null,
+    inputUrl: g.input_url || null,
+  };
+  if (isImage) {
+      meta.onPolish = () => polishFromHistory(genId, g.result_url, g.format);
+      meta.onVideo = (cd, model) => videoFromHistoryWithCD(genId, g.result_url, cd, model);
+      if (g.result_url) meta.onAdapt = () => adaptFromHistory(genId, g.result_url, g.format);
+      meta.onRemix = (prompt) => remixFromHistory(genId, g.result_url, prompt, g.format);
+  } else if (isVideo) {
+    if (g.type === 'video') meta.onUpscale = () => upscaleFromHistory(genId, g.result_url);
+  }
+  const lbType = type || (isAudio ? 'audio' : isVideo ? 'video' : 'image');
+  Lightbox.open(g.result_url, lbType, meta);
+}
+
+// ─── Video with Creative Direction from History ───
+async function videoFromHistoryWithCD(genId, imageUrl, creativeDirection, videoModel) {
+  const card = document.getElementById(`hist-${genId}`);
+  if (!card) return;
+
+  const modelLabel = videoModel === 'kling-2.6' ? 'Kling 2.6' : videoModel === 'veo3' ? 'Veo 3.1' : 'Grok Imagine';
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = `<div class="spinner"></div><span>Rendering video (${modelLabel})...</span>`;
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+
+  try {
+    const body = { imageUrl };
+    if (creativeDirection) body.creativeDirection = creativeDirection;
+    if (videoModel) body.videoModel = videoModel;
+
+    const res = await Auth.authFetch('/api/video', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (res.status === 402) throw new Error('API error — check your API key');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const vp = new URLSearchParams();
+    if (data.generationId) vp.set('generationId', data.generationId);
+    if (data.recordId) vp.set('recordId', data.recordId);
+    if (videoModel) vp.set('videoModel', videoModel);
+    const resultUrl = await pollTask(`/api/status/video/${data.taskId}?${vp}`, 15000, 600000);
+    toast('Video generated');
+    if (typeof Lightbox !== 'undefined' && Lightbox.open) {
+      Lightbox.open(resultUrl, 'video', { genType: 'video', action: 'Video', date: new Date().toLocaleDateString('en-GB') });
+    }
+    loadHistory();
+  } catch (e) {
+    toast(`Video failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="h-action" onclick="this.closest('.gen-overlay').remove();videoFromHistoryWithCD(${genId}, ${jsArg(imageUrl)}, '')" style="border:1.5px solid var(--border);border-radius:100px;padding:6px 16px;margin-top:4px;background:var(--surface)">Retry</button>`;
+  }
+}
+
+// ─── Adapt All Formats from History ───
+async function adaptFromHistory(genId, resultUrl, currentFormat) {
+  const allFormats = ['1:1', '3:4', '9:16', '16:9'];
+  const formats = allFormats.filter(f => f !== currentFormat);
+  if (!formats.length) { toast('Already in all formats', true); return; }
+  toast(`Adapting to ${formats.length} formats...`);
+  const promises = formats.map(async (fmt) => {
+    try {
+      const body = { imageUrl: resultUrl, ratio: fmt };
+      const res = await Auth.authFetch('/api/adapt', { method: 'POST', body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return { ok: true };
+    } catch { return { ok: false }; }
+  });
+  const results = await Promise.all(promises);
+  const ok = results.filter(r => r.ok).length;
+  if (ok > 0) { toast(`${ok} format(s) adapting — refresh to see results`); setTimeout(() => loadHistory(), 5000); }
+  if (ok < formats.length) toast(`${formats.length - ok} failed`, true);
+}
+
+// ─── Remix from History ───
+async function remixFromHistory(genId, imageUrl, remixPrompt, ratio) {
+  toast('Remixing...');
+  try {
+    const res = await Auth.authFetch('/api/remix', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl, remixPrompt, ratio: ratio || '1:1' }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const pp = new URLSearchParams();
+    if (data.generationId) pp.set('generationId', data.generationId);
+    if (data.recordId) pp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/image/${data.taskId}?${pp}`, 6000, 300000);
+    toast('Remix complete!');
+    loadHistory();
+    Lightbox.open(resultUrl, 'image', { genType: 'image', cost: '$0.09', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), creativeDirection: remixPrompt });
+  } catch (e) {
+    toast(`Remix failed: ${escapeHtml(e.message)}`, true);
+  }
+}
+
+// ─── Upscale Video 4K from History ───
+async function upscaleFromHistory(genId, videoUrl) {
+  const card = document.getElementById(`hist-${genId}`);
+  if (!card) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Upscaling to 4K...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+
+  try {
+    const res = await Auth.authFetch('/api/upscale', {
+      method: 'POST',
+      body: JSON.stringify({ videoUrl }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const up = new URLSearchParams();
+    if (data.generationId) up.set('generationId', data.generationId);
+    if (data.recordId) up.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/upscale/${data.taskId}?${up}`, 15000, 600000);
+    toast('4K upscale complete!');
+    loadHistory();
+    Lightbox.open(resultUrl, 'video', { genType: 'upscale', cost: '$0.70', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+  } catch (e) {
+    toast(`Upscale failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="h-action" onclick="this.closest('.gen-overlay').remove()" style="border:1.5px solid var(--border);border-radius:100px;padding:6px 16px;margin-top:4px;background:var(--surface)">Dismiss</button>`;
+  }
+}
+
+// ─── Generate Video from History (legacy — no creative direction) ───
+async function videoFromHistory(genId, imageUrl) {
+  const card = document.getElementById(`hist-${genId}`);
+  if (!card) return;
+
+  // Show processing overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Rendering video...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+
+  try {
+    const res = await Auth.authFetch('/api/video', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl }),
+    });
+    if (res.status === 402) throw new Error('API error — check your API key');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Poll for result (include recordId if available)
+    const vp = new URLSearchParams();
+    if (data.generationId) vp.set('generationId', data.generationId);
+    if (data.recordId) vp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/video/${data.taskId}?${vp}`, 15000, 600000);
+    toast('Video generated');
+    if (typeof Lightbox !== 'undefined' && Lightbox.open) {
+      Lightbox.open(resultUrl, 'video', { genType: 'video', action: 'Video', date: new Date().toLocaleDateString('en-GB') });
+    }
+    loadHistory(); // refresh
+  } catch (e) {
+    toast(`Video failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="h-action" onclick="this.closest('.gen-overlay').remove();videoFromHistory(${genId}, ${jsArg(imageUrl)})" style="border:1.5px solid var(--border);border-radius:100px;padding:6px 16px;margin-top:4px;background:var(--surface)">Retry</button>`;
+  }
+}
+
+// ─── Polish from History ───
+async function polishFromHistory(genId, imageUrl, ratio) {
+  const card = document.getElementById(`hist-${genId}`);
+  if (!card) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Polishing...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+
+  try {
+    const res = await Auth.authFetch('/api/polish', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl, ratio: ratio || '1:1' }),
+    });
+    if (res.status === 402) throw new Error('API error — check your API key');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const pp = new URLSearchParams();
+    if (data.generationId) pp.set('generationId', data.generationId);
+    if (data.recordId) pp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/polish/${data.taskId}?${pp}`, 6000, 300000);
+    toast('Polish complete!');
+    loadHistory(); // refresh to show new polished entry
+  } catch (e) {
+    toast(`Polish failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="h-action" onclick="this.closest('.gen-overlay').remove();polishFromHistory(${genId},${jsArg(imageUrl)})" style="border:1.5px solid var(--border);border-radius:100px;padding:6px 16px;margin-top:4px;background:var(--surface)">Retry</button>`;
+  }
+}
+
+// ─── Delete Generation ───
+async function deleteGeneration(genId) {
+  if (!await confirmDialog({ title: 'Delete asset', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) return;
+  try {
+    const res = await Auth.authFetch(`/api/history/${genId}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Deleted');
+      loadHistory();
+    } else {
+      toast('Failed to delete', true);
+    }
+  } catch {
+    toast('Failed to delete', true);
+  }
+}
+
+// ─── Poll Task (robust: timeout msg, network counter, session detection) ───
+function pollTask(url, interval, timeout) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    let attempts = 0;
+    let networkErrors = 0;
+    const MAX_NET = 5;
+    const timeoutMin = Math.round(timeout / 60000);
+
+    const check = async () => {
+      if (Date.now() - start > timeout) {
+        return reject(new Error(`Timed out after ${timeoutMin} min — check Library later`));
+      }
+      attempts++;
+      try {
+        const res = await Auth.authFetch(url);
+        if (!res.ok) {
+          console.warn(`[pollTask] attempt ${attempts}: HTTP ${res.status}`);
+          if (res.status === 401 || res.status === 403) {
+            return reject(new Error('Session expired — please refresh'));
+          }
+          setTimeout(check, interval);
+          return;
+        }
+        networkErrors = 0;
+        const data = await res.json();
+        if (data.ready && data.resultUrl) {
+          console.log(`[pollTask] done after ${attempts} attempts`);
+          return resolve(data.resultUrl);
+        }
+        if (data.failed) {
+          console.warn(`[pollTask] failed: ${data.error}`);
+          return reject(new Error(data.error || 'Generation failed on provider'));
+        }
+      } catch (err) {
+        networkErrors++;
+        console.warn(`[pollTask] network error (${networkErrors}/${MAX_NET}):`, err.message);
+        if (networkErrors >= MAX_NET) {
+          return reject(new Error('Network error — check your connection'));
+        }
+      }
+      setTimeout(check, interval);
+    };
+    setTimeout(check, 3000);
+  });
+}
+
+function imgFallback(el) {
+  // Retry once before showing placeholder (handles transient network failures)
+  if (!el._retried && el.tagName === 'IMG' && el.src) {
+    el._retried = true;
+    const src = el.src;
+    el.src = '';
+    setTimeout(() => { el.src = src; }, 1500);
+    return;
+  }
+  el.onerror = null;
+  const isVid = el.tagName === 'VIDEO';
+  const wrap = document.createElement('div');
+  wrap.className = 'img-broken';
+  wrap.style.aspectRatio = '1';
+  wrap.innerHTML = Icons.sized(isVid ? 'video' : 'image', 32, 1.2);
+  el.replaceWith(wrap);
+}
+
+// ─── Multi-Select ───
+const _selected = new Set();
+const $grid = document.querySelector('.history-grid');
+const $bulkBar = document.getElementById('bulk-bar');
+const $bulkCount = document.getElementById('bulk-count');
+let selectMode = false;
+
+document.getElementById('select-toggle').addEventListener('click', () => {
+  selectMode = !selectMode;
+  document.getElementById('select-toggle').classList.toggle('active', selectMode);
+  $grid.classList.toggle('select-mode', selectMode);
+  if (!selectMode) {
+    _selected.clear();
+    document.querySelectorAll('.select-check.checked').forEach(el => el.classList.remove('checked'));
+    document.querySelectorAll('.history-item.selected').forEach(el => el.classList.remove('selected'));
+    updateBulkBar();
+  }
+});
+
+// Delegate clicks on select-checks
+$grid?.addEventListener('click', (e) => {
+  if (!selectMode) return;
+  const item = e.target.closest('.history-item');
+  if (!item) return;
+  const check = item.querySelector('.select-check');
+  if (!check) return;
+
+  const id = parseInt(check.dataset.id);
+  if (_selected.has(id)) {
+    _selected.delete(id);
+    check.classList.remove('checked');
+    item.classList.remove('selected');
+  } else {
+    _selected.add(id);
+    check.classList.add('checked');
+    item.classList.add('selected');
+  }
+  updateBulkBar();
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+function updateBulkBar() {
+  const count = _selected.size;
+  $bulkBar.classList.toggle('visible', count > 0);
+  $bulkCount.textContent = `${count} selected`;
+}
+
+// Bulk Download — ZIP if 3+ items, individual otherwise
+document.getElementById('bulk-download').addEventListener('click', async () => {
+  const items = [];
+  for (const id of _selected) {
+    const item = _historyItems?.get(id);
+    if (item?.result_url) items.push({ id, url: item.result_url, type: item.type });
+  }
+  if (!items.length) return toast('No files to download', true);
+
+  // Individual downloads for 1-2 items
+  if (items.length < 3) {
+    for (const item of items) {
+      try {
+        const safeName = `keou-${item.id}.${item.type === 'video' ? 'mp4' : 'png'}`;
+        const res = await Auth.authFetch(`/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(safeName)}`);
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = safeName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        await new Promise(r => setTimeout(r, 300));
+      } catch {}
+    }
+    toast(`Downloaded ${items.length} file(s)`);
+    return;
+  }
+
+  // ZIP download for 3+ items
+  const btn = document.getElementById('bulk-download');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing ZIP...';
+  try {
+    const zip = new JSZip();
+    let fetched = 0;
+    await Promise.all(items.map(async (item, i) => {
+      try {
+        const res = await Auth.authFetch(`/api/download?url=${encodeURIComponent(item.url)}&name=keou`);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const ext = item.type === 'video' ? 'mp4' : item.type === 'tts' || item.type === 'sfx' ? 'mp3' : blob.type?.includes('png') ? 'png' : 'jpg';
+        zip.file(`${String(i + 1).padStart(2, '0')}_keou-${item.type}-${item.id.slice(0, 8)}.${ext}`, blob);
+        fetched++;
+        btn.textContent = `Preparing ZIP... ${fetched}/${items.length}`;
+      } catch {}
+    }));
+    if (!Object.keys(zip.files).length) { toast('Failed to download', true); return; }
+    const now = new Date();
+    const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+    btn.textContent = 'Compressing...';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = `Keou_${dateStr}_${items.length}assets.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    toast(`${items.length} assets downloaded as ZIP`);
+  } catch { toast('Download failed', true); }
+  finally { btn.disabled = false; btn.textContent = originalText; }
+});
+
+// Bulk Share
+document.getElementById('bulk-share').addEventListener('click', async () => {
+  try {
+    const res = await Auth.authFetch('/api/share', {
+      method: 'POST',
+      body: JSON.stringify({ generationIds: [..._selected], title: 'Shared from Library' }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await navigator.clipboard.writeText(window.location.origin + data.url);
+      toast('Share link copied to clipboard');
+    } else {
+      toast(data.error || 'Share failed', true);
+    }
+  } catch { toast('Share failed', true); }
+});
+
+// Bulk Delete
+document.getElementById('bulk-delete').addEventListener('click', async () => {
+  const n = _selected.size;
+  if (!await confirmDialog({ title: `Delete ${n} asset${n !== 1 ? 's' : ''}`, message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true })) return;
+  let deleted = 0;
+  for (const id of _selected) {
+    try {
+      const res = await Auth.authFetch(`/api/history/${id}`, { method: 'DELETE' });
+      if (res.ok) deleted++;
+    } catch {}
+  }
+  toast(`${deleted} item(s) deleted`);
+  _selected.clear();
+  updateBulkBar();
+  if (typeof loadHistory === 'function') loadHistory();
+  else window.location.reload();
+});
+
+// Cancel
+document.getElementById('bulk-cancel').addEventListener('click', () => {
+  document.getElementById('select-toggle').click();
+});
+
+// ─── Bulk Move modal ───
+const bmBackdrop = document.getElementById('bulk-move-backdrop');
+const bmForm = document.getElementById('bulk-move-form');
+const bmProjectSel = document.getElementById('bulk-move-project');
+const bmCampaignSel = document.getElementById('bulk-move-campaign');
+const bmCampaignWrap = document.getElementById('bulk-move-campaign-wrap');
+const bmSubmit = document.getElementById('bulk-move-submit');
+const bmCancel = document.getElementById('bulk-move-cancel');
+const bmError = document.getElementById('bulk-move-error');
+const bmCount = document.getElementById('bulk-move-count');
+let _bmSubmitting = false;
+
+let _bmLastValidProject = '';
+
+async function loadBulkMoveProjects(selectId) {
+  try {
+    const res = await Auth.authFetch('/api/projects');
+    const data = await res.json();
+    const clients = (data.projects || [])
+      .filter(p => p.status === 'active' && p.name !== 'General')
+      .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+      .join('');
+    bmProjectSel.innerHTML =
+      '<option value="">Select a client…</option>' +
+      '<option value="__create__" data-action="create">+ New client</option>' +
+      clients;
+    if (selectId) bmProjectSel.value = String(selectId);
+    // Refresh the enhanced custom select if it was already initialized,
+    // otherwise initialize it now (modal contents may not have been seen at page load).
+    if (typeof Select !== 'undefined') {
+      if (bmProjectSel._ksRefresh) bmProjectSel._ksRefresh();
+      else Select.init();
+    }
+  } catch {
+    bmProjectSel.innerHTML = '<option value="">Failed to load clients</option>';
+  }
+}
+
+async function loadBulkMoveCampaigns(projectId) {
+  bmCampaignSel.innerHTML = '<option value="">General (default)</option>';
+  bmCampaignWrap.style.display = 'none';
+  if (!projectId) return;
+  try {
+    const res = await Auth.authFetch(`/api/campaigns?projectId=${projectId}`);
+    const data = await res.json();
+    const extras = (data.campaigns || []).filter(c => c.name !== 'General');
+    if (extras.length > 0) {
+      bmCampaignSel.innerHTML += extras.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      bmCampaignWrap.style.display = '';
+    }
+  } catch {}
+}
+
+bmProjectSel.addEventListener('change', () => {
+  if (bmProjectSel.value === '__create__') {
+    // Don't actually select the action option — open the quick-create modal instead
+    bmProjectSel.value = _bmLastValidProject;
+    openQuickClientModal();
+    return;
+  }
+  _bmLastValidProject = bmProjectSel.value;
+  loadBulkMoveCampaigns(bmProjectSel.value);
+});
+
+document.getElementById('bulk-move').addEventListener('click', async () => {
+  bmCount.textContent = String(_selected.size);
+  bmError.textContent = '';
+  bmProjectSel.value = '';
+  bmCampaignSel.innerHTML = '<option value="">General (default)</option>';
+  bmCampaignWrap.style.display = 'none';
+  await loadBulkMoveProjects();
+  bmBackdrop.classList.add('active');
+  bmBackdrop.setAttribute('aria-hidden', 'false');
+  setTimeout(() => bmProjectSel.focus(), 120);
+});
+
+function closeBulkMove() {
+  bmBackdrop.classList.remove('active');
+  bmBackdrop.setAttribute('aria-hidden', 'true');
+}
+
+bmCancel.addEventListener('click', closeBulkMove);
+bmBackdrop.addEventListener('click', (e) => { if (e.target === bmBackdrop) closeBulkMove(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && bmBackdrop.classList.contains('active')) closeBulkMove();
+});
+
+bmForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (_bmSubmitting) return;
+  if (!bmProjectSel.value) { bmError.textContent = 'Select a client first'; return; }
+
+  _bmSubmitting = true;
+  bmSubmit.disabled = true;
+  const origText = bmSubmit.textContent;
+  bmSubmit.textContent = 'Moving…';
+  bmError.textContent = '';
+
+  try {
+    const res = await Auth.authFetch('/api/history/bulk-move', {
+      method: 'POST',
+      body: JSON.stringify({
+        generationIds: [..._selected],
+        projectId: parseInt(bmProjectSel.value),
+        campaignId: bmCampaignSel.value ? parseInt(bmCampaignSel.value) : null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Move failed');
+
+    closeBulkMove();
+    const projectName = bmProjectSel.options[bmProjectSel.selectedIndex]?.textContent || 'client';
+    toast(`${data.moved} asset${data.moved !== 1 ? 's' : ''} moved to ${projectName}`);
+    _selected.clear();
+    updateBulkBar();
+    if (typeof loadHistory === 'function') loadHistory();
+  } catch (err) {
+    bmError.textContent = err.message || 'Failed to move';
+  } finally {
+    _bmSubmitting = false;
+    bmSubmit.disabled = false;
+    bmSubmit.textContent = origText;
+  }
+});
+
+// ─── Quick Create Client (mini-modal triggered from Move dropdown) ───
+const qcBackdrop = document.getElementById('quick-client-backdrop');
+const qcForm = document.getElementById('quick-client-form');
+const qcName = document.getElementById('quick-client-name');
+const qcSubmit = document.getElementById('quick-client-submit');
+const qcCancel = document.getElementById('quick-client-cancel');
+const qcError = document.getElementById('quick-client-error');
+let _qcSubmitting = false;
+
+function openQuickClientModal() {
+  qcError.textContent = '';
+  qcForm.reset();
+  qcBackdrop.classList.add('active');
+  qcBackdrop.setAttribute('aria-hidden', 'false');
+  setTimeout(() => qcName.focus(), 120);
+}
+
+function closeQuickClientModal() {
+  qcBackdrop.classList.remove('active');
+  qcBackdrop.setAttribute('aria-hidden', 'true');
+}
+
+qcCancel.addEventListener('click', closeQuickClientModal);
+qcBackdrop.addEventListener('click', (e) => { if (e.target === qcBackdrop) closeQuickClientModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && qcBackdrop.classList.contains('active')) closeQuickClientModal();
+});
+
+qcForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (_qcSubmitting) return;
+  const name = qcName.value.trim();
+  if (!name) { qcError.textContent = 'Client name is required'; return; }
+
+  _qcSubmitting = true;
+  qcSubmit.disabled = true;
+  qcSubmit.textContent = 'Creating…';
+  qcError.textContent = '';
+
+  try {
+    const res = await Auth.authFetch('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify({ name, color: '#3B82F6' }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.projectId) throw new Error(data.error || 'Failed to create');
+
+    // Reload the dropdown with the new client pre-selected, then load its campaigns
+    await loadBulkMoveProjects(data.projectId);
+    _bmLastValidProject = String(data.projectId);
+    await loadBulkMoveCampaigns(data.projectId);
+    closeQuickClientModal();
+    if (typeof toast === 'function') toast(`Client "${name}" created`);
+  } catch (err) {
+    qcError.textContent = err.message || 'Failed to create client';
+  } finally {
+    _qcSubmitting = false;
+    qcSubmit.disabled = false;
+    qcSubmit.textContent = 'Create';
+  }
+});
+
+// ─── Auto-refresh: poll for pending/processing generations ───
+let _autoRefreshTimer = null;
+function startAutoRefresh() {
+  if (_autoRefreshTimer) return;
+  _autoRefreshTimer = setInterval(async () => {
+    try {
+      const res = await Auth.authFetch('/api/pending');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.items?.length) {
+        // No more pending — stop polling and refresh one last time
+        clearInterval(_autoRefreshTimer);
+        _autoRefreshTimer = null;
+        loadHistory();
+      }
+    } catch {}
+  }, 8000); // Check every 8 seconds
+}
+// Start auto-refresh on page load to catch any in-progress generations
+startAutoRefresh();
+
+</script>
+</body>
+</html>

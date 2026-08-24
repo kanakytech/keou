@@ -186,21 +186,19 @@ router.post('/change-password', requireAuth, async (req, res) => {
 // ─── REFRESH ───
 router.post('/refresh', refreshLimiter, async (req, res) => {
   try {
-    // Opensource edition: no accounts. Every visitor gets a synthetic session
-    // as the bootstrap user — advanced routes are 404'd by requireEnterprise,
-    // and generation requires the visitor's own provider key per request.
-    if (config.edition === 'opensource') {
-      const u = await queryOne(`SELECT id, email, name FROM users ORDER BY id ASC LIMIT 1`);
-      if (!u) return res.status(500).json({ error: 'Instance not initialized' });
-      const accessToken = signAccessToken({ userId: u.id, email: u.email, role: 'member' });
-      return res.json({
-        accessToken,
-        user: { id: u.id, email: u.email, name: 'Studio', role: 'member' },
-        mustChangePassword: false,
-        edition: 'opensource',
-        billingMode: config.billingMode,
-      });
-    }
+    // NOTE HISTORIQUE — ne pas réintroduire.
+    // L'édition opensource délivrait ici une session synthétique au premier
+    // utilisateur de la base, sans aucun identifiant. C'était tenable tant que
+    // cette édition n'exposait qu'un studio réduit : requireMembership rendait
+    // 404 sur l'historique, les projets, l'administration, l'équipe et les clés.
+    //
+    // Ce n'est plus le cas. L'édition opensource sert désormais le produit
+    // complet, avec comptes, rôles et équipes. Une session automatique y donne
+    // à n'importe quel visiteur l'accès total aux données du compte n°1 et la
+    // capacité de se forger une clé d'API persistante.
+    //
+    // Un déploiement auto-hébergé s'amorce avec ADMIN_EMAIL / ADMIN_PASSWORD
+    // puis se connecte normalement. Il n'y a plus de session sans preuve.
 
     const token = req.cookies?.refresh_token;
     if (!token) return res.status(401).json({ error: 'No refresh token' });

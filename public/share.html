@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="icon" type="image/png" href="/logo-keou.png">
+  <meta name="color-scheme" content="dark">
+  <title>Shared Assets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/styles.css">
+  <style>
+    body { display: block; background-image: none; }
+
+    /* ── Hero header (agency + project + title) ── */
+    .share-hero {
+      max-width: 1200px; margin: 0 auto; padding: 56px 24px 36px;
+      display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px;
+    }
+    .share-brand { display: inline-flex; align-items: center; gap: 12px; padding: 7px 14px 7px 7px;
+      border: 1px solid var(--border); border-radius: 100px; background: var(--surface);
+      font-size: 12px; font-weight: 600; color: var(--ink-muted); letter-spacing: .3px; }
+    .share-brand-logo { height: 28px; width: 28px; border-radius: 50%; object-fit: cover;
+      background: var(--surface-2); border: 1px solid var(--border); }
+    .share-brand-name { color: var(--ink); }
+    .share-meta-project { font-size: 11px; color: var(--ink-faint); letter-spacing: 1.5px;
+      text-transform: uppercase; font-weight: 600; }
+    .share-title { font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 700;
+      letter-spacing: -.015em; line-height: 1.1; margin: 0; color: var(--ink); }
+    .share-info {
+      display: inline-flex; align-items: center; gap: 14px; margin-top: 2px;
+      font-size: 13px; color: var(--ink-muted); font-weight: 500;
+    }
+    .share-info .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-faint); }
+    .share-actions { display: flex; justify-content: center; margin-top: 10px; }
+    .share-dl-all {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px; border-radius: 100px;
+      background: var(--ink); color: #050505; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--ink); cursor: pointer; transition: all .15s;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .share-dl-all:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,255,255,.08); }
+    .share-dl-all:disabled { opacity: .55; cursor: wait; transform: none; }
+    .share-dl-all svg { width: 15px; height: 15px; }
+
+    /* ── Grid ── */
+    .share-container { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
+    .share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; align-items: start; }
+    .share-item {
+      border-radius: 14px; border: 1px solid var(--border); overflow: hidden;
+      background: var(--surface); cursor: pointer;
+      transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s, border-color .25s;
+      position: relative; display: flex; flex-direction: column;
+    }
+    .share-item:hover { border-color: var(--border-strong);
+      transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.02); }
+    .share-item-media {
+      position: relative; width: 100%; overflow: hidden; background: var(--surface-2);
+      aspect-ratio: 1 / 1; /* default square; overridden per item */
+    }
+    .share-item-media img, .share-item-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .share-item-media .share-item-state {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px;
+      color: var(--ink-faint); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+      background: var(--surface-2); font-weight: 600;
+    }
+    .share-item-state svg { width: 26px; height: 26px; opacity: .45; }
+    .share-item.broken .share-item-media img, .share-item.broken .share-item-media video { display: none; }
+    .share-item.broken .share-item-state { display: flex; }
+    .share-item:not(.broken):not(.pending) .share-item-state { display: none; }
+
+    .share-item.pending .share-item-media img, .share-item.pending .share-item-media video { display: none; }
+    .share-item.pending .share-item-state { display: flex; }
+    .share-item.pending .share-item-state .spinner {
+      width: 22px; height: 22px; border: 2px solid var(--border);
+      border-top-color: var(--ink-muted); border-radius: 50%;
+      animation: share-spin .9s linear infinite;
+    }
+    @keyframes share-spin { to { transform: rotate(360deg); } }
+
+    .share-item-badge {
+      position: absolute; top: 10px; left: 10px;
+      padding: 4px 9px; border-radius: 100px;
+      background: rgba(0,0,0,.55); color: #fff; font-size: 10px; font-weight: 700;
+      letter-spacing: .6px; text-transform: uppercase;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .share-item-video-icon {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; border: 1px solid rgba(255,255,255,.12);
+      pointer-events: none; opacity: 0; transition: opacity .2s;
+    }
+    .share-item:hover .share-item-video-icon { opacity: 1; }
+    .share-item-video-icon svg { width: 18px; height: 18px; margin-left: 2px; }
+
+    .share-item-meta {
+      padding: 10px 14px; font-size: 11px; color: var(--ink-muted);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      border-top: 1px solid var(--border); font-weight: 500; letter-spacing: .2px;
+    }
+    .share-item-meta-left { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .share-item-meta-format { text-transform: uppercase; letter-spacing: .5px; font-weight: 600; color: var(--ink); font-size: 10px; }
+    .share-item-meta-sep { color: var(--ink-faint); }
+
+    .share-item-dl {
+      width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--ink-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all .15s;
+      flex-shrink: 0;
+    }
+    .share-item-dl:hover { background: var(--surface-2); color: var(--ink); border-color: var(--border-strong); }
+    .share-item-dl svg { width: 14px; height: 14px; }
+
+    /* ── Feedback row (per card) ── */
+    .share-fb-row {
+      padding: 8px 12px 10px; display: flex; gap: 6px; align-items: center;
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .share-fb-btn {
+      flex: 1 1 auto; min-width: 0; min-height: 36px;
+      padding: 7px 10px; border-radius: 8px;
+      font-size: 11px; font-weight: 600; letter-spacing: .2px;
+      cursor: pointer; transition: all .15s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      font-family: 'Space Grotesk', sans-serif;
+      border: 1px solid var(--border); background: transparent; color: var(--ink-muted);
+      white-space: nowrap;
+    }
+    .share-fb-btn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--border-strong); }
+    .share-fb-btn.active.approve { background: rgba(34,197,94,.16); border-color: rgba(34,197,94,.5); color: #4ade80; }
+    .share-fb-btn.active.reject { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.5); color: #f87171; }
+    .share-fb-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .share-fb-count {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; padding: 2px 7px; border-radius: 100px;
+      background: var(--surface-2); color: var(--ink-muted); font-weight: 600;
+    }
+    .share-fb-status {
+      position: absolute; top: 10px; right: 10px;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.15); z-index: 2;
+    }
+    .share-fb-status.approve { display: flex; background: rgba(34,197,94,.85); color: #fff; }
+    .share-fb-status.reject { display: flex; background: rgba(239,68,68,.85); color: #fff; }
+    .share-fb-status svg { width: 12px; height: 12px; }
+
+    /* Hero approve-all + global summary */
+    .share-fb-summary {
+      display: inline-flex; align-items: center; gap: 18px;
+      padding: 10px 18px; border-radius: 100px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 13px; color: var(--ink-muted); font-weight: 500;
+      margin-top: 6px;
+    }
+    .share-fb-summary strong { color: var(--ink); font-weight: 700; }
+    .share-fb-summary .sep { color: var(--ink-faint); }
+
+    /* Inline composer for comment / reject */
+    .share-fb-composer {
+      grid-column: 1 / -1; padding: 14px 16px; margin-top: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .share-fb-composer h4 { font-size: 13px; font-weight: 700; margin: 0; color: var(--ink); }
+    .share-fb-composer textarea {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-size: 13px;
+      resize: vertical; min-height: 70px; box-sizing: border-box;
+    }
+    .share-fb-composer textarea:focus { outline: none; border-color: rgba(255,255,255,.25); }
+    .share-fb-composer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .share-fb-composer button {
+      padding: 8px 16px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; border: 1px solid transparent;
+    }
+    .share-fb-composer button.cancel { background: transparent; color: var(--ink-muted); border-color: var(--border); }
+    .share-fb-composer button.send { background: var(--ink); color: #050505; }
+    .share-fb-composer button.send:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Existing comments list (inside the card area when expanded) */
+    .share-fb-comments { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .share-fb-comment {
+      font-size: 11px; color: var(--ink-muted);
+      padding: 7px 10px; background: var(--surface-2); border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .share-fb-comment-head {
+      font-size: 10px; color: var(--ink-faint); margin-bottom: 3px;
+      display: flex; gap: 6px; align-items: center;
+    }
+    .share-fb-comment-head strong { color: var(--ink-muted); font-weight: 600; }
+
+    @media(max-width: 480px) {
+      /* Touch targets: feedback buttons must be tappable (Approve/Comment/Reject) */
+      .share-fb-btn { font-size: 11px; padding: 11px 8px; gap: 4px; min-height: 40px; }
+      .share-fb-summary { font-size: 12px; gap: 12px; padding: 10px 14px; flex-wrap: wrap; justify-content: center; }
+      .share-fb-composer textarea { font-size: 16px; /* prevent iOS zoom */ }
+      .share-fb-composer button { padding: 11px 18px; min-height: 40px; }
+    }
+
+    /* ── States (expired / code / connection) ── */
+    .share-state-screen { max-width: 440px; margin: 80px auto; text-align: center; padding: 0 24px; }
+    .share-state-screen h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700;
+      margin-bottom: 10px; color: var(--ink); letter-spacing: -.01em; }
+    .share-state-screen p { color: var(--ink-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.55; }
+    .share-state-screen form { display: flex; flex-direction: column; gap: 10px; }
+    .share-state-screen input {
+      padding: 12px 16px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--ink); font-size: 14px; text-align: center;
+      letter-spacing: 2px; outline: none; font-family: 'Space Grotesk', sans-serif;
+    }
+    .share-state-screen input:focus { border-color: rgba(255,255,255,.25); }
+    .share-state-screen button {
+      padding: 12px; border-radius: 10px; border: none;
+      background: var(--ink); color: #050505; font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .share-state-screen button:hover { opacity: .92; }
+    .share-state-error { color: #f87171; font-size: 12px; margin-bottom: 12px; }
+
+    /* ── Footer ── */
+    .share-powered { text-align: center; padding: 24px 24px 32px;
+      font-size: 11px; color: var(--ink-faint); letter-spacing: .3px; }
+    .share-powered a { color: var(--ink-muted); text-decoration: none; transition: color .15s; }
+    .share-powered a:hover { color: var(--ink); }
+
+    /* ── Responsive ── */
+    @media(max-width:768px) {
+      .share-hero { padding: 36px 20px 28px; gap: 14px; }
+      .share-title { font-size: 26px; }
+      .share-container { padding: 0 16px 48px; }
+      .share-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .share-info { flex-wrap: wrap; justify-content: center; row-gap: 4px; }
+    }
+    @media(max-width:480px) {
+      .share-grid { grid-template-columns: 1fr; }
+      .share-title { font-size: 22px; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div id="share-app">
+    <div style="text-align:center;padding:120px 24px;color:var(--ink-faint);font-size:13px">Loading…</div>
+  </div>
+  <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+  <script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/toast.js"></script>
+  <script src="/shared/lightbox.js"></script>
+  <script>
+  (function() {
+    const app = document.getElementById('share-app');
+    const token = new URLSearchParams(window.location.search).get('t');
+
+    if (!token) {
+      app.innerHTML = renderMessage('Invalid Link', 'No share token provided.');
+      return;
+    }
+
+    let currentCode = null;
+
+    loadShare();
+
+    async function loadShare(code) {
+      try {
+        let url = '/api/share/' + encodeURIComponent(token);
+        if (code) url += '?code=' + encodeURIComponent(code);
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (res.status === 403 && data.requiresCode) {
+          app.innerHTML = renderCodeForm(code ? 'Incorrect code. Try again.' : null);
+          bindCodeForm();
+          return;
+        }
+        if (res.status === 410) {
+          app.innerHTML = renderMessage('Link Expired', 'This share link is no longer available.');
+          return;
+        }
+        if (res.status === 404) {
+          app.innerHTML = renderMessage('Not Found', 'This share link does not exist.');
+          return;
+        }
+        if (!res.ok) {
+          app.innerHTML = renderMessage('Error', data.error || 'Failed to load shared content.');
+          return;
+        }
+
+        currentCode = code;
+        // Load existing feedback summary in parallel (non-blocking — UI renders without if it fails)
+        try {
+          const fbUrl = '/api/share/' + encodeURIComponent(token) + '/feedback-summary' + (currentCode ? '?code=' + encodeURIComponent(currentCode) : '');
+          const fbRes = await fetch(fbUrl);
+          if (fbRes.ok) {
+            const fbData = await fbRes.json();
+            data._feedback = fbData.feedback || [];
+          } else {
+            data._feedback = [];
+          }
+        } catch { data._feedback = []; }
+        renderSharePage(data);
+      } catch (e) {
+        app.innerHTML = renderMessage('Connection Error', 'Unable to reach the server. Please try again.');
+      }
+    }
+
+    function renderMessage(title, subtitle) {
+      return '<div class="share-state-screen"><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(subtitle) + '</p></div>';
+    }
+
+    function renderCodeForm(errorMsg) {
+      return '<div class="share-state-screen">' +
+        '<h2>Access Code Required</h2>' +
+        '<p>Enter the access code provided by your contact to view these assets.</p>' +
+        (errorMsg ? '<p class="share-state-error">' + escapeHtml(errorMsg) + '</p>' : '') +
+        '<form id="code-form">' +
+        '<input type="text" id="code-input" placeholder="Access code" autocomplete="off" autofocus>' +
+        '<button type="submit">Unlock</button>' +
+        '</form></div>';
+    }
+
+    function bindCodeForm() {
+      const form = document.getElementById('code-form');
+      if (!form) return;
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const val = document.getElementById('code-input').value.trim();
+        if (val) loadShare(val);
+      });
+    }
+
+    function formatExpiry(expiresAt) {
+      if (!expiresAt) return null;
+      const then = new Date(expiresAt);
+      const diffMs = then - new Date();
+      if (diffMs <= 0) return 'Expired';
+      const diffDays = Math.ceil(diffMs / 86400000);
+      if (diffDays === 1) return 'Available 1 more day';
+      if (diffDays < 30) return 'Available ' + diffDays + ' more days';
+      return 'Available until ' + then.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function aspectRatioFor(format) {
+      if (!format) return '1 / 1';
+      if (format === '9:16' || format === '3:4') return format.replace(':', ' / ');
+      if (format === '16:9' || format === '4:3') return format.replace(':', ' / ');
+      if (format === '1:1') return '1 / 1';
+      // Fallback: try to parse "W:H" directly
+      const m = String(format).match(/^(\d+):(\d+)$/);
+      return m ? (m[1] + ' / ' + m[2]) : '1 / 1';
+    }
+
+    function typeLabel(type) {
+      const map = { image: 'Image', polish: 'Polished', remix: 'Remix', adapt: 'Adapt',
+        video: 'Video', 'img-upscale': 'Upscaled', 'vid-upscale': 'Upscaled 4K',
+        tts: 'Voice-over', sfx: 'Sound effect' };
+      return map[type] || type;
+    }
+
+    // ─── Reviewer identity (stored per share token) ───
+    function reviewerKey() { return 'keou_reviewer:' + token; }
+    function getReviewer() {
+      try { return JSON.parse(localStorage.getItem(reviewerKey()) || 'null'); } catch { return null; }
+    }
+    function setReviewer(r) { localStorage.setItem(reviewerKey(), JSON.stringify(r)); }
+
+    // ─── Feedback state ───
+    // Map<generationId, { approve: latestEntryByThisReviewer|null, reject: ..., comments: [...], counts: {approve,reject,comment} }>
+    let _fbByGen = new Map();
+    function indexFeedback(feedback, reviewerName) {
+      const map = new Map();
+      (feedback || []).forEach(function(f) {
+        const g = f.generation_id;
+        if (!map.has(g)) map.set(g, { mine: { approve: null, reject: null }, comments: [], counts: { approve: 0, reject: 0, comment: 0 } });
+        const slot = map.get(g);
+        slot.counts[f.type] = (slot.counts[f.type] || 0) + 1;
+        if (f.type === 'comment' || f.type === 'reject') {
+          slot.comments.push(f); // shown inline (rejects + comments alike for context)
+        }
+        if (reviewerName && f.reviewer_name && f.reviewer_name === reviewerName) {
+          if (f.type === 'approve' || f.type === 'reject') slot.mine[f.type] = f;
+        }
+      });
+      return map;
+    }
+    function summarize(items, fbMap) {
+      let approve = 0, reject = 0, awaiting = 0;
+      items.forEach(function(it) {
+        if (it.status !== 'completed') return;
+        const slot = fbMap.get(it.id);
+        if (!slot) { awaiting++; return; }
+        if (slot.counts.approve > 0) approve++;
+        else if (slot.counts.reject > 0) reject++;
+        else awaiting++;
+      });
+      return { approve, reject, awaiting };
+    }
+
+    function renderSharePage(data) {
+      window._shareData = data; // expose for in-place refresh after feedback submit
+      document.title = data.title + ' — ' + data.agencyName;
+
+      const expiry = formatExpiry(data.expiresAt);
+      const visibleCount = data.items.filter(function(i) { return i.status === 'completed'; }).length;
+      const pendingCount = data.items.filter(function(i) { return i.status && i.status !== 'completed'; }).length;
+
+      // Build feedback index for fast per-card lookup
+      const reviewer = getReviewer();
+      _fbByGen = indexFeedback(data._feedback, reviewer?.name);
+      const fbSummary = summarize(data.items, _fbByGen);
+
+      // ── Hero header ──
+      let hero = '<div class="share-hero">';
+      // Agency brand pill (logo + name)
+      hero += '<div class="share-brand">';
+      if (data.agencyLogo) {
+        hero += '<img class="share-brand-logo" src="' + escapeAttr(data.agencyLogo) + '" alt="">';
+      } else {
+        hero += '<span class="share-brand-logo" style="display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink-muted)">' + escapeHtml((data.agencyName || 'A').charAt(0).toUpperCase()) + '</span>';
+      }
+      hero += '<span class="share-brand-name">' + escapeHtml(data.agencyName || 'Studio') + '</span>';
+      hero += '</div>';
+      // Project label (if share scoped to a project)
+      if (data.projectName) {
+        hero += '<div class="share-meta-project">' + escapeHtml(data.projectName) + '</div>';
+      }
+      hero += '<h1 class="share-title">' + escapeHtml(data.title) + '</h1>';
+      // Meta row
+      let metaBits = [];
+      metaBits.push(data.itemCount + ' asset' + (data.itemCount !== 1 ? 's' : ''));
+      if (pendingCount > 0) metaBits.push(pendingCount + ' still processing');
+      if (expiry) metaBits.push(expiry);
+      hero += '<div class="share-info">';
+      metaBits.forEach(function(bit, i) {
+        if (i > 0) hero += '<span class="dot"></span>';
+        hero += '<span>' + escapeHtml(bit) + '</span>';
+      });
+      hero += '</div>';
+      // Review summary (when feedback already exists)
+      if (visibleCount > 0 && (fbSummary.approve + fbSummary.reject) > 0) {
+        hero += '<div class="share-fb-summary">' +
+          '<span><strong>' + fbSummary.approve + '</strong> approved</span>' +
+          (fbSummary.reject > 0 ? '<span class="sep">·</span><span><strong>' + fbSummary.reject + '</strong> changes requested</span>' : '') +
+          (fbSummary.awaiting > 0 ? '<span class="sep">·</span><span><strong>' + fbSummary.awaiting + '</strong> pending review</span>' : '') +
+          '</div>';
+      }
+      // Download All action
+      if (visibleCount > 0) {
+        hero += '<div class="share-actions">' +
+          '<button class="share-dl-all" id="dl-all">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+          'Download all (' + visibleCount + ')</button></div>';
+      }
+      hero += '</div>';
+
+      // ── Grid ──
+      let gridHtml = '<div class="share-container"><div class="share-grid">';
+      data.items.forEach(function(item, i) {
+        const isVideo = item.type === 'video' || item.type === 'vid-upscale';
+        const hasUrl = !!item.url;
+        const isPending = !hasUrl && item.status && item.status !== 'completed';
+        const isBroken = !hasUrl && !isPending;
+        const cardClass = isBroken ? ' broken' : (isPending ? ' pending' : '');
+        const ratio = aspectRatioFor(item.format);
+
+        gridHtml += '<div class="share-item' + cardClass + '" ' +
+          'data-url="' + escapeAttr(item.url || '') + '" ' +
+          'data-type="' + (isVideo ? 'video' : 'image') + '" ' +
+          'data-gentype="' + escapeAttr(item.type || '') + '" ' +
+          'data-format="' + escapeAttr(item.format || '') + '">';
+
+        const slot = _fbByGen.get(item.id) || { mine: { approve: null, reject: null }, comments: [], counts: { approve: 0, reject: 0, comment: 0 } };
+        const myStatus = slot.mine.approve ? 'approve' : (slot.mine.reject ? 'reject' : null);
+
+        gridHtml += '<div class="share-item-media" style="aspect-ratio:' + ratio + '">';
+        if (hasUrl) {
+          if (isVideo) {
+            // No inline onerror — error binding done after render with retry logic
+            gridHtml += '<video src="' + escapeAttr(item.url) + '" muted preload="metadata" playsinline></video>';
+            gridHtml += '<div class="share-item-video-icon"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>';
+          } else {
+            // No inline onerror — error binding done after render with retry logic
+            gridHtml += '<img src="' + escapeAttr(item.url) + '" alt="Asset" ' +
+              'loading="' + (i < 4 ? 'eager' : 'lazy') + '" decoding="async">';
+          }
+        }
+        // State overlay — shown when card has .broken or .pending class
+        if (isPending) {
+          gridHtml += '<div class="share-item-state"><div class="spinner"></div><span>Processing</span></div>';
+        } else {
+          gridHtml += '<div class="share-item-state">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
+            '<span>Unavailable</span></div>';
+        }
+        // Type badge (top-left)
+        gridHtml += '<span class="share-item-badge">' + escapeHtml(typeLabel(item.type)) + '</span>';
+        // My-status badge (top-right) — visible if this reviewer already approved/rejected
+        if (myStatus === 'approve') {
+          gridHtml += '<span class="share-fb-status approve" title="You approved this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>';
+        } else if (myStatus === 'reject') {
+          gridHtml += '<span class="share-fb-status reject" title="You requested changes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>';
+        }
+        gridHtml += '</div>'; // .share-item-media
+
+        // Meta bar
+        gridHtml += '<div class="share-item-meta">' +
+          '<span class="share-item-meta-left">' +
+          '<span class="share-item-meta-format">' + escapeHtml(item.format || '—') + '</span>' +
+          (slot.counts.comment > 0 ? '<span class="share-fb-count" title="Comments"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + slot.counts.comment + '</span>' : '') +
+          '</span>';
+        if (hasUrl) {
+          gridHtml += '<button class="share-item-dl" title="Download" aria-label="Download" onclick="event.stopPropagation()">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+            '</button>';
+        }
+        gridHtml += '</div>';
+
+        // Feedback row (only on completed assets)
+        if (hasUrl) {
+          gridHtml += '<div class="share-fb-row" data-gen="' + item.id + '">' +
+            '<button class="share-fb-btn approve' + (myStatus === 'approve' ? ' active' : '') + '" data-act="approve" data-gen="' + item.id + '">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+              '<span>' + (myStatus === 'approve' ? 'Approved' : 'Approve') + '</span>' +
+            '</button>' +
+            '<button class="share-fb-btn reject' + (myStatus === 'reject' ? ' active' : '') + '" data-act="reject" data-gen="' + item.id + '">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+              '<span>Changes</span>' +
+            '</button>' +
+            '<button class="share-fb-btn comment" data-act="comment" data-gen="' + item.id + '">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+              '<span>Comment</span>' +
+            '</button>' +
+          '</div>';
+          // Existing comments + reject reasons (visible inline)
+          if (slot.comments.length > 0) {
+            gridHtml += '<div class="share-fb-comments">';
+            slot.comments.slice(0, 5).forEach(function(c) {
+              const head = (c.reviewer_name ? '<strong>' + escapeHtml(c.reviewer_name) + '</strong>' : '<strong>Anonymous</strong>') +
+                ' · ' + (c.type === 'reject' ? 'Requested changes' : 'Comment');
+              gridHtml += '<div class="share-fb-comment"><div class="share-fb-comment-head">' + head + '</div>' + escapeHtml(c.comment || '') + '</div>';
+            });
+            gridHtml += '</div>';
+          }
+        }
+        gridHtml += '</div>'; // .share-item
+      });
+      gridHtml += '</div></div>';
+
+      // ── Footer ──
+      const footer = '<div class="share-powered">Powered by <a href="https://studio.kanaky.xyz">Keou Studio</a> · Private Creative Infrastructure</div>';
+
+      app.innerHTML = hero + gridHtml + footer;
+      bindFeedbackActions(data);
+
+      // ── Image/video preview error handling with retry ─────────
+      // R2 thumbnails sometimes fail on first load (network blip, slow
+      // connection, lazy-load race condition). The URL is genuinely valid
+      // — the lightbox can fetch it on click. So instead of immediately
+      // marking the card .broken on the first error (which hides the
+      // preview AND removes the click handler binding), retry once with
+      // a cache-busting query param. Only flag broken if the retry also
+      // fails — that's the real "URL is dead" case.
+      document.querySelectorAll('.share-item-media img, .share-item-media video').forEach(function(media) {
+        let retried = false;
+        media.addEventListener('error', function() {
+          if (retried) {
+            media.closest('.share-item')?.classList.add('broken');
+            return;
+          }
+          retried = true;
+          // Cache-bust to bypass stale cache + force fresh request.
+          // We rebuild the URL via URL() to preserve all original query params.
+          try {
+            const u = new URL(media.src, location.origin);
+            u.searchParams.set('_r', Date.now());
+            media.src = u.toString();
+          } catch {
+            // If URL parsing fails (rare — already-broken src), just mark broken
+            media.closest('.share-item')?.classList.add('broken');
+          }
+        });
+        // Edge case: image "loaded" but with 0×0 dimensions (server returned
+        // 200 with empty body). Fire the error path manually.
+        media.addEventListener('load', function() {
+          if (media.tagName === 'IMG' && media.naturalWidth === 0 && !retried) {
+            media.dispatchEvent(new Event('error'));
+          }
+        });
+      });
+
+      // Bind card clicks (lightbox), skip broken/pending — but ignore clicks on the feedback row
+      document.querySelectorAll('.share-item').forEach(function(el) {
+        if (el.classList.contains('broken') || el.classList.contains('pending')) return;
+        el.addEventListener('click', function(e) {
+          // Don't open lightbox if the click was on a feedback button or the comments area
+          if (e.target.closest('.share-fb-row') || e.target.closest('.share-fb-comments') || e.target.closest('.share-fb-composer')) return;
+          var url = el.dataset.url;
+          var type = el.dataset.type;
+          if (typeof Lightbox !== 'undefined' && Lightbox.open) {
+            var ACTION_MAP = { 'image': 'Generate', 'polish': 'Polish', 'video': 'Video',
+              'img-upscale': 'Upscale', 'vid-upscale': 'Upscale', 'tts': 'Voice-over', 'sfx': 'Sound Effect' };
+            Lightbox.open(url, type, {
+              genType: type,
+              action: ACTION_MAP[el.dataset.gentype || type] || type,
+              format: el.dataset.format || null,
+            });
+          } else {
+            location.assign(url);
+          }
+        });
+      });
+
+      // Individual download buttons
+      document.querySelectorAll('.share-item-dl').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var item = btn.closest('.share-item');
+          if (item.dataset.url) downloadFile(item.dataset.url);
+        });
+      });
+
+      // Download All
+      var dlAllBtn = document.getElementById('dl-all');
+      if (dlAllBtn) {
+        dlAllBtn.addEventListener('click', async function() {
+          var items = data.items.filter(function(i) { return i.url; });
+          if (!items.length) return;
+
+          if (items.length < 3) {
+            items.forEach(function(item, i) {
+              setTimeout(function() { downloadFile(item.url); }, i * 300);
+            });
+            return;
+          }
+
+          dlAllBtn.disabled = true;
+          var origText = dlAllBtn.innerHTML;
+          dlAllBtn.innerHTML = 'Preparing ZIP…';
+          try {
+            var zip = new JSZip();
+            var fetched = 0;
+            await Promise.all(items.map(async function(item, i) {
+              try {
+                var res = await fetch(item.url);
+                if (!res.ok) return;
+                var blob = await res.blob();
+                var ext = item.type === 'video' || item.type === 'vid-upscale' ? 'mp4'
+                  : blob.type && blob.type.includes('png') ? 'png'
+                  : 'jpg';
+                zip.file(String(i + 1).padStart(2, '0') + '_' + (item.type || 'asset') + '.' + ext, blob);
+                fetched++;
+                dlAllBtn.innerHTML = 'Preparing ZIP… ' + fetched + '/' + items.length;
+              } catch(e) {}
+            }));
+            if (!Object.keys(zip.files).length) {
+              dlAllBtn.innerHTML = origText; dlAllBtn.disabled = false; return;
+            }
+            dlAllBtn.innerHTML = 'Compressing…';
+            var content = await zip.generateAsync({ type: 'blob' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(content);
+            var now = new Date();
+            var slug = (data.projectName || data.agencyName || 'assets').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+            a.download = slug + '_' + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + items.length + '.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            if (typeof toast === 'function') toast('ZIP downloaded');
+          } catch(e) {}
+          finally { dlAllBtn.disabled = false; dlAllBtn.innerHTML = origText; }
+        });
+      }
+    }
+
+    // ─── Feedback actions ───
+    function bindFeedbackActions(data) {
+      document.querySelectorAll('.share-fb-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function(e) {
+          e.stopPropagation();
+          const act = btn.dataset.act;
+          const genId = parseInt(btn.dataset.gen);
+          if (!genId) return;
+
+          // Ensure we have a reviewer name before sending feedback
+          let reviewer = getReviewer();
+          if (!reviewer || !reviewer.name) {
+            const name = await promptReviewerName();
+            if (!name) return; // user cancelled
+            reviewer = { name };
+            setReviewer(reviewer);
+          }
+
+          if (act === 'approve') {
+            await submitFeedback(genId, 'approve', null, reviewer);
+          } else {
+            // For reject + comment we open the inline composer
+            openComposer(genId, act, reviewer, btn.closest('.share-item'));
+          }
+        });
+      });
+    }
+
+    async function submitFeedback(genId, type, comment, reviewer) {
+      try {
+        const realUrl = '/api/share/' + encodeURIComponent(token) + '/feedback' + (currentCode ? '?code=' + encodeURIComponent(currentCode) : '');
+        const res = await fetch(realUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            generationId: genId,
+            type,
+            comment,
+            reviewerName: reviewer.name,
+            reviewerEmail: reviewer.email || null,
+          }),
+        });
+        if (!res.ok) {
+          if (typeof toast === 'function') toast('Could not submit — try again', true);
+          return false;
+        }
+        // Optimistic local update — refetch summary and re-render
+        await refreshFeedback();
+        if (typeof toast === 'function') {
+          toast(type === 'approve' ? 'Approved' : type === 'reject' ? 'Changes requested' : 'Comment sent');
+        }
+        return true;
+      } catch (e) {
+        if (typeof toast === 'function') toast('Network error — try again', true);
+        return false;
+      }
+    }
+
+    async function refreshFeedback() {
+      try {
+        const fbUrl = '/api/share/' + encodeURIComponent(token) + '/feedback-summary' + (currentCode ? '?code=' + encodeURIComponent(currentCode) : '');
+        const fbRes = await fetch(fbUrl);
+        if (!fbRes.ok) return;
+        const fbData = await fbRes.json();
+        // Mutate the cached data and re-render in place
+        window._shareData = window._shareData || {};
+        if (window._shareData.items) {
+          window._shareData._feedback = fbData.feedback || [];
+          renderSharePage(window._shareData);
+        }
+      } catch {}
+    }
+
+    function openComposer(genId, type, reviewer, cardEl) {
+      // Remove any existing composer in the grid
+      document.querySelectorAll('.share-fb-composer').forEach(function(c) { c.remove(); });
+      const composer = document.createElement('div');
+      composer.className = 'share-fb-composer';
+      composer.innerHTML =
+        '<h4>' + (type === 'reject' ? 'Request changes on this asset' : 'Add a comment') + '</h4>' +
+        '<textarea placeholder="' + (type === 'reject' ? 'What should be changed? (lighting, framing, color, copy…)' : 'Your note for the agency…') + '" maxlength="2000" autofocus></textarea>' +
+        '<div class="share-fb-composer-actions">' +
+        '<button type="button" class="cancel">Cancel</button>' +
+        '<button type="button" class="send">' + (type === 'reject' ? 'Send request' : 'Send comment') + '</button>' +
+        '</div>';
+      // Place composer right after the clicked card (visually attached)
+      cardEl.parentNode.insertBefore(composer, cardEl.nextSibling);
+      const ta = composer.querySelector('textarea');
+      const sendBtn = composer.querySelector('button.send');
+      const cancelBtn = composer.querySelector('button.cancel');
+      setTimeout(function() { ta.focus(); }, 50);
+      cancelBtn.addEventListener('click', function() { composer.remove(); });
+      sendBtn.addEventListener('click', async function() {
+        const text = ta.value.trim();
+        if (!text) { ta.focus(); return; }
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+        const ok = await submitFeedback(genId, type, text, reviewer);
+        if (ok) composer.remove();
+        else { sendBtn.disabled = false; sendBtn.textContent = type === 'reject' ? 'Send request' : 'Send comment'; }
+      });
+    }
+
+    // Prompt reviewer name once via a small in-page modal (uses kc-modal styles if available, else fallback inline overlay)
+    function promptReviewerName() {
+      return new Promise(function(resolve) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s';
+        overlay.innerHTML =
+          '<div style="background:rgba(20,20,20,.98);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,.5)">' +
+          '<h3 style="font-size:18px;font-weight:700;color:var(--ink);margin:0 0 8px;letter-spacing:-.01em">Your name</h3>' +
+          '<p style="font-size:12px;color:var(--ink-muted);margin:0 0 20px">So the agency knows who reviewed each asset.</p>' +
+          '<input id="rev-name-input" type="text" placeholder="e.g. John Doe" maxlength="100" autocomplete="name" style="width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-size:14px;font-family:\'Space Grotesk\',sans-serif;box-sizing:border-box;margin-bottom:8px">' +
+          '<input id="rev-email-input" type="email" placeholder="Email (optional, for reply)" maxlength="254" autocomplete="email" style="width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);font-size:14px;font-family:\'Space Grotesk\',sans-serif;box-sizing:border-box">' +
+          '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">' +
+          '<button id="rev-cancel" type="button" style="padding:10px 18px;border-radius:100px;font-size:13px;font-weight:600;background:transparent;color:var(--ink-muted);border:1.5px solid var(--border);cursor:pointer;font-family:\'Space Grotesk\',sans-serif">Cancel</button>' +
+          '<button id="rev-ok" type="button" style="padding:10px 18px;border-radius:100px;font-size:13px;font-weight:600;background:var(--ink);color:#050505;border:none;cursor:pointer;font-family:\'Space Grotesk\',sans-serif">Continue</button>' +
+          '</div></div>';
+        document.body.appendChild(overlay);
+        const nameInput = overlay.querySelector('#rev-name-input');
+        const emailInput = overlay.querySelector('#rev-email-input');
+        const okBtn = overlay.querySelector('#rev-ok');
+        const cancelBtn = overlay.querySelector('#rev-cancel');
+        setTimeout(function() { nameInput.focus(); }, 50);
+        function close(value) { overlay.remove(); resolve(value); }
+        cancelBtn.addEventListener('click', function() { close(null); });
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) close(null); });
+        document.addEventListener('keydown', function escHandler(e) {
+          if (e.key === 'Escape') { close(null); document.removeEventListener('keydown', escHandler); }
+          if (e.key === 'Enter' && (e.target === nameInput || e.target === emailInput)) { okBtn.click(); }
+        });
+        okBtn.addEventListener('click', function() {
+          const name = nameInput.value.trim();
+          if (!name) { nameInput.focus(); return; }
+          const email = emailInput.value.trim();
+          setReviewer({ name, email: email || null });
+          close(name);
+        });
+      });
+    }
+
+    async function downloadFile(url) {
+      try {
+        var res = await fetch(url);
+        if (!res.ok) throw new Error('fetch failed');
+        var blob = await res.blob();
+        var ext = blob.type && blob.type.includes('png') ? 'png'
+          : blob.type && blob.type.includes('mp4') ? 'mp4'
+          : blob.type && blob.type.includes('webp') ? 'webp'
+          : blob.type && blob.type.includes('jpeg') ? 'jpg'
+          : 'bin';
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'asset-' + Date.now() + '.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch(e) {
+        // Last resort if blob download fails — same-tab navigation
+        location.assign(url);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escapeAttr(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  })();
+  </script>
+<script defer src="/shared/kanaky-badge.js"></script>
+</body>
+</html>

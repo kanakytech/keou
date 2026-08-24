@@ -19,10 +19,12 @@ import { isByok } from '../../middleware/edition.js';
 let _defaultProviderCache = { value: null, exp: 0 };
 
 export async function getProvider() {
-  // BYOK editions (opensource, community): the caller's key rides each
-  // request and is always a KIE.AI key — no DB/env key lookup, no provider
-  // preference.
-  if (isByok()) return kie;
+  // On RESPECTE la préférence de l'exploitant : DEFAULT_PROVIDER=fal était
+  // ignoré ici, ce qui rendait Fal.ai inatteignable dans toute l'édition
+  // publiée alors que le README l'annonce comme fournisseur possible.
+  // L'en-tête ne dit pas de quel fournisseur vient la clé — c'est cette
+  // variable qui tranche, et elle vaut « kie » par défaut.
+  if (isByok()) return config.defaultProvider === 'fal' ? fal : kie;
 
   // Determine which keys are available (DB or env)
   let hasKie = !!(config.kie?.apiKey || config.kie?.keys?.image);
@@ -78,9 +80,22 @@ export async function getProviderApiKey(providerName) {
   // request (X-Provider-Key). Nothing is read from DB/env and nothing is
   // cached — keys from different visitors must never bleed into each other.
   if (isByok()) {
+    // La clé du visiteur prime toujours. C'est la garantie du produit : sur
+    // l'instance hébergée, aucune clé serveur n'est configurée, donc seule
+    // celle du visiteur est jamais utilisée.
     const key = getRequestProviderKey();
-    if (!key) throw new Error('API key required — paste your KIE.AI key in the studio to generate');
-    return key;
+    if (key) return key;
+
+    // Repli explicite pour un déploiement PRIVÉ. Sans lui, KIE_API_KEY était
+    // documentée mais morte, et le poller ne pouvait clore aucune tâche —
+    // la documentation promettait donc quelque chose que le code ne faisait pas.
+    // Un opérateur qui pose sa propre clé sur son propre serveur choisit
+    // sciemment de payer pour ses utilisateurs ; le démarrage le lui rappelle.
+    const envKey = providerName === 'fal' ? config.fal?.apiKey : config.kie?.apiKey;
+    if (envKey) return envKey;
+
+    const nom = providerName === 'fal' ? 'Fal.ai' : 'KIE.AI';
+    throw new Error(`API key required — paste your ${nom} key in the studio to generate`);
   }
 
   const now = Date.now();

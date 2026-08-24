@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Admin — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+/* ── Tabs (use design system tab-bar) ── */
+.admin-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px}
+.admin-tab{
+  padding:10px 20px;font-size:13px;font-weight:600;color:var(--ink-muted);
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;
+  transition:all .3s var(--ease-out);background:none;border-top:none;border-left:none;border-right:none;
+  font-family:\'Space Grotesk\',sans-serif;
+}
+.admin-tab:hover{color:var(--ink)}
+.admin-tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.admin-tab{position:relative}
+.admin-tab::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--ink);transform:scaleX(0);transition:transform .25s var(--ease-out)}
+.admin-tab.active::after{transform:scaleX(1)}
+.admin-tab:active{transform:scale(0.96);transition-duration:.06s}
+
+/* ── Counter animation ── */
+@keyframes countIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.stat-value{animation:countIn .5s var(--ease-out) both}
+
+.tab-content{display:none;animation:fadeInUp .35s var(--ease-out) both}
+.tab-content.active{display:block}
+
+/* ── Stats ── */
+.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+
+/* ── Settings Grid ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:800px}
+.settings-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;
+}
+.settings-card h3{margin-bottom:16px;font-size:15px}
+
+/* ── Usage Chart ── */
+.usage-chart{margin-top:24px}
+.chart-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.chart-row .chart-label{width:60px;text-align:right;color:var(--ink-muted);flex-shrink:0}
+.chart-bar{flex:1;height:16px;background:var(--surface-3);border-radius:4px;overflow:hidden}
+.chart-bar-fill{height:100%;background:var(--ink);border-radius:4px;transition:width .6s var(--ease-out)}
+.chart-row .chart-value{width:30px;font-weight:600;font-size:11px}
+
+/* ── Logo Upload ── */
+.logo-upload{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.logo-preview{
+  width:64px;height:64px;border-radius:var(--radius-sm);border:2px dashed var(--border);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:var(--surface-2);flex-shrink:0;
+}
+.logo-preview img{width:100%;height:100%;object-fit:cover}
+.logo-upload label{
+  padding:6px 16px;border:1.5px solid var(--border);border-radius:100px;
+  cursor:pointer;font-weight:500;font-size:12px;transition:all .2s;
+}
+.logo-upload label:hover{border-color:var(--ink);background:var(--surface-2)}
+
+/* ── Export Button ── */
+.export-section{margin-top:24px;padding:20px;border:1px solid var(--border);border-radius:var(--radius)}
+.export-section h4{margin-bottom:8px}
+.export-section p{font-size:13px;color:var(--ink-muted);margin-bottom:12px}
+
+/* ── Action buttons ── */
+.action-btn{
+  padding:7px 16px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .3s var(--ease-out);font-family:\'Space Grotesk\',sans-serif;
+}
+.action-btn:hover{border-color:var(--ink);background:var(--surface-2);transform:translateY(-1px)}
+.action-btn:active{transform:translateY(0);transition-duration:.1s}
+.action-btn.primary{background:var(--ink);color:#050505;border-color:var(--ink);font-weight:700}
+.action-btn.primary:hover{opacity:.85}
+.action-btn.danger{color:#f87171;border-color:rgba(248,113,113,.3)}
+.action-btn.danger:hover{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5)}
+
+@media(max-width:768px){
+  .admin-stats{grid-template-columns:repeat(2,1fr)}
+  .settings-grid{grid-template-columns:1fr}
+  .admin-tabs{overflow-x:auto;flex-wrap:nowrap}
+  .admin-tab{white-space:nowrap;padding:10px 14px}
+}
+
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container hidden" id="content">
+  <h2 style="margin-bottom:24px">Agency Admin</h2>
+
+  <!-- Tabs -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="overview">Overview</button>
+    <button class="admin-tab" data-tab="apikeys">API Keys</button>
+    <button class="admin-tab" data-tab="settings">Settings</button>
+    <button class="admin-tab" data-tab="usage">Usage & Export</button>
+  </div>
+
+  <!-- ═══ Overview Tab ═══ -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="admin-stats stagger-in">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-members">0</div>
+        <div class="stat-label">Team members</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-projects">0</div>
+        <div class="stat-label">Active clients</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-gens30">0</div>
+        <div class="stat-label">Generations (30d)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-assets">0</div>
+        <div class="stat-label">Brand assets</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ API Keys Tab ═══ -->
+  <div class="tab-content" id="tab-apikeys">
+    <div style="max-width:720px">
+
+      <!-- KIE.AI -->
+      <div class="settings-card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0">Production Engine — KIE.AI</h3>
+          <div id="api-key-status" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500"></div>
+        </div>
+        <p style="font-size:13px;color:var(--ink-muted);margin-bottom:16px;line-height:1.6">Powers image generation, video, polish, remix, format adapt, upscale, text-to-speech, and sound effects.</p>
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+          <p style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">How to get your key</p>
+          <ol style="font-size:13px;color:var(--ink-muted);line-height:2;padding-left:18px;margin:0">
+            <li>Go to <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" style="color:var(--ink-soft);font-weight:500">kie.ai</a> and create an account</li>
+            <li>Navigate to <strong style="color:var(--ink-soft)">API Keys</strong> in your dashboard</li>
+            <li>Click <strong style="color:var(--ink-soft)">Create new key</strong></li>
+            <li>Copy the key and paste it below</li>
+          </ol>
+        </div>
+        <form id="api-key-form" style="display:flex;gap:8px">
+          <div style="position:relative;flex:1">
+            <input class="form-input" id="api-key-input" type="password" placeholder="sk-kie-..." autocomplete="off" style="padding-right:36px;font-size:13px">
+            <button type="button" id="api-key-toggle" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--ink-muted)" title="Show/hide">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button type="submit" class="btn-primary" id="api-key-btn" style="font-size:13px;padding:10px 18px;white-space:nowrap">Save key</button>
+        </form>
+      </div>
+
+      <!-- Fal.ai -->
+      <div class="settings-card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0">Production Engine — Fal.ai <span style="font-size:11px;font-weight:400;color:var(--ink-faint);margin-left:6px">Alternative</span></h3>
+          <div id="fal-key-status" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500"></div>
+        </div>
+        <p style="font-size:13px;color:var(--ink-muted);margin-bottom:16px;line-height:1.6">Alternative provider for image and video generation. Switch between KIE.AI and Fal.ai using the toggle below.</p>
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+          <p style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">How to get your key</p>
+          <ol style="font-size:13px;color:var(--ink-muted);line-height:2;padding-left:18px;margin:0">
+            <li>Go to <a href="https://fal.ai" style="color:var(--ink-soft);font-weight:500">fal.ai</a> and create an account</li>
+            <li>Navigate to <a href="https://fal.ai/dashboard/keys" style="color:var(--ink-soft);font-weight:500">Dashboard &rarr; Keys</a></li>
+            <li>Click <strong style="color:var(--ink-soft)">Create new key</strong></li>
+            <li>Copy the key and paste it below</li>
+          </ol>
+        </div>
+        <form id="fal-key-form" style="display:flex;gap:8px">
+          <div style="position:relative;flex:1">
+            <input class="form-input" id="fal-key-input" type="password" placeholder="fal-..." autocomplete="off" style="padding-right:36px;font-size:13px">
+            <button type="button" id="fal-key-toggle" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--ink-muted)" title="Show/hide">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <button type="submit" class="btn-primary" id="fal-key-btn" style="font-size:13px;padding:10px 18px;white-space:nowrap">Save key</button>
+        </form>
+      </div>
+
+      <!-- Default Provider Toggle -->
+      <div class="settings-card" style="margin-bottom:20px">
+        <h3 style="margin-bottom:12px">Default Provider</h3>
+        <p style="font-size:13px;color:var(--ink-muted);margin-bottom:14px;line-height:1.6">Choose which provider handles all production tasks. Both need a valid API key to work.</p>
+        <div id="provider-selector" style="display:flex;gap:8px">
+          <button type="button" class="provider-btn" data-provider="kie" style="flex:1;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-muted);transition:all .15s">KIE.AI</button>
+          <button type="button" class="provider-btn" data-provider="fal" style="flex:1;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-muted);transition:all .15s">Fal.ai</button>
+        </div>
+      </div>
+
+      <!-- Unlimited Mode (BYO Key) -->
+      <div class="settings-card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0">Usage Mode</h3>
+          <div id="quota-status" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500"></div>
+        </div>
+        <p style="font-size:13px;color:var(--ink-muted);margin-bottom:14px;line-height:1.6">You bring your own API key — KIE.AI or Fal.ai bill you directly. Enable unlimited mode to remove the internal quota cap. Usage is still tracked in analytics for reporting.</p>
+        <button type="button" class="btn-primary" id="unlimited-btn" style="width:100%;font-size:14px;padding:12px">Enable unlimited mode</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ Settings Tab ═══ -->
+  <div class="tab-content" id="tab-settings">
+    <div class="settings-grid">
+      <div class="settings-card">
+        <h3>Agency Info</h3>
+        <form id="agency-form">
+          <div class="form-group">
+            <label class="form-label">Agency name</label>
+            <input class="form-input" id="agency-name" type="text" required>
+          </div>
+          <div class="logo-upload">
+            <div class="logo-preview" id="logo-preview">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01M8 14h.01M16 14h.01M12 14h.01"/></svg>
+            </div>
+            <div>
+              <label for="logo-input">Upload logo</label>
+              <input type="file" id="logo-input" accept="image/*" hidden>
+              <p style="font-size:11px;color:var(--ink-faint);margin-top:4px">Shown on login page</p>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" id="agency-btn">Save changes</button>
+        </form>
+      </div>
+
+      <!-- AI Providers section moved to API Keys tab -->
+
+      <div class="settings-card">
+        <h3>Quick Links</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <a href="/team.html" class="action-btn" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage Team</a>
+          <a href="/projects.html" class="action-btn" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Manage Clients</a>
+          <a href="/history.html" class="action-btn" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M17.5 10.5a2.5 2.5 0 0 1 0 5"/><circle cx="8.5" cy="8.5" r="2.5"/><path d="M12 21.5a2.5 2.5 0 0 1-3.5-3.5"/><circle cx="6.5" cy="13.5" r="2.5"/><path d="M3.5 10.5a2.5 2.5 0 0 1 5 0"/><circle cx="8.5" cy="17.5" r="2.5"/></svg>Content Library</a>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Roles & Permissions</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding:8px 10px;color:var(--ink-muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Permission</th>
+              <th style="text-align:center;padding:8px 10px;color:var(--ink-muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Admin</th>
+              <th style="text-align:center;padding:8px 10px;color:var(--ink-muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Member</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Generate images & videos</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Use Tools (upscale, TTS, SFX)</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">View own generations</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">View all team generations</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Create & manage clients</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Share assets with clients</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Download assets</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Manage team members</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Configure AI providers</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">View analytics & reports</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">Manage quotas & billing</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+            <tr><td style="padding:8px 10px">Export usage data</td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></td><td style="text-align:center;padding:8px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Usage & Export Tab ═══ -->
+  <div class="tab-content" id="tab-usage">
+    <h3 style="margin-bottom:16px">Usage by team member (30 days)</h3>
+    <div class="usage-chart" id="usage-chart">
+      <p class="text-muted" style="font-size:13px">Loading...</p>
+    </div>
+
+    <div class="export-section">
+      <h4>Usage Report</h4>
+      <p>Comprehensive report with costs, savings, team & client breakdown. Open as a printable page or download raw CSV.</p>
+      <button class="action-btn primary" onclick="openReport()" style="display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>View Report</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script>
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  const user = Auth.getUser();
+  if (user.role !== 'admin') {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:\'Space Grotesk\',sans-serif"><h2>Access denied</h2></div>';
+    return;
+  }
+
+  Nav.render({ active: 'admin' });
+  const contentEl = document.getElementById('content');
+  contentEl.classList.remove('hidden');
+  requestAnimationFrame(() => { requestAnimationFrame(() => { contentEl.classList.add('page-enter'); }); });
+
+  // Tab switching
+  function switchToTab(tabId) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const tabBtn = document.querySelector(`.admin-tab[data-tab="${tabId}"]`);
+    const tabContent = document.getElementById('tab-' + tabId);
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabContent) tabContent.classList.add('active');
+  }
+
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
+  });
+
+  // Open tab from URL hash (e.g. /admin.html#apikeys)
+  const hash = window.location.hash.replace('#', '');
+  if (hash && document.getElementById('tab-' + hash)) switchToTab(hash);
+
+  await loadAll();
+  setupForms();
+  // Credits-mode deployments are fully managed: the platform operates the
+  // production keys and the client only sees credits.
+  if (Auth.isCreditsMode && Auth.isCreditsMode()) {
+    renderCreditsTab();
+  } else {
+    setupApiKeyForm();
+    loadApiKeyStatus();
+    setupFalKeyForm();
+    loadFalKeyStatus();
+    loadDefaultProvider();
+    // Anthropic key management disabled — chat not active
+    setupUnlimitedMode();
+    loadQuotaStatus();
+  }
+})();
+
+// ─── Credits tab (BILLING_MODE=credits) ───
+// Replaces the API-keys tab: balance, price list, top-up instructions.
+async function renderCreditsTab() {
+  const tabBtn = document.querySelector('.admin-tab[data-tab="apikeys"]');
+  if (tabBtn) tabBtn.textContent = 'Credits';
+  const tab = document.getElementById('tab-apikeys');
+  if (!tab) return;
+  let balance = 0, pricing = null;
+  try {
+    const res = await Auth.authFetch('/api/billing/pricing');
+    if (res.ok) { const d = await res.json(); balance = d.creditBalance || 0; pricing = d.pricing; }
+  } catch {}
+  const a = pricing?.actions || {};
+  const videoRows = Object.entries(a.video || {}).map(([m, c]) =>
+    `<tr><td style="padding:6px 0;color:var(--ink-muted)">Video — ${escapeHtml(m)} (${a.videoBaselineSeconds || 8}s)</td><td style="text-align:right;font-weight:600">${c} cr</td></tr>`).join('');
+  tab.innerHTML = `
+    <div style="max-width:720px">
+      <div class="settings-card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <h3 style="margin:0">Credit balance</h3>
+          <span style="font-size:11px;color:var(--ink-faint)"></span>
+        </div>
+        <div style="font-size:42px;font-weight:800;letter-spacing:-1px;margin:10px 0 4px">${balance.toLocaleString()}</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">&asymp; ${balance.toLocaleString()} images &middot; or ${Math.floor(balance/8)} product videos &middot; or ${Math.floor(balance/30)} export packs</div>
+        <p style="font-size:13px;color:var(--ink-muted);line-height:1.6">credits available. Every generation is billed in credits and automatically refunded if it fails. To top up, contact your account manager — credits are added within one business day of payment.</p>
+      </div>
+      <div class="settings-card">
+        <h3 style="margin-bottom:12px">Price list</h3>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:var(--ink-muted)">Image (generate / polish / remix / adapt)</td><td style="text-align:right;font-weight:600">${a.image ?? 1} cr</td></tr>
+          <tr><td style="padding:6px 0;color:var(--ink-muted)">Voice-over (TTS)</td><td style="text-align:right;font-weight:600">${a.tts ?? 1} cr</td></tr>
+          <tr><td style="padding:6px 0;color:var(--ink-muted)">Sound effect</td><td style="text-align:right;font-weight:600">${a.sfx ?? 1} cr</td></tr>
+          <tr><td style="padding:6px 0;color:var(--ink-muted)">Image upscale</td><td style="text-align:right;font-weight:600">${a.imageUpscale ?? 2} cr</td></tr>
+          <tr><td style="padding:6px 0;color:var(--ink-muted)">Video upscale</td><td style="text-align:right;font-weight:600">${a.videoUpscale ?? 10} cr</td></tr>
+          ${videoRows}
+        </table>
+      </div>
+    </div>`;
+}
+
+async function loadAll() {
+  try {
+    const [statsRes, dashRes] = await Promise.all([
+      Auth.authFetch('/api/admin/stats'),
+      Auth.authFetch('/api/dashboard'),
+    ]);
+    const stats = await statsRes.json();
+    const dash = await dashRes.json();
+
+    // Overview stats
+    document.getElementById('stat-members').textContent = stats.totalMembers || 0;
+    document.getElementById('stat-projects').textContent = stats.activeProjects || 0;
+    document.getElementById('stat-gens30').textContent = stats.monthlyGens || 0;
+    document.getElementById('stat-assets').textContent = stats.totalAssets || 0;
+
+
+    // Agency name
+    const agencyName = stats.agency?.name || stats.agencyName || '';
+    const agencyLogo = stats.agency?.logo_url || stats.agencyLogo || null;
+    document.getElementById('agency-name').value = agencyName;
+    if (agencyLogo) {
+      const logoEl = document.getElementById('logo-preview');
+      const img = new Image();
+      img.src = agencyLogo;
+      img.alt = 'Agency logo';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      img.onerror = () => { logoEl.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M8 10h.01M16 10h.01M12 10h.01M8 14h.01M16 14h.01M12 14h.01"/></svg>'; };
+      logoEl.innerHTML = '';
+      logoEl.appendChild(img);
+    }
+
+    // Usage chart
+    await loadUsage();
+  } catch (e) {
+    console.error('Admin load error:', e);
+    if (typeof toast === 'function') toast('Failed to load admin data — check your connection', true);
+  }
+}
+
+async function loadUsage() {
+  try {
+    const res = await Auth.authFetch('/api/admin/usage');
+    const data = await res.json();
+    const users = data.users || data.usage || [];
+
+    const chart = document.getElementById('usage-chart');
+    if (!users.length) {
+      chart.innerHTML = '<p class="text-muted" style="font-size:13px">No usage data</p>';
+      return;
+    }
+
+    const maxGen = Math.max(...users.map(u => u.totalGens || 0), 1);
+
+    chart.innerHTML = users.map(u => {
+      const pct = ((u.totalGens || 0) / maxGen * 100).toFixed(0);
+      return `
+        <div class="chart-row">
+          <span class="chart-label">${escapeHtml(u.name)}</span>
+          <div class="chart-bar">
+            <div class="chart-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="chart-value">${u.totalGens || 0}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error('Usage load error:', e);
+    const chart = document.getElementById('usage-chart');
+    if (chart) chart.innerHTML = '<p class="text-muted" style="font-size:13px;color:#f87171">Failed to load usage. <a href="#" onclick="event.preventDefault();loadUsage()" style="color:inherit;text-decoration:underline">Retry</a></p>';
+  }
+}
+
+function setupForms() {
+  // Agency settings
+  document.getElementById('agency-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('agency-btn');
+    btn.classList.add('btn-loading'); btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch('/api/admin/agency', {
+        method: 'PUT',
+        body: JSON.stringify({ name: document.getElementById('agency-name').value.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) toast('Agency info saved');
+      else toast(data.error || 'Failed', true);
+    } catch (e) { toast('Failed to save', true); }
+    finally { btn.classList.remove('btn-loading'); btn.disabled = false; }
+  });
+
+  // Logo upload
+  document.getElementById('logo-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('Logo must be under 5MB', true); return; }
+
+    const fd = new FormData();
+    fd.append('logo', file);
+
+    try {
+      const res = await Auth.authFetch('/api/admin/agency/logo', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.logoUrl) {
+        document.getElementById('logo-preview').innerHTML = `<img src="${escapeHtml(data.logoUrl)}" alt="Logo">`;
+        toast('Logo updated');
+      }
+    } catch (e) { toast('Failed to upload logo', true); }
+  });
+}
+
+// ─── API Key Management ───
+// ─── Provider status badge helper ───
+function setStatusBadge(el, configured, masked) {
+  if (configured) {
+    el.style.background = 'rgba(34,197,94,.12)';
+    el.style.color = '#22c55e';
+    el.textContent = masked && masked !== 'Set via environment' ? 'Connected' : 'Active';
+  } else {
+    el.style.background = 'rgba(255,255,255,.06)';
+    el.style.color = 'var(--ink-faint)';
+    el.textContent = 'Not set';
+  }
+}
+
+// ─── KIE.AI Key ───
+async function loadApiKeyStatus() {
+  try {
+    const res = await Auth.authFetch('/api/admin/api-key');
+    const data = await res.json();
+    setStatusBadge(document.getElementById('api-key-status'), data.configured, data.masked);
+  } catch {}
+}
+
+function setupApiKeyForm() {
+  const input = document.getElementById('api-key-input');
+  document.getElementById('api-key-toggle').addEventListener('click', () => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('api-key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = input.value.trim();
+    if (!key) { toast('Please enter an API key', true); return; }
+
+    const btn = document.getElementById('api-key-btn');
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      const res = await Auth.authFetch('/api/admin/api-key', { method: 'PUT', body: JSON.stringify({ apiKey: key }) });
+      const data = await res.json();
+      if (data.ok) { toast('KIE.AI key saved'); input.value = ''; await loadApiKeyStatus(); }
+      else { toast(data.error || 'Failed to save', true); }
+    } catch { toast('Failed to save', true); }
+    finally { btn.disabled = false; btn.textContent = 'Save'; }
+  });
+}
+
+// ─── Fal.ai Key ───
+async function loadFalKeyStatus() {
+  try {
+    const res = await Auth.authFetch('/api/admin/fal-api-key');
+    const data = await res.json();
+    setStatusBadge(document.getElementById('fal-key-status'), data.configured, data.masked);
+  } catch {}
+}
+
+function setupFalKeyForm() {
+  const input = document.getElementById('fal-key-input');
+  document.getElementById('fal-key-toggle').addEventListener('click', () => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('fal-key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = input.value.trim();
+    if (!key) { toast('Please enter a Fal.ai API key', true); return; }
+
+    const btn = document.getElementById('fal-key-btn');
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      const res = await Auth.authFetch('/api/admin/fal-api-key', { method: 'PUT', body: JSON.stringify({ apiKey: key }) });
+      const data = await res.json();
+      if (data.ok) { toast('Fal.ai key saved'); input.value = ''; await loadFalKeyStatus(); }
+      else { toast(data.error || 'Failed to save', true); }
+    } catch { toast('Failed to save', true); }
+    finally { btn.disabled = false; btn.textContent = 'Save'; }
+  });
+}
+
+// ─── Default Provider Selector ───
+async function loadDefaultProvider() {
+  try {
+    const res = await Auth.authFetch('/api/admin/default-provider');
+    const data = await res.json();
+    highlightProviderBtn(data.provider || 'kie');
+  } catch {}
+
+  document.querySelectorAll('.provider-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const provider = btn.dataset.provider;
+      try {
+        const res = await Auth.authFetch('/api/admin/default-provider', { method: 'PUT', body: JSON.stringify({ provider }) });
+        const data = await res.json();
+        if (data.ok) { highlightProviderBtn(provider); toast(`Default provider set to ${provider === 'fal' ? 'Fal.ai' : 'KIE.AI'}`); }
+        else { toast(data.error || 'Failed', true); }
+      } catch { toast('Failed to update provider', true); }
+    });
+  });
+}
+
+function highlightProviderBtn(active) {
+  document.querySelectorAll('.provider-btn').forEach(btn => {
+    const isActive = btn.dataset.provider === active;
+    btn.style.background = isActive ? 'var(--ink)' : 'var(--surface-2)';
+    btn.style.color = isActive ? 'var(--bg)' : 'var(--ink-muted)';
+    btn.style.borderColor = isActive ? 'var(--ink)' : 'var(--border)';
+  });
+}
+
+// ─── Anthropic Key ───
+async function loadAnthropicKeyStatus() {
+  try {
+    const res = await Auth.authFetch('/api/admin/anthropic-key');
+    const data = await res.json();
+    setStatusBadge(document.getElementById('anthropic-key-status'), data.set, data.masked);
+  } catch {}
+}
+
+function setupAnthropicKeyForm() {
+  const input = document.getElementById('anthropic-key-input');
+  document.getElementById('anthropic-key-toggle').addEventListener('click', () => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('anthropic-key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = input.value.trim();
+    if (!key) { toast('Please enter an Anthropic API key', true); return; }
+
+    const btn = document.getElementById('anthropic-key-btn');
+    btn.disabled = true; btn.textContent = 'Validating...';
+    try {
+      const res = await Auth.authFetch('/api/admin/anthropic-key', { method: 'PUT', body: JSON.stringify({ apiKey: key }) });
+      const data = await res.json();
+      if (data.ok) { toast('Anthropic key saved'); input.value = ''; await loadAnthropicKeyStatus(); }
+      else { toast(data.error || 'Failed to save', true); }
+    } catch { toast('Failed to save', true); }
+    finally { btn.disabled = false; btn.textContent = 'Save key'; }
+  });
+}
+
+// ─── Unlimited Mode ───
+async function loadQuotaStatus() {
+  try {
+    const res = await Auth.authFetch('/api/admin/stats');
+    if (!res.ok) return;
+    const d = await res.json();
+    const el = document.getElementById('quota-status');
+    if (!el) return;
+    const isUnlimited = d.agency?.image_quota >= 999999;
+    const btn = document.getElementById('unlimited-btn');
+    if (isUnlimited) {
+      el.style.background = 'rgba(34,197,94,.12)';
+      el.style.color = '#22c55e';
+      el.textContent = 'Unlimited';
+      if (btn) { btn.textContent = 'Reset usage counters'; btn.dataset.mode = 'reset'; }
+    } else {
+      el.style.background = 'rgba(255,255,255,.06)';
+      el.style.color = 'var(--ink-faint)';
+      el.textContent = `${d.agency?.image_used || 0} / ${d.agency?.image_quota || 500}`;
+      if (btn) { btn.textContent = 'Enable unlimited mode'; btn.dataset.mode = 'unlimited'; }
+    }
+  } catch {}
+}
+
+function setupUnlimitedMode() {
+  const btn = document.getElementById('unlimited-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const mode = btn.dataset.mode || 'unlimited';
+    const endpoint = mode === 'reset' ? '/api/admin/quota/reset' : '/api/admin/quota/unlimited';
+    btn.disabled = true; btn.textContent = 'Processing...';
+    try {
+      const res = await Auth.authFetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) { toast(data.message || 'Done'); await loadQuotaStatus(); }
+      else { toast(data.error || 'Failed', true); }
+    } catch { toast('Failed', true); }
+    finally { btn.disabled = false; }
+  });
+}
+
+async function openReport() {
+  try {
+    const res = await Auth.authFetch('/api/admin/report');
+    if (!res.ok) { toast('Report failed', true); return; }
+    const html = await res.text();
+    // Trigger a download instead of popping a new window (kept in-platform UX)
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `keou-report-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    if (typeof toast === 'function') toast('Report downloaded');
+  } catch (e) {
+    toast('Report failed', true);
+  }
+}
+
+async function exportCSV() {
+  try {
+    const res = await Auth.authFetch('/api/admin/export');
+    if (!res.ok) { toast('Export failed', true); return; }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `keou-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV exported');
+  } catch (e) {
+    toast('Export failed', true);
+  }
+}
+
+
+</script>
+</body>
+</html>

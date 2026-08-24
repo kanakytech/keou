@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link rel="icon" type="image/png" href="/logo.png">
+<link rel="icon" type="image/png" href="/logo-keou.png">
 <meta name="color-scheme" content="dark">
 <title>Production Engine — Keou Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -671,6 +671,8 @@
 
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
 <script src="/shared/auth.js"></script>
 <script src="/shared/anon.js"></script>
 <script src="/shared/nav.js"></script>
@@ -697,7 +699,7 @@ function renderByokBar() {
       <input type="password" id="byok-input" placeholder="Paste your KIE.AI API key" autocomplete="off" spellcheck="false">
       <button type="button" id="byok-save">Save</button>
       <span id="byok-status"></span>
-      <a href="https://kie.ai" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
+      <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
       <a href="/help.html" class="byok-get">Help &amp; docs</a>
     </div>`;
   main.parentNode.insertBefore(bar, main);
@@ -740,11 +742,11 @@ function renderByokBar() {
   if (anon) AnonMode.renderNav();
   else Nav.render({ active: 'studio' });
 
-  // Opensource edition: basic studio (image + video only), visitor's own
-  // provider key kept in this browser and sent per-request.
+  // Opensource edition: the complete studio, self-hosted. The visitor's own
+  // provider key is kept in this browser and sent per-request. No feature is
+  // withheld here — this flag only drives the BYOK key bar and the badge.
   window.IS_OS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
-  // Community edition: full creative suite, still BYOK — same key bar without
-  // the feature restrictions.
+  // Community edition: the same complete studio, hosted by us. Still BYOK.
   window.IS_CM = typeof Auth.isCommunity === 'function' && Auth.isCommunity();
   if (window.IS_OS) {
     document.body.classList.add('edition-opensource');
@@ -753,8 +755,11 @@ function renderByokBar() {
     renderByokBar();
   }
 
-  // Production engine badge (enterprise deployments only).
-  if (!window.IS_OS) (async () => {
+  // Production engine badge.
+  if (window.IS_CM) {
+    const el = document.getElementById('provider-badge');
+    if (el) el.textContent = 'KIE.AI';
+  } else if (!window.IS_OS) (async () => {
     try {
       const res = await Auth.authFetch('/api/admin/default-provider');
       if (res.ok) {
@@ -1047,7 +1052,7 @@ function renderQueue() {
   const queued = jobs.filter(j => j.status === 'queued');
   grid.innerHTML = queued.map(j => `
     <div class="queue-item">
-      <img src="${j.preview}" alt="${j.name}">
+      <img src="${escapeHtml(j.preview)}" alt="${escapeHtml(j.name)}">
       <button class="queue-remove" onclick="removeJob('${j.id}')" aria-label="Remove from queue" title="Remove">&times;</button>
     </div>
   `).join('');
@@ -1614,7 +1619,7 @@ function cardHTML(job) {
   return `
     <div class="result-card ${isDone ? 'done' : ''} ${isErr ? 'error' : ''}" id="card-${job.id}" data-status="${job.status}">
       <div class="result-media-wrap" ${isDone ? `onclick="openModal('${job.id}')" style="cursor:pointer"` : ''}>
-        <img src="${src}" alt="${job.name}" loading="lazy" decoding="async" onerror="imgFallback(this)">
+        <img src="${escapeHtml(src)}" alt="${escapeHtml(job.name)}" loading="lazy" decoding="async" onerror="imgFallback(this)">
         <div class="result-overlay ${showOverlay ? 'active' : ''}">
           <div class="spinner"></div>
           <span>${statusLabel}</span>
@@ -1627,10 +1632,10 @@ function cardHTML(job) {
       </div>
       ${isDone ? `
       <div class="result-actions">
-        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
-        ${(window.IS_OS || window.IS_ANON) ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`}
+        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}
       </div>` : ''}
       ${isErr ? `
       <div class="result-actions">
@@ -1732,10 +1737,10 @@ function updateCard(job) {
       const div = document.createElement('div');
       div.className = 'result-actions';
       div.innerHTML = `
-        ${window.IS_OS ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
-        ${(window.IS_OS || window.IS_ANON) ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', '${job.generationId || ''}')" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle('${job.resultUrl}','keou-${job.id}')">${Icons.get('save')} Save</button>`}`;
+        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
+        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}`;
       el.appendChild(div);
     } else if (isErr) {
       const div = document.createElement('div');
@@ -1960,13 +1965,13 @@ window.openModal = (id, type) => {
       : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
     creativeDirection: cd || null,
     inputUrl: job.uploadUrl,
-    onPolish: window.IS_OS ? undefined : () => polishJob(id),
+    onPolish: () => polishJob(id),
     // Anonymous mode: video output can't carry the server watermark (no
     // ffmpeg) — masked until an account is used.
     onVideo: window.IS_ANON ? undefined : ((cd, model, duration) => videoJobWithCD(id, cd, model, duration)),
-    onAdapt: window.IS_OS ? undefined : () => adaptAllFormats(id),
-    onRemix: window.IS_OS ? undefined : ((remixPrompt) => remixJob(id, remixPrompt)),
-    onPack: (window.IS_OS || window.IS_ANON) ? undefined : () => openExportPack(id, job.generationId || ''),
+    onAdapt: () => adaptAllFormats(id),
+    onRemix: (remixPrompt) => remixJob(id, remixPrompt),
+    onPack: window.IS_ANON ? undefined : () => openExportPack(id, job.generationId || ''),
     generationId: job.generationId || null,
   };
   if (type === 'video' && job.videoUrl) {
@@ -1975,7 +1980,7 @@ window.openModal = (id, type) => {
     delete meta.onRemix;
     delete meta.onPolish;
     delete meta.onPack;
-    if (!window.IS_OS && !window.IS_ANON) meta.onUpscale = () => upscaleJob(id);
+    if (!window.IS_ANON) meta.onUpscale = () => upscaleJob(id);
     Lightbox.open(job.videoUrl, 'video', meta);
   } else if (job.resultUrl) {
     Lightbox.open(job.resultUrl, 'image', meta);
@@ -2141,7 +2146,7 @@ window.remixJob = async (id, remixPrompt) => {
     if (presets) return presets;
     listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:13px">Loading packs…</div>';
     try {
-      const res = await Auth.authFetch('/api/generate/packs');
+      const res = await Auth.authFetch('/api/packs');
       if (!res.ok) throw new Error('Failed to load presets');
       const data = await res.json();
       presets = Array.isArray(data.packs) ? data.packs : [];
@@ -2183,7 +2188,7 @@ window.remixJob = async (id, remixPrompt) => {
     if (pollInFlight) return;
     pollInFlight = true;
     try {
-      const res = await Auth.authFetch(`/api/generate/pack/${encodeURIComponent(activePackId)}/status`);
+      const res = await Auth.authFetch(`/api/pack/${encodeURIComponent(activePackId)}/status`);
       if (!res.ok) throw new Error('Status check failed');
       const data = await res.json();
       const total = Number(data.total || 0);
@@ -2226,7 +2231,7 @@ window.remixJob = async (id, remixPrompt) => {
     if (isDownloading || !activePackId) return;
     isDownloading = true;
     try {
-      const res = await Auth.authFetch(`/api/generate/pack/${encodeURIComponent(activePackId)}/zip`);
+      const res = await Auth.authFetch(`/api/pack/${encodeURIComponent(activePackId)}/zip`);
       if (!res.ok) throw new Error('ZIP download failed');
       const blob = await res.blob();
       // Filename comes from Content-Disposition if present, else a generic one.
@@ -2269,7 +2274,7 @@ window.remixJob = async (id, remixPrompt) => {
       if (projectId)  body.projectId  = projectId;
       if (campaignId) body.campaignId = campaignId;
 
-      const res = await Auth.authFetch('/api/generate/pack', {
+      const res = await Auth.authFetch('/api/pack', {
         method: 'POST',
         body: JSON.stringify(body),
       });
@@ -2474,12 +2479,32 @@ function startTimer() {
 function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
 
 // ─── Log ───
+/* Une entrée de journal se construit en DOM, jamais en innerHTML.
+   Le message vient de formatActivity(), qui compose à partir du nom d'un
+   membre et du nom d'un projet — deux valeurs choisies par des utilisateurs.
+   Rendu en innerHTML, le journal exécutait ce qu'un collègue y avait mis :
+   XSS stockée, et inter-utilisateur puisque le flux est partagé. Aucun des
+   trente-trois appels à log() ne passe de balisage — vérifié — la
+   construction en texte ne retire donc rien. */
+function entreeJournal(el, msg, type, heure) {
+  el.textContent = '';
+  const dot = document.createElement('span');
+  dot.className = 'log-dot' + (type ? ' ' + type : '');
+  const corps = document.createElement('span');
+  corps.style.flex = '1';
+  corps.textContent = msg;
+  const t = document.createElement('span');
+  t.className = 'log-time';
+  t.textContent = heure;
+  el.append(dot, corps, t);
+}
+
 function log(msg, type = '', id = null) {
   const el = document.createElement('div');
   el.className = 'log-entry';
   if (id) el.id = `log-${id}`;
   const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  el.innerHTML = `<span class="log-dot ${type}"></span><span style="flex:1">${msg}</span><span class="log-time">${now}</span>`;
+  entreeJournal(el, msg, type, now);
   const logEl = $('#log');
   logEl.prepend(el);
   while (logEl.children.length > 50) logEl.lastChild.remove();
@@ -2537,7 +2562,7 @@ async function loadActivityLog() {
       const time = isToday
         ? ts.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         : ts.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' ' + ts.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      el.innerHTML = `<span class="log-dot ${type}"></span><span style="flex:1">${msg}</span><span class="log-time">${time}</span>`;
+      entreeJournal(el, msg, type, time);
       logEl.prepend(el);
     });
     updateLogToggle();
@@ -2603,10 +2628,10 @@ async function resumePendingGenerations() {
 }
 
 log('Studio ready — drop your product images');
-if (!window.IS_OS && !window.IS_ANON) loadActivityLog();
-// Opensource can run as a shared hosted instance, and anonymous mode has no
-// per-visitor history — never resume another visitor's jobs into this grid.
-if (!window.IS_OS && !window.IS_ANON) resumePendingGenerations();
+if (!window.IS_ANON) loadActivityLog();
+// Anonymous mode has no per-visitor history — never resume another
+// visitor's jobs into this grid. Signed-in sessions are scoped server-side.
+if (!window.IS_ANON) resumePendingGenerations();
 
 // Inject SVG icons into static slots
 document.querySelectorAll('.icon-slot-target').forEach(el => { el.innerHTML = Icons.get('target'); });

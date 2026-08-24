@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Creative Tools — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+/* ── Tools Page ── */
+.tools-header{margin-bottom:28px}
+.tools-header h2{margin-bottom:6px}
+.tools-header p{color:var(--ink-muted);font-size:14px}
+
+/* ── Tool Cards Grid ── */
+.tools-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;
+}
+.tool-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:20px 14px;text-align:center;
+  cursor:pointer;transition:all .25s var(--ease-out);position:relative;
+}
+.tool-card:hover{
+  border-color:var(--border-strong);background:var(--surface-2);
+  transform:translateY(-2px);box-shadow:var(--shadow-sm);
+}
+.tool-card:active{transform:translateY(0) scale(.97);transition-duration:.08s}
+.tool-card.active{
+  border-color:rgba(255,255,255,.2);background:var(--surface-2);
+  box-shadow:var(--shadow-md);
+}
+.tool-card-icon{
+  width:44px;height:44px;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;color:var(--ink-muted);transition:all .25s;
+}
+.tool-card:hover .tool-card-icon,.tool-card.active .tool-card-icon{
+  color:var(--ink);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);
+}
+.tool-card-icon svg{width:22px;height:22px}
+.tool-card-name{font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:4px}
+.tool-card.active .tool-card-name{color:var(--ink)}
+.tool-card-desc{font-size:11px;color:var(--ink-faint);line-height:1.4}
+.tool-card-cost{
+  font-size:10px;color:var(--ink-faint);margin-top:8px;
+  padding-top:8px;border-top:1px solid var(--border);
+  letter-spacing:.3px;
+}
+
+/* ── Workspace ── */
+.tool-workspace{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;margin-bottom:24px;
+  animation:fadeInUp .3s var(--ease-out);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.ws-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.ws-header h3{font-size:17px;font-weight:700}
+.ws-close{
+  width:32px;height:32px;border-radius:8px;border:none;
+  background:rgba(255,255,255,.04);color:var(--ink-muted);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .15s;
+}
+.ws-close:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+.ws-close svg{width:16px;height:16px}
+.ws-subtitle{font-size:13px;color:var(--ink-muted);margin-bottom:20px}
+
+/* ── TTS Workspace ── */
+.tts-text{width:100%;min-height:120px;resize:vertical}
+.tts-char-count{
+  text-align:right;font-size:11px;color:var(--ink-faint);margin-top:4px;
+  font-variant-numeric:tabular-nums;
+}
+.tts-char-count.warn{color:var(--error)}
+
+/* ── Advanced Settings Toggle ── */
+.adv-toggle{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 0;color:var(--ink-muted);font-size:12px;font-weight:500;
+  cursor:pointer;transition:color .15s;background:none;border:none;
+  font-family:'Space Grotesk',sans-serif;margin-bottom:12px;
+}
+.adv-toggle:hover{color:var(--ink)}
+.adv-toggle svg{width:14px;height:14px;transition:transform .2s}
+.adv-toggle.open svg{transform:rotate(180deg)}
+.adv-panel{display:none;margin-bottom:20px}
+.adv-panel.open{display:block}
+
+/* ── Range Sliders ── */
+.slider-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.slider-row label{font-size:12px;color:var(--ink-soft);min-width:110px;flex-shrink:0}
+.slider-row input[type=range]{
+  flex:1;height:4px;-webkit-appearance:none;appearance:none;
+  background:rgba(255,255,255,.08);border-radius:4px;outline:none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:#e5e5e5;border:2px solid rgba(255,255,255,.15);cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.slider-row .slider-val{
+  font-size:12px;color:var(--ink-muted);min-width:36px;text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ── Drop Zone (Image Upload) ── */
+.tool-drop{
+  border:2px dashed rgba(255,255,255,.12);border-radius:var(--radius);
+  padding:40px 24px;text-align:center;cursor:pointer;
+  transition:all .3s var(--ease-out);background:rgba(255,255,255,.015);
+  margin-bottom:16px;
+}
+.tool-drop:hover,.tool-drop.dragover{
+  border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.03);
+}
+.tool-drop .drop-icon{
+  width:44px;height:44px;border-radius:50%;background:var(--surface-2);
+  border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+  margin:0 auto 12px;color:var(--ink-muted);transition:all .25s;
+}
+.tool-drop:hover .drop-icon{border-color:rgba(255,255,255,.15);color:var(--ink)}
+.tool-drop .drop-text{font-size:13px;color:var(--ink-muted)}
+.tool-drop .drop-text span{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.tool-drop.has-file{padding:16px;border-style:solid;border-color:var(--border-strong)}
+.tool-drop.has-file .preview-img{
+  max-height:200px;max-width:100%;border-radius:var(--radius-sm);
+  object-fit:contain;margin:0 auto;display:block;
+}
+.tool-drop.has-file{cursor:pointer}
+
+/* ── Factor Selector ── */
+.factor-grid{display:flex;gap:8px;margin-bottom:20px}
+.factor-btn{
+  flex:1;padding:14px 8px;border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);background:transparent;
+  color:var(--ink-muted);font-family:'Space Grotesk',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  transition:all .2s var(--ease-out);text-align:center;
+}
+.factor-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px)}
+.factor-btn:active{transform:scale(.96);transition-duration:.08s}
+.factor-btn.active{
+  border-color:rgba(255,255,255,.2);color:var(--ink);
+  background:rgba(255,255,255,.06);
+}
+.factor-label{display:block;font-size:20px;font-weight:700;margin-bottom:2px}
+.factor-sub{display:block;font-size:10px;color:var(--ink-faint);font-weight:400}
+
+/* ── Options Row ── */
+.options-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.options-row .form-group{flex:1;min-width:140px;margin-bottom:0}
+
+/* ── Processing State ── */
+.tool-processing{
+  display:flex;flex-direction:column;align-items:center;
+  gap:16px;padding:48px 24px;
+}
+.tool-processing .spinner{width:28px;height:28px;border-width:3px}
+.tool-processing p{color:var(--ink-muted);font-size:14px}
+
+/* ── Result ── */
+.tool-result{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;
+  animation:fadeInUp .3s var(--ease-out);
+}
+.tool-result .section-label{margin-bottom:12px}
+.tool-result audio{width:100%;margin:12px 0 16px;border-radius:8px}
+.tool-result img,.tool-result video{
+  max-width:100%;max-height:400px;border-radius:var(--radius-sm);
+  margin:12px auto 16px;display:block;
+}
+.tool-result .result-actions{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+}
+
+/* ── Hint ── */
+.tool-hint{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:12px 16px;border-radius:var(--radius-xs);
+  background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.15);
+  font-size:12px;color:var(--ink-soft);line-height:1.5;
+  margin-bottom:20px;
+}
+.tool-hint svg{flex-shrink:0;margin-top:1px;color:var(--accent)}
+
+/* ── Video Generator Model Chips ── */
+.vg-model-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.vg-model-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--ink-muted);font-size:12px;font-weight:500;
+  cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;
+}
+.vg-model-chip:hover{border-color:var(--border-strong);color:var(--ink-soft)}
+.vg-model-chip.active{
+  border-color:rgba(255,255,255,.25);color:var(--ink);background:rgba(255,255,255,.04);
+  font-weight:600;
+}
+.vg-model-chip svg{width:14px;height:14px;flex-shrink:0}
+.vg-model-cost{font-size:10px;color:var(--ink-faint);margin-left:2px}
+.vg-model-options{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:var(--radius-xs);padding:16px;margin-bottom:16px;
+  animation:fadeInUp .2s var(--ease-out);
+}
+.vg-model-options .options-row{margin-bottom:0}
+.vg-cost-bar{
+  text-align:center;font-size:12px;font-weight:600;color:var(--ink-soft);
+  padding:10px 16px;margin-bottom:14px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--radius-xs);font-variant-numeric:tabular-nums;
+  transition:all .2s;
+}
+.vg-cd-wrap{margin-bottom:16px}
+.vg-cd-wrap textarea{width:100%;min-height:60px;resize:vertical}
+.vg-cd-wrap .form-label{margin-bottom:6px}
+
+/* ── Responsive ── */
+@media(max-width:960px){
+  .tools-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:768px){
+  .tools-grid{grid-template-columns:repeat(3,1fr)}
+  .tool-workspace{padding:20px}
+  .slider-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .slider-row input[type=range]{width:100%}
+  .vg-model-chips{gap:6px}
+  .vg-model-chip{padding:6px 10px;font-size:11px}
+}
+@media(max-width:640px){
+  .tools-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .tools-grid{grid-template-columns:repeat(2,1fr)}
+  .options-row{flex-direction:column}
+  .factor-grid{flex-wrap:wrap}
+  .vg-model-chip .vg-model-cost{display:none}
+}
+
+</style>
+</head>
+<body>
+<div class="ambient-bg"></div>
+<div class="navbar"></div>
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<main class="page-container" id="app" style="display:none">
+  <!-- Header -->
+  <div class="tools-header page-enter">
+    <h2>Creative Tools</h2>
+    <p>Professional creative tools for your team</p>
+  </div>
+
+  <!-- Tool Cards -->
+  <div class="tools-grid page-enter page-enter-delay-1" id="tools-grid"></div>
+
+  <!-- Workspace (rendered by JS) -->
+  <div id="workspace" style="display:none"></div>
+
+  <!-- Result (rendered by JS) -->
+  <div id="result-area" class="tool-result" style="display:none"></div>
+</main>
+
+<footer class="footer">
+  <div class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> — <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></div>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+    </a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+    </a>
+  </div>
+</footer>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script>
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+  Nav.render({ active: 'tools' });
+  document.getElementById('app').style.display = '';
+
+  // ─── State ───
+  let currentTool = null;
+  let pollingTimer = null;
+  let uploadedUrl = null;
+
+  // ─── DOM ───
+  const toolsGrid = document.getElementById('tools-grid');
+  const workspace = document.getElementById('workspace');
+  const resultArea = document.getElementById('result-area');
+
+  // ─── Voices (grouped) ───
+  const VOICE_GROUPS = [
+    { label: 'Standard', voices: [
+      'Rachel','Aria','Roger','Sarah','Laura','Charlie','George','Callum',
+      'River','Liam','Charlotte','Alice','Matilda','Will','Jessica','Eric',
+      'Chris','Brian','Daniel','Lily','Bill','Adam','Nala','Nicole','Grace',
+    ]},
+    { label: 'Professional', voices: [
+      { id:'jsCqWAovK2LkecY7zXl4', name:'Freya' },
+      { id:'EXAVITQu4vr4xnSDxMaL', name:'Bella' },
+      { id:'MF3mGyEYCl7XYWbV9V6O', name:'Elli' },
+      { id:'TxGEqnHWrfWFTfGW9XjX', name:'Josh' },
+      { id:'VR6AewLTigWG4xSOukaG', name:'Arnold' },
+      { id:'pNInz6obpgDQGcFmaJgB', name:'Sam' },
+      { id:'yoZ06aMxZJJ28mfd3POQ', name:'Antoni' },
+      { id:'ThT5KcBeYPX3keUQqHPh', name:'Dorothy' },
+      { id:'AZnzlk1XvdvUeBnXmlld', name:'Domi' },
+      { id:'t0jbNlBVZ17f02VDIeMI', name:'Emily' },
+      { id:'g5CIjZEefAph4nQFvHAz', name:'Ethan' },
+      { id:'jBpfuIE2acCO8z3wKNLl', name:'Gigi' },
+      { id:'oWAxZDx7w5VEj9dCyTzz', name:'Grace (Pro)' },
+      { id:'pqHfZKP75CvOlQylNhV4', name:'Harry' },
+      { id:'SOYHLrjzK2X1ezoPC6cr', name:'James' },
+      { id:'XB0fDUnXU5powFXDhCwa', name:'Charlotte (Pro)' },
+      { id:'bVMeCyTHy58xNoL34h3p', name:'Jeremy' },
+      { id:'onwK4e9ZLuTAKqWW03F9', name:'Daniel (Pro)' },
+    ]},
+    { label: 'Conversational', voices: [
+      { id:'cgSgspJ2msm6clMCkdEp', name:'Jessica (Conv)' },
+      { id:'iP95p4xoKVk53GoZ742B', name:'Chris (Conv)' },
+      { id:'nPczCjzI2devNBz1zQrb', name:'Brian (Conv)' },
+      { id:'cjVigY5qzO86Huf0OWal', name:'Eric (Conv)' },
+      { id:'N2lVS1w4EtoT3dr4eOWO', name:'Callum (Conv)' },
+    ]},
+    { label: 'Character', voices: [
+      { id:'2EiwWnXFnvU5JabPnv8n', name:'Clyde' },
+      { id:'CYw3kZ02Hs0563khs1Fj', name:'Dave' },
+      { id:'D38z5RcWu1voky8WS1ja', name:'Fin' },
+      { id:'GBv7mTt0atIp3Br8iCZE', name:'Thomas' },
+      { id:'IKne3meq5aSn9XLyUdCD', name:'Charlie (Char)' },
+      { id:'JBFqnCBsd6RMkjVDRZzb', name:'George (Char)' },
+      { id:'TX3LPaxmHKxFdv7VOQHJ', name:'Liam (Char)' },
+      { id:'XrExE9yKIg1WjnnlVkGX', name:'Matilda (Char)' },
+      { id:'Yko7PKHZNXotIFUBG7I9', name:'River (Char)' },
+      { id:'ZQe5CZNOzWyzPSCn5a3c', name:'Alice (Char)' },
+      { id:'Zlb1dXrM653N07WRdFW3', name:'Bill (Char)' },
+      { id:'bIHbv24MWmeRgasZH58o', name:'Will (Char)' },
+      { id:'flq6f7yk4E4fJM5XTYuZ', name:'Michael' },
+      { id:'z9fAnlkpzviPz146aGWa', name:'Glinda' },
+    ]},
+    { label: 'Narration', voices: [
+      { id:'ErXwobaYiN019PkySvjV', name:'Antoni (Narr)' },
+      { id:'ODq5zmih8GrVes37Dizd', name:'Patrick' },
+      { id:'ZF6FPAbjXT4488VcRRnw', name:'Serena' },
+    ]},
+    { label: 'Meditation', voices: [
+      { id:'5Q0t7uMcjvnagumLfvZi', name:'Natasha' },
+      { id:'Xb7hH8MSUJpSbSDYk0k2', name:'Dorothy (Med)' },
+    ]},
+  ];
+
+  // ─── Tool Definitions ───
+  const TOOLS = [
+    {
+      id: 'tts',
+      name: 'Text to Speech',
+      desc: 'AI voice generation',
+      cost: '~$0.03 / 1K chars',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
+    },
+    {
+      id: 'sfx',
+      name: 'Sound Effects',
+      desc: 'AI sound effect generation',
+      cost: '~$0.001 / second',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
+    },
+    {
+      id: 'image-upscale',
+      name: 'Image Upscale',
+      desc: 'Enhance resolution up to 8x',
+      cost: '$0.10 (4K) / $0.20 (8K)',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`,
+    },
+    {
+      id: 'video-upscale',
+      name: 'Video Upscale',
+      desc: 'Upscale video to 4K',
+      cost: '~$0.07 / second',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>`,
+    },
+    {
+      id: 'video-gen',
+      name: 'Video Generator',
+      desc: 'Image to cinematic video',
+      cost: 'From $0.15',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2" ry="2"/></svg>`,
+    },
+  ];
+
+  // ─── Render Tool Cards ───
+  toolsGrid.innerHTML = TOOLS.map(t => `
+    <div class="tool-card" data-tool="${t.id}" onclick="selectTool('${t.id}')">
+      <div class="tool-card-icon">${t.icon}</div>
+      <div class="tool-card-name">${t.name}</div>
+      <div class="tool-card-desc">${t.desc}</div>
+      <div class="tool-card-cost">${t.cost}</div>
+    </div>
+  `).join('');
+
+  // ─── SVG Icons ───
+  const SVG_UPLOAD = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+  const SVG_DOWNLOAD = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  const SVG_INFO = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+  const SVG_PLUS = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const SVG_X = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+  // ─── Voice Options HTML ───
+  const voiceOptions = VOICE_GROUPS.map(g => {
+    const opts = g.voices.map(v => {
+      if (typeof v === 'string') return `<option value="${v}">${v}</option>`;
+      return `<option value="${v.id}">${v.name}</option>`;
+    }).join('');
+    return `<optgroup label="${g.label}">${opts}</optgroup>`;
+  }).join('');
+
+  // ─── Select Tool ───
+  window.selectTool = function(id) {
+    // Clear previous state
+    if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+    uploadedUrl = null;
+    resultArea.style.display = 'none';
+    resultArea.innerHTML = '';
+
+    // Toggle
+    if (currentTool === id) {
+      currentTool = null;
+      workspace.style.display = 'none';
+      workspace.innerHTML = '';
+      document.querySelectorAll('.tool-card').forEach(c => c.classList.remove('active'));
+      return;
+    }
+
+    currentTool = id;
+    document.querySelectorAll('.tool-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.tool === id);
+    });
+
+    renderWorkspace(id);
+    workspace.style.display = '';
+    workspace.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Enhance any native selects into custom dropdowns
+    setTimeout(() => { if (typeof Select !== 'undefined') Select.init(); }, 50);
+  };
+
+  // ─── Render Workspace ───
+  function renderWorkspace(id) {
+    const tool = TOOLS.find(t => t.id === id);
+    const closeBtn = `<button class="ws-close" onclick="selectTool('${id}')" title="Close">${SVG_X}</button>`;
+
+    switch (id) {
+      case 'tts':
+        workspace.innerHTML = `
+          <div class="tool-workspace">
+            <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
+            <div class="tool-hint">
+              ${SVG_INFO}
+              <span>Convert text to natural-sounding speech. Max 5,000 characters.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Text</label>
+              <textarea class="form-input tts-text" id="tts-text" placeholder="Enter text to convert to speech..." rows="5" maxlength="5000"></textarea>
+              <div class="tts-char-count" id="tts-char-count">0 / 5,000</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Voice</label>
+              <select class="form-input" id="tts-voice">${voiceOptions}</select>
+            </div>
+            <button class="adv-toggle" id="adv-toggle" onclick="toggleAdvanced()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Advanced Settings
+            </button>
+            <div class="adv-panel" id="adv-panel">
+              <div class="slider-row">
+                <label>Stability</label>
+                <input type="range" id="tts-stability" min="0" max="1" step="0.05" value="0.5" oninput="updateSliderVal(this)">
+                <span class="slider-val">0.50</span>
+              </div>
+              <div class="slider-row">
+                <label>Similarity</label>
+                <input type="range" id="tts-similarity" min="0" max="1" step="0.05" value="0.75" oninput="updateSliderVal(this)">
+                <span class="slider-val">0.75</span>
+              </div>
+              <div class="slider-row">
+                <label>Style</label>
+                <input type="range" id="tts-style" min="0" max="1" step="0.05" value="0" oninput="updateSliderVal(this)">
+                <span class="slider-val">0.00</span>
+              </div>
+              <div class="slider-row">
+                <label>Speed</label>
+                <input type="range" id="tts-speed" min="0.7" max="1.2" step="0.05" value="1" oninput="updateSliderVal(this)">
+                <span class="slider-val">1.00</span>
+              </div>
+            </div>
+            <button class="btn-primary full" id="btn-tts" onclick="submitTts()">Generate Speech</button>
+          </div>`;
+        // Char counter
+        setTimeout(() => {
+          const ta = document.getElementById('tts-text');
+          const cc = document.getElementById('tts-char-count');
+          if (ta && cc) {
+            ta.addEventListener('input', () => {
+              const len = ta.value.length;
+              cc.textContent = len.toLocaleString() + ' / 5,000';
+              cc.classList.toggle('warn', len > 4500);
+            });
+          }
+        }, 30);
+        break;
+
+      case 'sfx':
+        workspace.innerHTML = `
+          <div class="tool-workspace">
+            <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
+            <div class="form-group">
+              <label class="form-label">Describe the Sound</label>
+              <textarea class="form-input" id="sfx-text" placeholder="e.g., Thunder rolling across a stormy sky with distant rain..." rows="3" maxlength="450"></textarea>
+              <div class="tts-char-count" id="sfx-char-count">0 / 450</div>
+            </div>
+            <div class="options-row">
+              <div class="form-group">
+                <label class="form-label">Duration (seconds)</label>
+                <input type="number" class="form-input" id="sfx-duration" placeholder="Auto" min="0.5" max="22" step="0.5">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Format</label>
+                <select class="form-input" id="sfx-format">
+                  <option value="mp3_44100_128">MP3 128kbps</option>
+                  <option value="mp3_44100_192">MP3 192kbps</option>
+                  <option value="mp3_44100_96">MP3 96kbps</option>
+                  <option value="pcm_44100">WAV 44.1kHz</option>
+                  <option value="pcm_48000">WAV 48kHz</option>
+                </select>
+              </div>
+            </div>
+            <button class="adv-toggle" id="sfx-adv-toggle" onclick="toggleSfxAdvanced()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Advanced Settings
+            </button>
+            <div class="adv-panel" id="sfx-adv-panel">
+              <div class="slider-row">
+                <label>Prompt Influence</label>
+                <input type="range" id="sfx-influence" min="0" max="1" step="0.05" value="0.3" oninput="updateSliderVal(this)">
+                <span class="slider-val">0.30</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <label style="font-size:12px;color:var(--ink-soft)">Loop</label>
+                <button class="factor-btn" id="sfx-loop-btn" style="padding:6px 16px;flex:0" onclick="this.classList.toggle('active');this.textContent=window.I18N?I18N.t(this.classList.contains('active')?'On':'Off'):(this.classList.contains('active')?'On':'Off')">Off</button>
+              </div>
+            </div>
+            <button class="btn-primary full" id="btn-sfx" onclick="submitSfx()">Generate Sound Effect</button>
+          </div>`;
+        // Char counter
+        setTimeout(() => {
+          const ta = document.getElementById('sfx-text');
+          const cc = document.getElementById('sfx-char-count');
+          if (ta && cc) {
+            ta.addEventListener('input', () => {
+              const len = ta.value.length;
+              cc.textContent = len.toLocaleString() + ' / 450';
+              cc.classList.toggle('warn', len > 400);
+            });
+          }
+        }, 30);
+        break;
+
+      case 'image-upscale':
+        workspace.innerHTML = `
+          <div class="tool-workspace">
+            <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
+            <div class="section-label">Source Image</div>
+            <div class="tool-drop" id="drop-img-up" onclick="document.getElementById('file-img-up').click()">
+              <div class="drop-icon">${SVG_UPLOAD}</div>
+              <div class="drop-text">Drop image here or <span>browse</span></div>
+              <input type="file" id="file-img-up" accept="image/*" hidden>
+            </div>
+            <div class="section-label">Upscale Factor</div>
+            <div class="factor-grid" id="img-factor-grid">
+              <button class="factor-btn active" data-factor="4" onclick="pickFactor('img',this)">
+                <span class="factor-label">4x</span>
+                <span class="factor-sub">4K</span>
+              </button>
+              <button class="factor-btn" data-factor="8" onclick="pickFactor('img',this)">
+                <span class="factor-label">8x</span>
+                <span class="factor-sub">8K</span>
+              </button>
+            </div>
+            <button class="btn-primary full" id="btn-img-up" onclick="submitImageUpscale()">Upscale Image</button>
+          </div>`;
+        setupDropZone('drop-img-up', 'file-img-up');
+        break;
+
+      case 'video-upscale':
+        workspace.innerHTML = `
+          <div class="tool-workspace">
+            <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
+            <div class="tool-hint">
+              ${SVG_INFO}
+              <span>Upload a video file (MP4, MOV, MKV). Max 50 MB.</span>
+            </div>
+            <div class="section-label">Source Video</div>
+            <div class="tool-drop" id="drop-vid-up" onclick="document.getElementById('file-vid-up').click()">
+              <div class="drop-icon">${SVG_UPLOAD}</div>
+              <div class="drop-text">Drop video here or <span>browse</span></div>
+              <input type="file" id="file-vid-up" accept="video/mp4,video/quicktime,video/x-matroska,.mp4,.mov,.mkv" hidden>
+            </div>
+            <div class="section-label">Upscale Factor</div>
+            <div class="factor-grid" id="vid-factor-grid">
+              <button class="factor-btn" data-factor="2" onclick="pickFactor('vid',this)">
+                <span class="factor-label">2x</span>
+                <span class="factor-sub">HD</span>
+              </button>
+              <button class="factor-btn active" data-factor="4" onclick="pickFactor('vid',this)">
+                <span class="factor-label">4x</span>
+                <span class="factor-sub">4K</span>
+              </button>
+            </div>
+            <button class="btn-primary full" id="btn-vid-up" onclick="submitVideoUpscale()">Upscale Video</button>
+          </div>`;
+        setupVideoDropZone('drop-vid-up', 'file-vid-up');
+        break;
+
+      case 'video-gen':
+        workspace.innerHTML = `
+          <div class="tool-workspace">
+            <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
+            <div class="tool-hint">
+              ${SVG_INFO}
+              <span>Upload any image and generate a cinematic video. Choose your model and customize settings.</span>
+            </div>
+            <div class="section-label">Source Image</div>
+            <div class="tool-drop" id="drop-vg" onclick="document.getElementById('file-vg').click()">
+              <div class="drop-icon">${SVG_UPLOAD}</div>
+              <div class="drop-text">Drop image here or <span>browse</span></div>
+              <input type="file" id="file-vg" accept="image/*" hidden>
+            </div>
+            <div class="section-label">Model</div>
+            <div class="vg-model-chips" id="vg-model-chips">
+              <button class="vg-model-chip active" data-model="grok-imagine" onclick="pickVgModel(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Grok Imagine <span class="vg-model-cost">$0.15</span>
+              </button>
+              <button class="vg-model-chip" data-model="kling-2.6" onclick="pickVgModel(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                Kling 2.6 <span class="vg-model-cost">$0.55</span>
+              </button>
+              <button class="vg-model-chip" data-model="kling-3.0" onclick="pickVgModel(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                Kling 3.0 <span class="vg-model-cost">$0.72</span>
+              </button>
+              <button class="vg-model-chip" data-model="seedance-2" onclick="pickVgModel(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                Seedance 2.0 <span class="vg-model-cost">$1.64</span>
+              </button>
+              <button class="vg-model-chip" data-model="veo3" onclick="pickVgModel(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                Veo 3.1 <span class="vg-model-cost">$1.25</span>
+              </button>
+            </div>
+            <div class="vg-model-options" id="vg-model-options"></div>
+            <div class="vg-cd-wrap">
+              <label class="form-label">Creative Direction (optional)</label>
+              <textarea class="form-input" id="vg-cd" placeholder="e.g. Slow luxury push-in, warm golden light, premium feel..." rows="2" maxlength="2500"></textarea>
+            </div>
+            <div class="vg-cost-bar" id="vg-cost-estimate"></div>
+            <button class="btn-primary full" id="btn-vg" onclick="submitVideoGen()">Generate Video</button>
+          </div>`;
+        setupDropZone('drop-vg', 'file-vg');
+        setTimeout(() => pickVgModel(document.querySelector('.vg-model-chip.active')), 30);
+        break;
+    }
+  }
+
+  // ─── Drop Zone Setup ───
+  function setupDropZone(dropId, fileId) {
+    setTimeout(() => {
+      const drop = document.getElementById(dropId);
+      const input = document.getElementById(fileId);
+      if (!drop || !input) return;
+
+      input.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleFile(e.target.files[0], dropId);
+      });
+
+      drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+      drop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0], dropId);
+      });
+    }, 50);
+  }
+
+  async function handleFile(file, dropId) {
+    if (!file.type.startsWith('image/')) {
+      toast('Please select an image file', true);
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast('File too large (max 20 MB)', true);
+      return;
+    }
+
+    const drop = document.getElementById(dropId);
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      drop.classList.add('has-file');
+      drop.innerHTML = `<img class="preview-img" src="${e.target.result}" alt="Preview">`;
+      drop.onclick = () => {
+        const inp = drop.parentElement.querySelector('input[type=file]');
+        if (inp) inp.click();
+      };
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to R2
+    toast('Uploading image...');
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const res = await Auth.authFetch('/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      uploadedUrl = data.url;
+      toast('Image uploaded');
+    } catch (err) {
+      toast(err.message || 'Upload failed', true);
+      uploadedUrl = null;
+      // Reset drop zone
+      drop.classList.remove('has-file');
+      const tool = currentTool;
+      renderWorkspace(tool);
+    }
+  }
+
+  // ─── Video Drop Zone Setup ───
+  function setupVideoDropZone(dropId, fileId) {
+    setTimeout(() => {
+      const drop = document.getElementById(dropId);
+      const input = document.getElementById(fileId);
+      if (!drop || !input) return;
+
+      input.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleVideoFile(e.target.files[0], dropId);
+      });
+
+      drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+      drop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) handleVideoFile(e.dataTransfer.files[0], dropId);
+      });
+    }, 50);
+  }
+
+  async function handleVideoFile(file, dropId) {
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-matroska'];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp4|mov|mkv)$/i)) {
+      toast('Unsupported format. Use MP4, MOV or MKV.', true);
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast('File too large (max 50 MB)', true);
+      return;
+    }
+
+    const drop = document.getElementById(dropId);
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+
+    // Show file info (no video preview to save memory)
+    drop.classList.add('has-file');
+    drop.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-muted);flex-shrink:0">
+          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+          <polygon points="10 8 16 12 10 16 10 8"/>
+        </svg>
+        <div style="text-align:left">
+          <div style="font-size:13px;font-weight:600;color:var(--ink);word-break:break-all">${escapeHtml(file.name)}</div>
+          <div style="font-size:11px;color:var(--ink-faint);margin-top:2px">${sizeMB} MB</div>
+        </div>
+      </div>`;
+    drop.onclick = () => {
+      const inp = drop.parentElement.querySelector('input[type=file]');
+      if (inp) inp.click();
+    };
+
+    // Upload to R2
+    toast('Uploading video...');
+    try {
+      const form = new FormData();
+      form.append('video', file);
+      const res = await Auth.authFetch('/api/upload/video', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      uploadedUrl = data.url;
+      toast('Video uploaded');
+    } catch (err) {
+      toast(err.message || 'Upload failed', true);
+      uploadedUrl = null;
+      drop.classList.remove('has-file');
+      renderWorkspace(currentTool);
+    }
+  }
+
+  // ─── TTS Helpers ───
+  window.toggleAdvanced = function() {
+    const btn = document.getElementById('adv-toggle');
+    const panel = document.getElementById('adv-panel');
+    if (!btn || !panel) return;
+    btn.classList.toggle('open');
+    panel.classList.toggle('open');
+  };
+
+  window.updateSliderVal = function(input) {
+    const span = input.parentElement.querySelector('.slider-val');
+    if (span) span.textContent = parseFloat(input.value).toFixed(2);
+  };
+
+  // ─── Factor Picker ───
+  window.pickFactor = function(prefix, btn) {
+    const grid = btn.closest('.factor-grid');
+    grid.querySelectorAll('.factor-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  function getSelectedFactor(gridId) {
+    const active = document.querySelector(`#${gridId} .factor-btn.active`);
+    return active ? active.dataset.factor : '4';
+  }
+
+  // ─── Submit Functions ───
+
+  async function submitTts() {
+    const btn = document.getElementById('btn-tts');
+    const text = document.getElementById('tts-text').value.trim();
+    if (!text) { toast('Please enter some text'); return; }
+    if (text.length > 5000) { toast('Text exceeds 5,000 character limit'); return; }
+
+    const voice = document.getElementById('tts-voice').value;
+
+    const body = { text, voice };
+
+    // Advanced settings (only if panel is open)
+    const panel = document.getElementById('adv-panel');
+    if (panel && panel.classList.contains('open')) {
+      body.stability = parseFloat(document.getElementById('tts-stability').value);
+      body.similarity_boost = parseFloat(document.getElementById('tts-similarity').value);
+      body.style = parseFloat(document.getElementById('tts-style').value);
+      body.speed = parseFloat(document.getElementById('tts-speed').value);
+    }
+
+    await runTool(btn, '/api/tools/tts', body, 'tts');
+  }
+  window.submitTts = submitTts;
+
+  // ─── SFX Helpers ───
+  window.toggleSfxAdvanced = function() {
+    const btn = document.getElementById('sfx-adv-toggle');
+    const panel = document.getElementById('sfx-adv-panel');
+    if (!btn || !panel) return;
+    btn.classList.toggle('open');
+    panel.classList.toggle('open');
+  };
+
+  async function submitSfx() {
+    const btn = document.getElementById('btn-sfx');
+    const text = document.getElementById('sfx-text').value.trim();
+    if (!text) { toast('Please describe the sound effect'); return; }
+    if (text.length > 450) { toast('Text exceeds 450 character limit'); return; }
+
+    const duration = document.getElementById('sfx-duration').value;
+    const format = document.getElementById('sfx-format').value;
+
+    const body = { text, output_format: format };
+    if (duration) body.duration_seconds = parseFloat(duration);
+
+    // Advanced settings
+    const panel = document.getElementById('sfx-adv-panel');
+    if (panel && panel.classList.contains('open')) {
+      body.prompt_influence = parseFloat(document.getElementById('sfx-influence').value);
+      const loopBtn = document.getElementById('sfx-loop-btn');
+      body.loop = loopBtn && loopBtn.classList.contains('active');
+    }
+
+    await runTool(btn, '/api/tools/sfx', body, 'sfx');
+  }
+  window.submitSfx = submitSfx;
+
+  async function submitImageUpscale() {
+    const btn = document.getElementById('btn-img-up');
+    if (!uploadedUrl) { toast('Please upload an image first'); return; }
+    const factor = getSelectedFactor('img-factor-grid');
+
+    await runTool(btn, '/api/tools/image-upscale', { imageUrl: uploadedUrl, upscaleFactor: factor }, 'img-upscale');
+  }
+  window.submitImageUpscale = submitImageUpscale;
+
+  async function submitVideoUpscale() {
+    const btn = document.getElementById('btn-vid-up');
+    if (!uploadedUrl) { toast('Please upload a video first'); return; }
+
+    const factor = getSelectedFactor('vid-factor-grid');
+
+    await runTool(btn, '/api/tools/video-upscale', { videoUrl: uploadedUrl, upscaleFactor: factor }, 'vid-upscale');
+  }
+  window.submitVideoUpscale = submitVideoUpscale;
+
+  // ─── Generic Tool Runner ───
+  async function runTool(btn, endpoint, body, type) {
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+
+      // Show processing state
+      showProcessing();
+      toast('Processing...');
+
+      // Start polling
+      startPolling(type, data.taskId, data.generationId);
+    } catch (err) {
+      toast(err.message || 'Something went wrong', true);
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+    }
+  }
+
+  function showProcessing() {
+    workspace.innerHTML = `
+      <div class="tool-workspace">
+        <div class="tool-processing">
+          <div class="spinner"></div>
+          <p id="processing-text">Processing your request...</p>
+          <button class="btn-ghost" onclick="cancelProcessing()">Cancel</button>
+        </div>
+      </div>`;
+  }
+
+  window.cancelProcessing = function() {
+    if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+    renderWorkspace(currentTool);
+    toast('Cancelled');
+  };
+
+  // ─── Polling ───
+  function startPolling(type, taskId, genId) {
+    if (pollingTimer) clearInterval(pollingTimer);
+    let elapsed = 0;
+
+    pollingTimer = setInterval(async () => {
+      elapsed += 3;
+      const txt = document.getElementById('processing-text');
+      if (txt) txt.textContent = `Processing... ${elapsed}s`;
+
+      try {
+        const res = await Auth.authFetch(`/api/status/${type}/${taskId}?generationId=${genId}`);
+        const data = await res.json();
+
+        if (data.failed) {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+          toast(data.error || 'Task failed', true);
+          renderWorkspace(currentTool);
+          return;
+        }
+
+        if (data.ready) {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+          showResult(type, data.resultUrl);
+          toast('Done!');
+          // Re-render workspace (user can submit again)
+          renderWorkspace(currentTool);
+        }
+      } catch (err) {
+        console.error('Poll error:', err);
+      }
+    }, 3000);
+  }
+
+  // ─── Show Result ───
+  function showResult(type, url) {
+    resultArea.style.display = '';
+
+    const downloadBtn = `
+      <a class="btn-secondary btn-sm" href="#" onclick="downloadResult(event, ${jsArg(url)})">
+        ${SVG_DOWNLOAD} Download
+      </a>`;
+
+    if (type === 'tts' || type === 'sfx') {
+      resultArea.innerHTML = `
+        <div class="section-label">Result</div>
+        <audio controls src="${url}" style="width:100%;margin:12px 0 16px"></audio>
+        <div class="result-actions">${downloadBtn}</div>`;
+    } else if (type === 'vid-upscale' || type === 'video') {
+      resultArea.innerHTML = `
+        <div class="section-label">Result</div>
+        <video controls src="${url}" style="max-width:100%;max-height:400px;border-radius:12px;margin:12px auto 16px;display:block"></video>
+        <div class="result-actions">${downloadBtn}</div>`;
+    } else {
+      resultArea.innerHTML = `
+        <div class="section-label">Result</div>
+        <img src="${escapeHtml(url)}" style="max-width:100%;max-height:400px;border-radius:12px;margin:12px auto 16px;display:block" alt="Result">
+        <div class="result-actions">${downloadBtn}</div>`;
+    }
+
+    resultArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ─── Download via proxy ───
+  window.downloadResult = async function(e, url) {
+    e.preventDefault();
+    toast('Preparing download...');
+    try {
+      const res = await Auth.authFetch(`/api/download?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const ext = url.split('.').pop()?.split('?')[0] || 'file';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `keou-tool-${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      toast('Downloaded');
+    } catch (err) {
+      toast(err.message || 'Download failed', true);
+    }
+  };
+
+  // ─── Video Generator — Cost Estimator ───
+  const VG_PRICING = {
+    'grok-imagine': { '480p': 1.6, '720p': 3 },           // credits/sec
+    'kling-2.6':    { noAudio: { '5': 55, '10': 110 }, withAudio: { '5': 110, '10': 220 } }, // flat credits
+    'kling-3.0':    { std: { noAudio: 14, withAudio: 20 }, pro: { noAudio: 18, withAudio: 27 } }, // credits/sec
+    'seedance-2':   { '480p': { noInput: 19, withInput: 11.5 }, '720p': { noInput: 41, withInput: 25 } }, // credits/sec
+    'veo3':         { veo3: 250, veo3_fast: 60, veo3_lite: 30 }, // flat credits per video
+  };
+  const CREDITS_TO_USD = 0.005; // $1 = 200 credits approx
+
+  function estimateVgCost() {
+    const el = document.getElementById('vg-cost-estimate');
+    if (!el) return;
+    const val = id => { const e = document.getElementById(id); return e ? e.value : null; };
+    const isOn = id => { const e = document.getElementById(id); return e ? e.classList.contains('active') : false; };
+
+    let credits = 0;
+    switch (vgSelectedModel) {
+      case 'grok-imagine': {
+        const res = val('vg-resolution') || '720p';
+        const dur = Number(val('vg-duration') || 10);
+        credits = VG_PRICING['grok-imagine'][res] * dur;
+        break;
+      }
+      case 'kling-2.6': {
+        const dur = val('vg-duration') || '10';
+        const audio = isOn('vg-sound');
+        credits = audio ? VG_PRICING['kling-2.6'].withAudio[dur] : VG_PRICING['kling-2.6'].noAudio[dur];
+        break;
+      }
+      case 'kling-3.0': {
+        const mode = val('vg-mode') || 'pro';
+        const dur = Number(val('vg-duration') || 8);
+        const audio = isOn('vg-sound');
+        const rates = VG_PRICING['kling-3.0'][mode];
+        credits = (audio ? rates.withAudio : rates.noAudio) * dur;
+        break;
+      }
+      case 'seedance-2': {
+        const res = val('vg-resolution') || '720p';
+        const dur = Number(val('vg-duration') || 8);
+        credits = VG_PRICING['seedance-2'][res].withInput * dur; // image-to-video = with input
+        break;
+      }
+      case 'veo3': {
+        const variant = val('vg-variant') || 'veo3';
+        credits = VG_PRICING['veo3'][variant];
+        break;
+      }
+    }
+
+    const usd = (credits * CREDITS_TO_USD).toFixed(2);
+    el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline;vertical-align:-1px;margin-right:4px"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M15.5 9.5a3 3 0 0 0-3-1.5H10a3 3 0 0 0 0 4h4a3 3 0 0 1 0 4h-3.5a3 3 0 0 1-3-1.5"/></svg>${Math.round(credits)} credits · ~$${usd}`;
+  }
+
+  let vgSelectedModel = 'grok-imagine';
+
+  window.pickVgModel = function(btn) {
+    if (!btn) return;
+    document.querySelectorAll('.vg-model-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    vgSelectedModel = btn.dataset.model;
+    renderVgOptions(vgSelectedModel);
+  };
+
+  function renderVgOptions(model) {
+    const wrap = document.getElementById('vg-model-options');
+    if (!wrap) return;
+
+    const sel = (id, label, opts) => {
+      const options = opts.map(o => `<option value="${o.value}"${o.default ? ' selected' : ''}>${o.label}</option>`).join('');
+      return `<div class="form-group"><label class="form-label">${label}</label><select class="form-input" id="${id}">${options}</select></div>`;
+    };
+    const toggle = (id, label, def = false) =>
+      `<div class="form-group"><label class="form-label">${label}</label><button class="factor-btn${def ? ' active' : ''}" id="${id}" style="padding:6px 16px;width:auto" onclick="this.classList.toggle('active');this.textContent=this.classList.contains('active')?'On':'Off'">${def ? 'On' : 'Off'}</button></div>`;
+
+    let html = '<div class="options-row">';
+
+    switch (model) {
+      case 'grok-imagine':
+        html += sel('vg-mode', 'Mode', [
+          { value: 'normal', label: 'Normal', default: true },
+          { value: 'fun', label: 'Fun' },
+        ]);
+        html += sel('vg-duration', 'Duration', [
+          { value: '6', label: '6s' },
+          { value: '10', label: '10s', default: true },
+          { value: '15', label: '15s' },
+          { value: '20', label: '20s' },
+          { value: '30', label: '30s' },
+        ]);
+        html += sel('vg-resolution', 'Resolution', [
+          { value: '480p', label: '480p (fast)' },
+          { value: '720p', label: '720p', default: true },
+        ]);
+        break;
+
+      case 'kling-2.6':
+        html += sel('vg-duration', 'Duration', [
+          { value: '5', label: '5 seconds' },
+          { value: '10', label: '10 seconds', default: true },
+        ]);
+        html += toggle('vg-sound', 'Sound');
+        break;
+
+      case 'kling-3.0':
+        html += sel('vg-mode', 'Mode', [
+          { value: 'pro', label: 'Pro (1080p)', default: true },
+          { value: 'std', label: 'Standard (720p)' },
+        ]);
+        html += sel('vg-duration', 'Duration', [
+          { value: '5', label: '5s' },
+          { value: '8', label: '8s', default: true },
+          { value: '10', label: '10s' },
+          { value: '15', label: '15s' },
+        ]);
+        html += sel('vg-aspect', 'Aspect Ratio', [
+          { value: '16:9', label: '16:9', default: true },
+          { value: '9:16', label: '9:16' },
+          { value: '1:1', label: '1:1' },
+        ]);
+        html += toggle('vg-sound', 'Sound');
+        break;
+
+      case 'seedance-2':
+        html += sel('vg-resolution', 'Resolution', [
+          { value: '480p', label: '480p (fast)' },
+          { value: '720p', label: '720p', default: true },
+        ]);
+        html += sel('vg-duration', 'Duration', [
+          { value: '4', label: '4s' },
+          { value: '8', label: '8s', default: true },
+          { value: '12', label: '12s' },
+        ]);
+        html += sel('vg-aspect', 'Aspect Ratio', [
+          { value: '16:9', label: '16:9', default: true },
+          { value: '9:16', label: '9:16' },
+          { value: '1:1', label: '1:1' },
+          { value: '4:3', label: '4:3' },
+          { value: '3:4', label: '3:4' },
+        ]);
+        html += toggle('vg-audio', 'Audio');
+        break;
+
+      case 'veo3':
+        html += sel('vg-variant', 'Quality', [
+          { value: 'veo3', label: 'Quality ($1.25)', default: true },
+          { value: 'veo3_fast', label: 'Fast ($0.30)' },
+          { value: 'veo3_lite', label: 'Lite ($0.15)' },
+        ]);
+        html += sel('vg-aspect', 'Aspect Ratio', [
+          { value: '16:9', label: '16:9', default: true },
+          { value: '9:16', label: '9:16' },
+        ]);
+        break;
+    }
+
+    html += '</div>';
+    wrap.innerHTML = html;
+    setTimeout(() => {
+      if (typeof Select !== 'undefined') Select.init();
+      // Wire up change events for cost estimator
+      wrap.querySelectorAll('select').forEach(s => s.addEventListener('change', estimateVgCost));
+      wrap.querySelectorAll('.factor-btn').forEach(b => {
+        const orig = b.onclick;
+        b.onclick = function() { orig?.call(this); setTimeout(estimateVgCost, 10); };
+      });
+      estimateVgCost();
+    }, 30);
+  }
+
+  async function submitVideoGen() {
+    const btn = document.getElementById('btn-vg');
+    if (!uploadedUrl) { toast('Please upload an image first'); return; }
+
+    const body = {
+      imageUrl: uploadedUrl,
+      videoModel: vgSelectedModel,
+    };
+
+    // Creative direction
+    const cd = document.getElementById('vg-cd');
+    if (cd && cd.value.trim()) body.creativeDirection = cd.value.trim();
+
+    // Model-specific params
+    const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+    const isOn = id => { const el = document.getElementById(id); return el ? el.classList.contains('active') : false; };
+
+    switch (vgSelectedModel) {
+      case 'grok-imagine':
+        body.mode = val('vg-mode') || 'normal';
+        body.duration = val('vg-duration') || '10';
+        body.resolution = val('vg-resolution') || '720p';
+        break;
+      case 'kling-2.6':
+        body.duration = val('vg-duration') || '10';
+        body.sound = isOn('vg-sound');
+        break;
+      case 'kling-3.0':
+        body.mode = val('vg-mode') || 'pro';
+        body.duration = val('vg-duration') || '8';
+        body.aspectRatio = val('vg-aspect') || '16:9';
+        body.sound = isOn('vg-sound');
+        break;
+      case 'seedance-2':
+        body.resolution = val('vg-resolution') || '720p';
+        body.duration = val('vg-duration') || '8';
+        body.aspectRatio = val('vg-aspect') || '16:9';
+        body.generateAudio = isOn('vg-audio');
+        break;
+      case 'veo3':
+        body.variant = val('vg-variant') || 'veo3';
+        body.aspectRatio = val('vg-aspect') || '16:9';
+        break;
+    }
+
+    await runTool(btn, '/api/video', body, 'video');
+  }
+  window.submitVideoGen = submitVideoGen;
+
+
+})();
+</script>
+</body>
+</html>

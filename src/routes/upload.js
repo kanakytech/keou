@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
-import { uploadToR2, getMimeType } from '../lib/r2.js';
+import { uploadToR2, getMimeType, storageConfigured, STORAGE_MISSING } from '../lib/r2.js';
+import { config } from '../config.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -23,6 +24,8 @@ router.post('/', requireAuth, uploadImage.single('image'), async (req, res) => {
     const SAFE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
     const ext = SAFE_EXT[req.file.mimetype] || 'png';
     const key = `uploads/${Date.now()}_${crypto.randomBytes(6).toString('hex')}.${ext}`;
+    if (!storageConfigured()) return res.status(503).json({ error: STORAGE_MISSING });
+
     const url = await uploadToR2(req.file.buffer, key, req.file.mimetype);
 
     res.json({ url });
@@ -44,6 +47,10 @@ router.post('/video', requireAuth, uploadVideo.single('video'), async (req, res)
     const ext = req.file.originalname?.split('.').pop() || 'mp4';
     const key = `uploads/video_${Date.now()}_${crypto.randomBytes(6).toString('hex')}.${ext}`;
     const contentType = req.file.mimetype || 'video/mp4';
+    // Même garde que pour les images : sans stockage, la vidéo remontait un
+    // 500 générique dont la cause restait enterrée dans les logs.
+    if (!storageConfigured()) return res.status(503).json({ error: STORAGE_MISSING });
+
     const url = await uploadToR2(req.file.buffer, key, contentType);
 
     console.log(`[UPLOAD] Video uploaded: ${key} (${(req.file.size / 1024 / 1024).toFixed(1)} MB)`);

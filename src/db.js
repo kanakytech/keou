@@ -9,6 +9,10 @@ const { Pool } = pg;
  *   your own CA bundle (DATABASE_CA in PEM) — recommended once you outgrow Railway.
  */
 function buildSSL() {
+  // Le Dockerfile pose NODE_ENV=production. Sans cette échappatoire, le
+  // `docker run` documenté ne peut pas joindre un PostgreSQL local sans TLS —
+  // le cas le plus courant d'un premier auto-hébergement.
+  if (process.env.DATABASE_SSL === '0' || process.env.DATABASE_SSL === 'false') return false;
   if (process.env.NODE_ENV !== 'production') return false;
   if (process.env.DATABASE_CA) {
     return { ca: process.env.DATABASE_CA, rejectUnauthorized: true };

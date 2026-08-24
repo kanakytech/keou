@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Team — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+.team-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+
+/* ── Invite Form ── */
+.invite-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;margin-bottom:32px;
+}
+.invite-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.invite-form .form-group{flex:1;min-width:180px;margin-bottom:0}
+
+/* ── Members Table ── */
+.members-table{width:100%;border-collapse:collapse;font-size:13px}
+.members-table th{
+  text-align:left;padding:10px 12px;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted);
+  border-bottom:2px solid var(--border);
+}
+.members-table td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.members-table tr{transition:background .25s var(--ease-out)}
+.members-table tr:hover td{background:var(--surface-2)}
+.member-name{font-weight:600;color:var(--ink)}
+.member-email{font-size:12px;color:var(--ink-muted)}
+.member-stats{font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums}
+
+/* ── Status badges ── */
+.status-active{background:rgba(22,163,74,.12);color:#22c55e;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;animation:badgePulse 2.5s ease-in-out infinite}
+@keyframes badgePulse{0%,100%{opacity:1}50%{opacity:.7}}
+.status-suspended{background:rgba(220,38,38,.12);color:#f87171;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600}
+.status-pending{background:rgba(217,119,6,.12);color:#fbbf24;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600}
+.role-admin{background:rgba(200,240,96,.12);color:#c8f060;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600}
+.role-member{background:var(--surface-2);color:var(--ink-muted);padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600}
+
+/* ── Action buttons ── */
+.tbl-btn{
+  padding:5px 12px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .3s var(--ease-out);font-family:'Space Grotesk',sans-serif;
+  margin-right:4px;white-space:nowrap;
+}
+.tbl-btn:hover{border-color:var(--ink);background:var(--surface-2);transform:translateY(-1px)}
+.tbl-btn:active{transform:translateY(0);transition-duration:.1s}
+.tbl-btn.danger{color:#f87171;border-color:rgba(220,38,38,.3)}
+.tbl-btn.danger:hover{background:rgba(220,38,38,.15);transform:translateY(-1px)}
+
+/* ── Modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;z-index:1000;
+  opacity:0;pointer-events:none;transition:opacity .3s var(--ease-out);
+}
+.modal-overlay.show{opacity:1;pointer-events:auto;visibility:visible}
+.modal-box{
+  background:var(--surface);border-radius:var(--radius);padding:28px;
+  width:100%;max-width:420px;box-shadow:var(--shadow-xl);
+  transform:scale(.92) translateY(12px);transition:transform .35s var(--ease-spring),opacity .25s var(--ease-out);
+}
+.modal-overlay.show .modal-box{transform:scale(1) translateY(0)}
+.modal-box h3{margin-bottom:16px}
+.temp-password{
+  font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:16px 20px;text-align:center;letter-spacing:1px;margin-bottom:16px;
+  user-select:all;cursor:pointer;
+}
+.modal-note{font-size:12px;color:var(--ink-muted);margin-bottom:20px;line-height:1.6}
+
+/* ── Mobile scroll wrapper (desktop only — mobile uses card layout below) ── */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -24px;padding:0 24px}
+
+@media(max-width:768px){
+  .invite-form{flex-direction:column}
+  .invite-form .form-group{min-width:100%}
+  /* No more horizontal scroll: collapse table into stacked cards via CSS */
+  .table-scroll{margin:0;padding:0;overflow:visible}
+  .members-table,
+  .members-table thead,
+  .members-table tbody,
+  .members-table tr,
+  .members-table td{display:block;width:auto}
+  .members-table thead{display:none}  /* hide header row on mobile */
+  .members-table tr{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:12px;
+    transition:none;
+  }
+  .members-table tr:hover td{background:transparent}
+  .members-table td{
+    padding:8px 0;
+    border:none !important;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    font-size:13px;
+    text-align:right;
+  }
+  .members-table td:first-child{
+    /* Member name + email — full width header within card */
+    flex-direction:column;
+    align-items:flex-start;
+    text-align:left;
+    padding-bottom:12px;
+    margin-bottom:8px;
+    border-bottom:1px solid var(--border) !important;
+  }
+  .members-table td:first-child::before{display:none}
+  .members-table td::before{
+    content:attr(data-label);
+    font-weight:600;
+    color:var(--ink-muted);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    flex-shrink:0;
+  }
+  .members-table td:last-child{
+    /* Action buttons row */
+    flex-wrap:wrap;
+    gap:8px;
+    padding-top:12px;
+    margin-top:8px;
+    border-top:1px solid var(--border) !important;
+    justify-content:flex-end;
+  }
+  .members-table td:last-child::before{display:none}
+  .members-table td:last-child .tbl-btn{
+    flex:0 1 auto;
+    min-height:38px;
+    padding:8px 14px;
+    font-size:12px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container hidden" id="content">
+  <div class="team-header">
+    <h2>Team Management</h2>
+    <span class="nav-tag" id="team-count">0 members</span>
+  </div>
+
+  <!-- Invite -->
+  <div class="invite-card">
+    <p class="section-label">Add Member</p>
+    <form class="invite-form" id="invite-form">
+      <div class="form-group">
+        <label class="form-label">Full name</label>
+        <input class="form-input" id="invite-name" type="text" placeholder="John Doe" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Login email</label>
+        <input class="form-input" id="invite-email" type="email" placeholder="john@agency.com" required>
+      </div>
+      <button type="submit" class="btn-primary" id="invite-btn" style="height:46px;white-space:nowrap">Create Access</button>
+    </form>
+  </div>
+
+  <!-- Members Table -->
+  <div class="table-scroll">
+    <table class="members-table">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Usage</th>
+          <th>Last login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="members-tbody">
+        <tr><td colspan="6" class="text-muted" style="text-align:center;padding:40px">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Temp Password Modal -->
+<div class="modal-overlay" id="password-modal">
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <h3 id="modal-title">Member Access Created</h3>
+    <p class="modal-note">Share these login credentials with the team member. They can change their password after first login.</p>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:16px;margin:16px 0;font-size:13px">
+      <div style="margin-bottom:8px"><strong>Name:</strong> <span id="modal-employee">&mdash;</span></div>
+      <div style="margin-bottom:8px"><strong>Login:</strong> <span id="modal-email">&mdash;</span></div>
+      <div><strong>Password:</strong> <span id="temp-password" style="font-family:monospace;font-weight:700;font-size:15px;color:var(--ink)" title="Click to copy">&mdash;</span></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-secondary btn-sm" onclick="copyCredentials()">Copy all</button>
+      <button class="btn-primary btn-sm" onclick="closePasswordModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/confirm.js"></script>
+<script>
+let members = [];
+
+(async () => {
+  const ok = await Auth.adminGuard();
+  if (!ok) return;
+
+  Nav.render({ active: 'team' });
+  const contentEl = document.getElementById('content');
+  contentEl.classList.remove('hidden');
+  requestAnimationFrame(() => { requestAnimationFrame(() => { contentEl.classList.add('page-enter'); }); });
+
+  // Invite form
+  document.getElementById('invite-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('invite-btn');
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    try {
+      const name = document.getElementById('invite-name').value.trim();
+      const email = document.getElementById('invite-email').value.trim();
+
+      const res = await Auth.authFetch('/api/team/invite', {
+        method: 'POST',
+        body: JSON.stringify({ name, email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast(data.error || 'Failed to invite', true);
+        return;
+      }
+
+      // Show temp password modal
+      document.getElementById('temp-password').textContent = data.tempPassword;
+      document.getElementById('modal-employee').textContent = name;
+      document.getElementById('modal-email').textContent = email;
+      document.getElementById('modal-title').textContent = 'Member Access Created';
+      document.getElementById('password-modal').classList.add('show');
+
+      document.getElementById('invite-form').reset();
+      toast(`${name} added successfully`);
+      await loadMembers();
+
+    } catch (err) {
+      toast('Failed to add member', true);
+    } finally {
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+    }
+  });
+
+  await loadMembers();
+})();
+
+async function loadMembers() {
+  try {
+    const res = await Auth.authFetch('/api/team/members');
+    const data = await res.json();
+    members = data.members || [];
+
+    document.getElementById('team-count').textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
+
+    const tbody = document.getElementById('members-tbody');
+    // Replay stagger entrance on every reload
+    tbody.classList.remove('stagger-in');
+    if (!members.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted" style="text-align:center;padding:40px">No team members yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => {
+      const statusClass = m.status === 'active' ? 'status-active' : m.status === 'suspended' ? 'status-suspended' : 'status-pending';
+      const statusLabel = m.status === 'pending_password' ? 'Pending' : m.status.charAt(0).toUpperCase() + m.status.slice(1);
+      const roleClass = m.role === 'admin' ? 'role-admin' : 'role-member';
+      const lastLogin = m.last_login_at
+        ? new Date(m.last_login_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+        : 'Never';
+      const isCurrentUser = String(m.id) === String(Auth.getUser()?.id);
+      const imgUsed = parseInt(m.images) || 0;
+      const vidUsed = parseInt(m.videos) || 0;
+
+      let actions = '';
+      if (!isCurrentUser) {
+        if (m.status === 'active' || m.status === 'pending_password') {
+          actions += `<button class="tbl-btn danger" onclick="suspendMember(${m.id}, ${jsArg(m.name)})">Suspend</button>`;
+        }
+        if (m.status === 'suspended') {
+          actions += `<button class="tbl-btn" onclick="reactivateMember(${m.id}, ${jsArg(m.name)})">Reactivate</button>`;
+        }
+        actions += `<button class="tbl-btn" onclick="resetPassword(${m.id}, ${jsArg(m.name)}, ${jsArg(m.email)})">Reset pwd</button>`;
+        actions += `<button class="tbl-btn danger" onclick="deleteMember(${m.id}, ${jsArg(m.name)})">Delete</button>`;
+      } else {
+        actions = '<span style="font-size:11px;color:var(--ink-faint)">You</span>';
+      }
+
+      return `
+        <tr>
+          <td>
+            <div class="member-name">${esc(m.name)}</div>
+            <div class="member-email">${esc(m.email)}</div>
+          </td>
+          <td data-label="Role"><span class="${roleClass}">${m.role}</span></td>
+          <td data-label="Status"><span class="${statusClass}">${statusLabel}</span></td>
+          <td class="member-stats" data-label="Usage">
+            <span>${parseInt(m.totalGens) || 0} total · ${imgUsed} img · ${vidUsed} vid</span>
+          </td>
+          <td data-label="Last login" style="font-size:12px;color:var(--ink-muted)">${lastLogin}</td>
+          <td style="white-space:nowrap">${actions}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Trigger stagger entrance — force reflow first so animation replays
+    // eslint-disable-next-line no-unused-expressions
+    tbody.offsetHeight;
+    tbody.classList.add('stagger-in');
+
+  } catch (e) {
+    console.error('Load members error:', e);
+    toast('Failed to load team', true);
+  }
+}
+
+async function suspendMember(id, name) {
+  if (!await confirmDialog({ title: `Suspend ${name}`, message: 'They will lose access immediately.', confirmLabel: 'Suspend', danger: true })) return;
+  try {
+    const res = await Auth.authFetch(`/api/team/members/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'suspended' }),
+    });
+    if (!res.ok) { const d = await res.json(); toast(d.error || 'Failed', true); return; }
+    toast(`${name} suspended`);
+    await loadMembers();
+  } catch { toast('Failed to suspend', true); }
+}
+
+async function reactivateMember(id, name) {
+  try {
+    const res = await Auth.authFetch(`/api/team/members/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'active' }),
+    });
+    if (!res.ok) { const d = await res.json(); toast(d.error || 'Failed', true); return; }
+    toast(`${name} reactivated`);
+    await loadMembers();
+  } catch { toast('Failed to reactivate', true); }
+}
+
+async function resetPassword(id, name, email) {
+  if (!await confirmDialog({ title: `Reset password for ${name}`, message: 'A new temporary password will be generated.', confirmLabel: 'Reset password' })) return;
+  try {
+    const res = await Auth.authFetch(`/api/team/members/${id}/reset-password`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Failed', true); return; }
+
+    // Show modal with new temp password
+    document.getElementById('temp-password').textContent = data.tempPassword;
+    document.getElementById('modal-employee').textContent = name;
+    document.getElementById('modal-email').textContent = email;
+    document.getElementById('modal-title').textContent = 'Password Reset';
+    document.getElementById('password-modal').classList.add('show');
+
+    toast(`Password reset for ${name}`);
+    await loadMembers();
+  } catch { toast('Failed to reset password', true); }
+}
+
+async function deleteMember(id, name) {
+  if (!await confirmDialog({ title: `Delete ${name}?`, message: 'All their generated assets will be removed. This cannot be undone.', confirmLabel: 'Continue', danger: true })) return;
+  if (!await confirmDialog({ title: 'Final confirmation', message: `Really delete ${name} and all associated data?`, confirmLabel: 'Delete permanently', danger: true })) return;
+  try {
+    const res = await Auth.authFetch(`/api/team/members/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Failed to delete', true); return; }
+    toast(`${name} deleted permanently`);
+    await loadMembers();
+  } catch { toast('Failed to delete member', true); }
+}
+
+function closePasswordModal() {
+  document.getElementById('password-modal').classList.remove('show');
+}
+
+function copyPassword() {
+  const pwd = document.getElementById('temp-password').textContent;
+  navigator.clipboard.writeText(pwd).then(() => toast('Password copied'));
+}
+
+function copyCredentials() {
+  const email = document.getElementById('modal-email').textContent;
+  const pwd = document.getElementById('temp-password').textContent;
+  const name = document.getElementById('modal-employee').textContent;
+  const text = `Keou Studio Access\nName: ${name}\nLogin: ${email}\nPassword: ${pwd}\nURL: ${window.location.origin}`;
+  navigator.clipboard.writeText(text).then(() => toast('Credentials copied'));
+}
+
+/* Rend une valeur utilisable comme ARGUMENT JavaScript dans un attribut HTML.
+     esc() ne suffit pas ici : il n'échappe ni l'apostrophe ni le guillemet, et
+     le parseur HTML décode les entités AVANT que le moteur JS ne lise la ligne.
+     Une apostrophe dans un nom refermait donc la chaîne et exécutait la suite. */
+  function jsArg(v) {
+    return JSON.stringify(String(v ?? ''))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// Close modals on backdrop
+document.getElementById('password-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closePasswordModal();
+});
+
+</script>
+</body>
+</html>

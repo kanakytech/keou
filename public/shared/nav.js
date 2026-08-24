@@ -22,7 +22,7 @@ const Nav = (() => {
     help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-    pro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    custom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
     donate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
   };
 
@@ -32,9 +32,7 @@ const Nav = (() => {
 
     const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
     const isAdmin = user.role === 'admin';
-    // Opensource edition: basic studio only - no accounts, no enterprise pages.
-    const isOS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
-    // Community edition: hosted free tier - full creative suite, BYOK, Pro upsell.
+    // Community edition: the same thing, hosted by us.
     const isCM = typeof Auth.isCommunity === 'function' && Auth.isCommunity();
 
     // Auto-detect active from URL
@@ -51,17 +49,16 @@ const Nav = (() => {
       else if (path.includes('dashboard') || path.includes('admin') || path.includes('team')) active = 'dashboard';
     }
 
-    // Build nav items
-    const navItems = isOS ? [
-      { id: 'studio', label: 'Production Engine', href: '/studio.html' },
-    ] : [
+    // Build nav items. Every edition gets the same navigation — the
+    // open-source build ships the same feature set as the hosted one.
+    const navItems = [
       { id: 'studio', label: 'Production Engine', href: '/studio.html' },
       { id: 'projects', label: 'Clients & Campaigns', href: '/projects.html' },
       { id: 'history', label: 'Content Library', href: '/history.html' },
       { id: 'tools', label: 'Creative Tools', href: '/tools.html' },
+      { id: 'help', label: 'Help', href: '/help.html' },
     ];
-    if (!isOS) navItems.push({ id: 'help', label: 'Help', href: '/help.html' });
-    if (isCM) navItems.push({ id: 'pro', label: 'Keou Pro — lifetime license', href: '/pro.html' });
+    if (isCM) navItems.push({ id: 'custom', label: 'Custom build — tailored to your workflow', href: '/custom.html' });
     if (isCM) navItems.push({ id: 'donate', label: 'Support the project', href: '/donate.html' });
     // Floating donate widget (community only, not on the donate page itself)
     if (isCM && !window.__donateWidget && !location.pathname.includes('donate')) {
@@ -71,7 +68,7 @@ const Nav = (() => {
       dw.dataset.qr = '/donate-btc.svg'; dw.dataset.link = '/donate.html';
       document.body.appendChild(dw);
     }
-    if (isAdmin && !isOS) {
+    if (isAdmin) {
       navItems.push({ id: 'analytics', label: 'Profit Dashboard', href: '/analytics.html' });
       navItems.push({ id: 'dashboard', label: 'Settings', href: '/admin.html' });
     }
@@ -93,12 +90,12 @@ const Nav = (() => {
 
     sidebar.innerHTML = `
       <a class="app-sidebar-logo" href="/studio.html">
-        <img src="/logo.png" alt="Keou Studio">
+        <img src="/logo-keou.png" alt="Keou Studio">
       </a>
       <nav class="app-sidebar-nav">${navHtml}</nav>
       <div class="app-sidebar-credits" id="sidebar-credits" style="margin-top:auto;padding:8px 6px;text-align:center;font-size:9px;color:var(--ink-faint);letter-spacing:.3px;line-height:1.5">
       </div>
-      <div class="app-sidebar-bottom" ${isOS ? 'style="display:none"' : ''}>
+      <div class="app-sidebar-bottom">
         <div class="app-sidebar-avatar" id="sidebar-avatar" title="${escapeHtml(user.name)}">${escapeHtml(initials)}</div>
         <div class="app-sidebar-dropdown" id="sidebar-dropdown">
           <div class="nav-dropdown-item" style="pointer-events:none;opacity:.7;font-weight:600">
@@ -147,9 +144,7 @@ const Nav = (() => {
     document.querySelector('.mobile-more-overlay')?.remove();
     document.querySelector('.mobile-more-sheet')?.remove();
 
-    const mainNavItems = isOS ? [
-      { id: 'studio', label: 'Studio', href: '/studio.html', icon: ICONS.studio },
-    ] : [
+    const mainNavItems = [
       { id: 'studio', label: 'Studio', href: '/studio.html', icon: ICONS.studio },
       { id: 'projects', label: 'Clients', href: '/projects.html', icon: ICONS.projects },
       { id: 'history', label: 'Library', href: '/history.html', icon: ICONS.history },
@@ -204,7 +199,7 @@ const Nav = (() => {
         <span class="mobile-more-bell-count" id="mobile-bell-count" hidden></span>
       </button>
       <a class="mobile-more-item" href="/help.html">${ICONS.help}<span>Help</span></a>
-      ${isCM ? `<a class="mobile-more-item" href="/pro.html">${ICONS.pro}<span>Keou Pro</span></a>
+      ${isCM ? `<a class="mobile-more-item" href="/custom.html">${ICONS.custom}<span>Custom build</span></a>
       <a class="mobile-more-item" href="/donate.html">${ICONS.donate}<span>Support the project</span></a>` : ''}
       ${isAdmin ? `<a class="mobile-more-item" href="/analytics.html">${ICONS.analytics}<span>Profit Dashboard</span></a>
       <a class="mobile-more-item" href="/admin.html">${ICONS.dashboard}<span>Settings</span></a>` : ''}
@@ -216,7 +211,6 @@ const Nav = (() => {
 
     // More button toggle
     const moreBtn = document.getElementById('mobile-more-btn');
-    if (isOS && moreBtn) moreBtn.style.display = 'none'; // no profile/help/admin sheet in opensource
     const openSheet = () => { moreOverlay.classList.add('open'); moreSheet.classList.add('open'); };
     const closeSheet = () => { moreOverlay.classList.remove('open'); moreSheet.classList.remove('open'); };
     moreBtn?.addEventListener('click', () => {
@@ -256,9 +250,9 @@ const Nav = (() => {
     })();
     else if (isCM && !isAdmin) {
       const el = document.getElementById('sidebar-credits');
-      if (el) el.innerHTML = `<a href="/pro.html" style="color:var(--ink-faint);text-decoration:none"><div style="font-weight:700;color:var(--ink);font-size:10px;letter-spacing:.5px">FREE</div><div>plan</div></a>`;
+      if (el) el.innerHTML = `<a href="/custom.html" style="color:var(--ink-faint);text-decoration:none"><div style="font-weight:700;color:var(--ink);font-size:10px;letter-spacing:.5px">FREE</div><div>plan</div></a>`;
     }
-    else if (!isOS) (async () => {
+    else (async () => {
       try {
         const res = await Auth.authFetch('/api/analytics/roi');
         if (res.ok) {
@@ -273,8 +267,7 @@ const Nav = (() => {
       } catch {}
     })();
 
-    // ── Feedback notifications bell (enterprise only) ───────────
-    if (isOS) { fab.style.display = 'none'; } else
+    // ── Feedback notifications bell ───────────
     setupNotificationsBell({ closeMoreSheet: closeSheet });
 
     // Inject "powered by" into all footers that don't already have it.
@@ -285,7 +278,7 @@ const Nav = (() => {
       if (!socials) return;
       const powered = document.createElement('div');
       powered.className = 'footer-powered';
-      if (isCreditsMode) { return; } // enterprise builds carry their own branding
+      if (isCreditsMode) { return; } // managed deployments carry their own branding
       powered.innerHTML = `<span>Powered by</span>
         <a href="https://kie.ai" title="KIE.AI"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span>KIE.AI</span></a>
         <svg class="footer-sep" width="3" height="3" viewBox="0 0 3 3"><circle cx="1.5" cy="1.5" r="1.5" fill="currentColor"/></svg>
@@ -390,7 +383,11 @@ const Nav = (() => {
       return `${Math.floor(sec/86400)}d ago`;
     }
 
-    function escAttr(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+    function hexColorNav(v) {
+    return /^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? String(v) : '#06B6D4';
+  }
+
+  function escAttr(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
     function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
     const TYPE_META = {
@@ -445,7 +442,7 @@ const Nav = (() => {
               ${thumbHtml}
               <div class="notif-item-body">
                 <div class="notif-item-head">
-                  <span class="notif-item-type" style="color:${m.color}">${m.label}</span>
+                  <span class="notif-item-type" style="color:${hexColorNav(m.color)}">${escAttr(m.label)}</span>
                   ${unreadDot}
                   <span class="notif-item-time">${fmtRelative(it.created_at)}</span>
                 </div>
@@ -659,8 +656,16 @@ window.addEventListener('beforeunload', () => {
   });
 })();
 
-/* pastille retour kanaky.xyz (écosystème) */
+/* Pastille de retour vers kanaky.xyz — le pont visuel de l'écosystème.
+ *
+ * Elle ne se pose PAS sur une installation auto-hébergée. Le README promet
+ * « no attribution requirement » : imposer une pastille permanente vers notre
+ * site sur le déploiement de quelqu'un d'autre dirait le contraire. Elle reste
+ * sur nos propres instances, où elle est chez elle. */
 (function () {
+  // Le test vit dans kanaky-badge.js : il y couvre aussi les six pages qui
+  // chargent le fichier par une balise directe. Le faire ici était inopérant —
+  // Auth ne connaît pas encore l'édition à ce moment.
   var s = document.createElement('script');
   s.src = '/shared/kanaky-badge.js'; s.defer = true;
   document.head.appendChild(s);

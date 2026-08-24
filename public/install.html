@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Install Keou MCP — copy a prompt, paste it into Claude (Code, Desktop, or claude.ai), Claude installs everything for you. Free, open source.">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<title>Keou Studio — Install the Claude MCP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#f0f0ec;--ink-soft:rgba(240,240,236,.72);--ink-muted:rgba(240,240,236,.55);--ink-faint:rgba(240,240,236,.4);
+  --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.16);
+  --accent:#c8f060;
+  --radius:16px;
+}
+body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
+a{color:inherit}
+code{font-family:'JetBrains Mono',monospace;font-size:.92em;background:var(--surface-3);padding:1px 6px;border-radius:4px}
+
+.ambient{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.ambient::before{content:'';position:absolute;top:-20%;right:-10%;width:600px;height:600px;background:radial-gradient(circle,rgba(200,240,96,.05),transparent 70%);border-radius:50%}
+
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:transparent;border-bottom:1px solid transparent;backdrop-filter:blur(0px) saturate(100%);-webkit-backdrop-filter:blur(0px) saturate(100%);transition:background .4s ease,border-color .4s ease,backdrop-filter .4s ease,-webkit-backdrop-filter .4s ease,box-shadow .4s ease}
+/* Liquid Glass: the nav only turns to glass once content scrolls beneath it */
+.lp-nav.scrolled{background:rgba(14,14,14,.55);backdrop-filter:blur(20px) saturate(170%) brightness(1.06);-webkit-backdrop-filter:blur(20px) saturate(170%) brightness(1.06);border-bottom:1px solid rgba(255,255,255,.10);box-shadow:inset 0 -1px 0 rgba(255,255,255,.04),0 8px 32px rgba(0,0,0,.25)}
+@media (prefers-reduced-transparency:reduce){.lp-nav.scrolled{background:rgba(12,12,12,.96);backdrop-filter:none;-webkit-backdrop-filter:none}}
+.lp-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.lp-brand img{height:32px;width:auto;border-radius:50%}
+/* Verrou de marque, identique aux autres pages : cette page n'avait que la
+   première règle, donc « by kanaky.xyz » s'affichait à la même taille que
+   « Keou Studio » au lieu de le sous-titrer. */
+.lp-brand-name{display:flex;flex-direction:column;line-height:1.15}
+.lp-brand-name strong{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
+.lp-nav-links{display:flex;gap:8px;align-items:center}
+.lp-nav-link{padding:8px 16px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
+
+.wrap{max-width:760px;margin:0 auto;padding:120px 24px 80px}
+
+.intro{text-align:center;margin-bottom:40px}
+.intro-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:100px;background:var(--surface-2);color:var(--ink-soft);font-size:12px;font-weight:600;margin-bottom:24px;letter-spacing:.4px;border:1px solid var(--border)}
+.intro-eyebrow svg{width:14px;height:14px;color:var(--accent)}
+.intro h1{font-size:clamp(34px,5vw,52px);font-weight:800;margin-bottom:16px;line-height:1.05}
+.intro h1 span{background:linear-gradient(120deg,#fff 30%,#c8f060 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.intro p{font-size:17px;color:var(--ink-muted);max-width:560px;margin:0 auto;line-height:1.7}
+
+.prompt-card{background:var(--surface-2);border:1px solid var(--border);border-radius:24px;padding:28px;margin-bottom:32px}
+.prompt-box{position:relative;background:#000;border:1px solid var(--border-strong);border-radius:14px;padding:18px 20px;font-family:'JetBrains Mono','Menlo',monospace;font-size:13px;line-height:1.7;color:#d4d4d4;max-height:340px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;margin-bottom:16px}
+.prompt-box::-webkit-scrollbar{width:6px}
+.prompt-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:3px}
+.copy-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--accent);color:#050505;border:none;border-radius:100px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .25s}
+.copy-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.copy-btn.copied{background:var(--accent);color:#050505}
+.copy-btn svg{width:18px;height:18px}
+
+.why{padding:24px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;margin-bottom:32px}
+.why h3{font-size:18px;font-weight:600;margin-bottom:10px}
+.why p{font-size:14.5px;color:var(--ink-soft);margin-bottom:10px;line-height:1.7}
+.why p strong{color:var(--ink)}
+
+.where{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:32px}
+.where-card{padding:18px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px}
+.where-card .label{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;margin-bottom:6px;color:var(--ink)}
+.where-card .label svg{width:16px;height:16px}
+.where-card p{font-size:13px;color:var(--ink-muted);line-height:1.55}
+.where-card p a{color:var(--accent);text-decoration:none}
+.where-card p a:hover{text-decoration:underline}
+
+.faq{margin-top:48px}
+.faq h2{text-align:center;font-size:22px;font-weight:700;margin-bottom:24px}
+.faq-item{padding:18px 0;border-bottom:1px solid var(--border)}
+.faq-item h4{font-size:15px;font-weight:600;margin-bottom:6px}
+.faq-item p{color:var(--ink-muted);font-size:14px;line-height:1.7}
+.faq-item p a{color:var(--accent);text-decoration:none}
+.faq-item p a:hover{text-decoration:underline}
+
+footer{padding:32px;text-align:center;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--border);margin-top:64px}
+footer a{color:var(--ink-soft);text-decoration:none;margin:0 8px}
+footer a:hover{color:var(--ink)}
+</style>
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<link rel="alternate" hreflang="en" href="https://studio.kanaky.xyz/install.html">
+<link rel="alternate" hreflang="fr" href="https://studio.kanaky.xyz/install.html?lang=fr">
+<link rel="alternate" hreflang="x-default" href="https://studio.kanaky.xyz/install.html">
+</head>
+<body>
+<div class="ambient"></div>
+
+<nav class="lp-nav">
+  <a href="/" class="lp-brand">
+    <img src="/logo-keou.png" alt="Keou Studio">
+    <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
+  </a>
+  <div class="lp-nav-links">
+    <a href="/custom.html" class="lp-nav-link">Custom builds</a>
+    <a href="https://github.com/kanakytech/keou-mcp" class="lp-nav-link" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <div class="intro">
+    <div class="intro-eyebrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Free · Open source · MIT
+    </div>
+    <h1>Install Keou — <span>just paste a prompt</span></h1>
+    <p>Copy this prompt. Paste it into Claude (Claude Code, Claude Desktop, or claude.ai). Send. Claude installs the MCP, asks for your KIE.AI key, and runs a first test. ~60 seconds.</p>
+  </div>
+
+  <div class="prompt-card">
+    <div class="prompt-box" id="prompt-box"></div>
+    <button class="copy-btn" id="copy-btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy install prompt
+    </button>
+  </div>
+
+  <div class="why">
+    <h3>Why is there a prompt?</h3>
+    <p><strong>Claude is the one doing the install — not you.</strong> The prompt is plain-English instructions for Claude: install this MCP, ask the user for their KIE.AI key, configure it, then run a first test. You never run any commands manually.</p>
+    <p><strong>You only do two things:</strong> paste the prompt, then paste your KIE.AI key when Claude asks for it. That's it.</p>
+  </div>
+
+  <div class="where">
+    <div class="where-card">
+      <div class="label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Claude Code
+      </div>
+      <p>Smoothest path — Claude can run the install commands itself in your terminal. <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Get it free</a></p>
+    </div>
+    <div class="where-card">
+      <div class="label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Claude Desktop
+      </div>
+      <p>Works too — Claude will walk you through running the commands yourself in 2 minutes. <a href="https://claude.ai/download" target="_blank" rel="noopener">Get the app</a></p>
+    </div>
+    <div class="where-card">
+      <div class="label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        claude.ai (web)
+      </div>
+      <p>Same as Desktop — paste the prompt, Claude tells you what to run in your terminal. <a href="https://claude.ai" target="_blank" rel="noopener">Open claude.ai</a></p>
+    </div>
+  </div>
+
+  <div class="faq">
+    <h2>Common questions</h2>
+    <div class="faq-item">
+      <h4>Is this really free?</h4>
+      <p>The MCP is MIT open source — no Keou account needed. You only pay KIE.AI for images you generate (~$0.04 each). They give you free credits on signup.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Do I need to know how to code?</h4>
+      <p>No. The prompt tells Claude what to do, and Claude explains each step in plain English. The only thing you type yourself is your KIE.AI key when Claude asks.</p>
+    </div>
+    <div class="faq-item">
+      <h4>What's a "KIE.AI key"?</h4>
+      <p>KIE.AI is the service that actually generates the images. You sign up there (free), they give you a long string called an API key, you paste it back into the chat. <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">Sign up here</a>.</p>
+    </div>
+    <div class="faq-item">
+      <h4>Is anything held back for a paid tier?</h4>
+      <p>No. Polish, remix, format adaptation, multi-format export packs, voice-overs, sound effects, 8K upscaling, client workspaces — every feature ships in the open-source studio, and the production prompt stack ships with it. What we sell is <a href="/custom.html">a build shaped around your workflow</a>, not access to features we withheld.</p>
+    </div>
+    <div class="faq-item">
+      <h4>I'm a developer — show me the source.</h4>
+      <p><a href="https://github.com/kanakytech/keou-mcp" target="_blank" rel="noopener">github.com/kanakytech/keou-mcp</a> — a single file of Node, MIT, no telemetry.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>
+    <a href="https://github.com/kanakytech/keou-mcp" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="/custom.html">Custom builds</a> ·
+    <a href="/">Home</a> ·
+    <a href="mailto:kevyn@kanaky.xyz">Contact</a>
+  </div>
+  <div style="margin-top:8px">© 2026 Kanaky Tech · Built in Auckland, Aotearoa</div>
+</footer>
+
+<script src="/atc.js?v=20260509b"></script>
+<script>
+(function(){
+  const box = document.getElementById('prompt-box');
+  const btn = document.getElementById('copy-btn');
+  if (box && window.KeouATC) box.textContent = KeouATC.PROMPT;
+
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      const ok = await KeouATC.copyPromptToClipboard();
+      const orig = btn.innerHTML;
+      btn.innerHTML = ok
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied — paste into Claude'
+        : 'Press Cmd+C / Ctrl+C';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2500);
+    });
+  }
+})();
+</script>
+<script>
+// Liquid Glass nav — turns to glass only once content scrolls beneath it
+(function(){
+  var nav = document.querySelector('.lp-nav');
+  if (!nav) return;
+  var onScroll = function(){ nav.classList.toggle('scrolled', window.scrollY > 24); };
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+})();
+</script>
+<script defer src="/shared/kanaky-badge.js"></script>
+</body>
+</html>

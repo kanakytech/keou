@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Campaign — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+.breadcrumb{font-size:13px;color:var(--ink-muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.breadcrumb a{color:var(--ink-muted);text-decoration:none;transition:color .2s}
+.breadcrumb a:hover{color:var(--ink)}
+.breadcrumb svg{width:14px;height:14px;color:var(--ink-faint)}
+
+.project-header{display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+.project-header h2{display:flex;align-items:center;gap:10px}
+.project-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.project-meta{font-size:13px;color:var(--ink-muted);margin-bottom:24px;display:flex;gap:16px;flex-wrap:wrap}
+
+.project-actions{display:flex;gap:8px;margin-left:auto}
+.action-btn{
+  padding:7px 16px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;
+}
+.action-btn:hover{border-color:var(--ink);background:var(--surface-2)}
+.action-btn.primary{background:var(--ink);color:#050505;border-color:var(--ink);font-weight:700}
+.action-btn.primary:hover{opacity:.85}
+.action-btn.danger{color:#f87171;border-color:rgba(248,113,113,.3)}
+.action-btn.danger:hover{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5)}
+
+/* ── Stats Row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+
+/* ── Gallery ── */
+.gallery-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.gallery-item{
+  border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+  transition:all .3s var(--ease-out);position:relative;
+}
+.gallery-item:hover{border-color:var(--ink);transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.gallery-item.expired{opacity:.4;filter:grayscale(.3)}
+.gallery-item img,.gallery-item video{width:100%;aspect-ratio:1;object-fit:cover;display:block;transition:transform .35s var(--ease-out)}
+.gallery-item:hover img,.gallery-item:hover video{transform:scale(1.05)}
+.gallery-item.video-item::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:14px;backdrop-filter:blur(4px);opacity:0;transition:opacity .3s;pointer-events:none;line-height:40px;text-align:center}
+.gallery-item.video-item:hover::after{opacity:1}
+.gallery-info{padding:10px 12px}
+.gallery-info .gen-type{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.gallery-info .gen-date{font-size:11px;color:var(--ink-faint)}
+.gallery-info .gen-user{font-size:11px;color:var(--ink-muted);margin-top:2px}
+
+.expiry-badge{
+  position:absolute;top:8px;right:8px;padding:3px 8px;border-radius:100px;
+  font-size:10px;font-weight:700;
+}
+.expiry-badge.ok,.expiry-badge.warning,.expiry-badge.critical{background:rgba(255,255,255,.06);color:var(--ink)}
+.expiry-badge.expired{background:rgba(255,255,255,.04);color:var(--ink-muted)}
+
+.gallery-actions{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:8px;display:flex;gap:6px;justify-content:flex-end;
+  background:linear-gradient(transparent,rgba(255,255,255,.04));
+  opacity:0;transition:opacity .2s;
+}
+.gallery-item:hover .gallery-actions{opacity:1}
+.gallery-actions a,.gallery-actions button{
+  padding:5px 10px;border-radius:100px;font-size:11px;font-weight:600;
+  cursor:pointer;text-decoration:none;
+  background:rgba(255,255,255,.06);color:var(--ink);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1);
+  transition:background .2s,border-color .2s;
+}
+.gallery-actions a:hover,.gallery-actions button:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15)}
+.gallery-actions a:active,.gallery-actions button:active{transform:scale(0.92);transition-duration:.06s}
+/* Mobile / touch — actions toujours visibles puisque pas de hover */
+@media(hover:none){
+  .gallery-actions{opacity:1}
+}
+
+/* ── Edit Modal ── */
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.15);
+  backdrop-filter:blur(12px) saturate(120%);-webkit-backdrop-filter:blur(12px) saturate(120%);
+  display:flex;align-items:center;justify-content:center;z-index:1000;
+  opacity:0;pointer-events:none;transition:all .25s var(--ease-smooth);
+}
+.modal-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+.modal{
+  background:var(--surface);border-radius:20px;padding:28px;
+  width:100%;max-width:440px;box-shadow:var(--shadow-xl);
+  transform:scale(0.95) translateY(12px);
+  transition:transform .3s var(--ease-out);
+}
+.modal-overlay.show .modal{transform:scale(1) translateY(0)}
+.modal h3{margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* ── Audio Card ── */
+.audio-thumb{
+  width:100%;aspect-ratio:1;overflow:hidden;background:var(--surface-2);position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;
+}
+.audio-thumb .audio-icon{color:var(--ink-faint);transition:color .3s}
+.gallery-item:hover .audio-thumb .audio-icon{color:var(--ink)}
+.audio-thumb .audio-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink-faint);transition:color .3s;
+}
+.gallery-item:hover .audio-thumb .audio-label{color:var(--ink-muted)}
+.audio-player{
+  width:100%;padding:8px 12px;border-top:1px solid var(--border);
+  box-sizing:border-box;
+}
+.audio-player audio{width:100%;height:28px;border-radius:6px}
+
+/* ── Processing overlay on card ── */
+.gallery-item .gen-overlay{
+  position:absolute;inset:0;background:rgba(10,10,10,.9);backdrop-filter:blur(4px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  z-index:5;
+}
+.gen-overlay .spinner{width:24px;height:24px;border:2.5px solid rgba(255,255,255,.1);border-top-color:var(--ink);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-overlay span{font-size:11px;color:var(--ink-muted);font-weight:500}
+
+/* ── Download All Progress Bar ── */
+.dl-progress{
+  position:fixed;bottom:0;left:0;right:0;z-index:999;
+  background:rgba(10,10,10,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);padding:16px 24px;
+  display:flex;align-items:center;gap:16px;
+  transform:translateY(100%);transition:transform .35s var(--ease-out);
+}
+.dl-progress.show{transform:translateY(0)}
+.dl-progress-text{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;min-width:140px}
+.dl-progress-bar{flex:1;height:6px;background:var(--surface-2);border-radius:100px;overflow:hidden}
+.dl-progress-fill{height:100%;background:var(--ink);border-radius:100px;transition:width .3s var(--ease-out);width:0%}
+.dl-progress-cancel{
+  padding:5px 14px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink);font-size:11px;font-weight:600;
+  cursor:pointer;font-family:'Space Grotesk',sans-serif;white-space:nowrap;
+}
+.dl-progress-cancel:hover{border-color:var(--ink);background:var(--surface-2)}
+
+.load-more{text-align:center;margin-top:24px}
+
+@media(max-width:768px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .gallery-grid{grid-template-columns:repeat(2,1fr)}
+  .project-actions{width:100%;justify-content:flex-end}
+}
+@media(max-width:480px){
+  .project-header{flex-direction:column;align-items:flex-start}
+  .project-actions{width:100%;justify-content:stretch}
+  .action-btn{flex:1;text-align:center;font-size:11px;padding:8px 10px}
+  .gallery-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stats-row{gap:8px}
+}
+
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container" id="content" style="display:none">
+  <!-- Breadcrumb -->
+  <div class="breadcrumb" id="breadcrumb">
+    <a href="/projects.html">Clients</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <a href="#" id="bc-project">Client</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <span id="bc-campaign">Campaign</span>
+  </div>
+
+  <div class="project-header">
+    <h2 id="campaign-title">
+      <span class="project-color-dot" id="campaign-dot"></span>
+      <span id="campaign-name-text">Loading...</span>
+    </h2>
+    <div class="project-actions">
+      <button class="action-btn primary" onclick="openInStudio()">Create Assets</button>
+      <button class="action-btn" onclick="downloadAll()" id="dl-all-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download All</button>
+      <button class="action-btn" onclick="shareAssets()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share</button>
+      <button class="action-btn" onclick="openEditModal()">Edit</button>
+      <button class="action-btn" onclick="exportContactSheet()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Contact Sheet</button>
+      <button class="action-btn danger" id="archive-btn" onclick="archiveCampaign()">Archive</button>
+    </div>
+  </div>
+  <div class="project-meta" id="campaign-meta"></div>
+
+  <!-- Stats -->
+  <div class="stats-row stagger-in">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-images">0</div>
+      <div class="stat-label">Images</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-videos">0</div>
+      <div class="stat-label">Videos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-label">Total assets</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-active">0</div>
+      <div class="stat-label">Active (not expired)</div>
+    </div>
+  </div>
+
+  <!-- Gallery -->
+  <div class="gallery-header">
+    <h3>Assets</h3>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-type="">All</button>
+      <button class="tab-btn" data-type="image">Images</button>
+      <button class="tab-btn" data-type="video">Videos</button>
+      <button class="tab-btn" data-type="audio">Audio</button>
+    </div>
+  </div>
+  <div class="gallery-grid" id="gallery-grid"></div>
+  <div id="empty-gallery" class="empty-state hidden">
+    <div class="empty-icon" id="empty-icon-slot"></div>
+    <h3 id="empty-gallery-title">No assets yet</h3>
+    <p id="empty-gallery-sub">Open the Studio to start producing assets for this campaign</p>
+    <button id="empty-gallery-clear" class="action-btn" style="margin-top:14px;display:none">Clear filter</button>
+  </div>
+  <div class="load-more hidden" id="load-more">
+    <button class="action-btn" onclick="loadMore()">Load more</button>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>Edit Campaign</h3>
+    <form id="edit-form">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="edit-name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input class="form-input" id="edit-desc" type="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="edit-status">
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="action-btn" onclick="closeEditModal()">Cancel</button>
+        <button type="submit" class="action-btn primary" id="edit-submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Download All Progress -->
+<div class="dl-progress" id="dl-progress">
+  <span class="dl-progress-text" id="dl-progress-text">Preparing...</span>
+  <div class="dl-progress-bar"><div class="dl-progress-fill" id="dl-progress-fill"></div></div>
+  <button class="dl-progress-cancel" onclick="cancelDownloadAll()">Cancel</button>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/lightbox.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/confirm.js"></script>
+<script>
+let campaignId = null;
+let campaign = null;
+let projectId = null;
+let currentType = '';
+let offset = 0;
+const limit = 20;
+const _campaignItems = new Map();
+
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  Nav.render({ active: 'projects' });
+  const contentEl = document.getElementById('content');
+  contentEl.style.display = '';
+  requestAnimationFrame(() => contentEl.classList.add('page-enter'));
+
+  // Get campaign ID from URL
+  const params = new URLSearchParams(window.location.search);
+  campaignId = params.get('id');
+  if (!campaignId) {
+    window.location.href = '/projects.html';
+    return;
+  }
+
+  // Type filters
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentType = btn.dataset.type;
+      offset = 0;
+      loadGallery(true);
+    });
+  });
+
+  // Edit form
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('edit-submit');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: document.getElementById('edit-name').value.trim(),
+          description: document.getElementById('edit-desc').value.trim(),
+          status: document.getElementById('edit-status').value,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('Campaign updated');
+        closeEditModal();
+        await loadCampaign();
+      } else {
+        toast(data.error || 'Failed to update', true);
+      }
+    } catch (err) {
+      toast('Failed to update', true);
+    } finally {
+      btn.textContent = 'Save';
+      btn.disabled = false;
+    }
+  });
+
+  // Set empty state icon
+  document.getElementById('empty-icon-slot').innerHTML = Icons.empty('palette');
+
+  await Promise.all([loadCampaign(), loadGallery(true)]);
+})();
+
+async function loadCampaign() {
+  try {
+    const res = await Auth.authFetch(`/api/campaigns/${campaignId}`);
+    if (!res.ok) { window.location.href = '/projects.html'; return; }
+    const data = await res.json();
+    campaign = data.campaign;
+    projectId = campaign.projectId;
+
+    // Breadcrumb
+    const bcProject = document.getElementById('bc-project');
+    bcProject.textContent = campaign.projectName;
+    bcProject.href = `/project.html?id=${projectId}`;
+    document.getElementById('bc-campaign').textContent = campaign.name;
+
+    document.getElementById('campaign-dot').style.background = campaign.color || '#06B6D4';
+    document.getElementById('campaign-name-text').textContent = campaign.name;
+    document.title = `${campaign.name} — ${campaign.projectName} — Keou Studio`;
+
+    const created = new Date(campaign.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const meta = [`Created ${created}`, `Status: ${campaign.status}`];
+    if (campaign.description) meta.push(campaign.description);
+    // Build with textContent nodes (user-sourced description + status must not execute HTML)
+    const metaEl = document.getElementById('campaign-meta');
+    metaEl.replaceChildren(...meta.map(text => {
+      const span = document.createElement('span');
+      span.textContent = text;
+      return span;
+    }));
+
+    // Update archive button
+    const archBtn = document.getElementById('archive-btn');
+    if (campaign.status === 'archived') {
+      archBtn.textContent = 'Restore';
+      archBtn.classList.remove('danger');
+    }
+
+    // Stats
+    const images = parseInt(campaign.images) || 0;
+    const videos = parseInt(campaign.videos) || 0;
+    document.getElementById('stat-images').textContent = images;
+    document.getElementById('stat-videos').textContent = videos;
+    document.getElementById('stat-total').textContent = parseInt(campaign.totalGens) || (images + videos);
+    document.getElementById('stat-active').textContent = parseInt(campaign.activeGens) || 0;
+  } catch (e) {
+    console.error('Campaign load error:', e);
+    toast('Failed to load campaign', true);
+  }
+}
+
+async function loadGallery(reset = false) {
+  if (reset) offset = 0;
+
+  try {
+    const params = new URLSearchParams({ limit, offset });
+    if (currentType) params.set('type', currentType);
+
+    const res = await Auth.authFetch(`/api/history?campaignId=${campaignId}&${params}`);
+    const data = await res.json();
+    const items = data.items || [];
+
+    const grid = document.getElementById('gallery-grid');
+    const emptyGallery = document.getElementById('empty-gallery');
+    const loadMoreDiv = document.getElementById('load-more');
+
+    if (reset) {
+      grid.innerHTML = '';
+      grid.classList.remove('stagger-in');
+      _campaignItems.clear();
+    }
+
+    if (!items.length && reset) {
+      const titleEl = document.getElementById('empty-gallery-title');
+      const subEl = document.getElementById('empty-gallery-sub');
+      const clearBtn = document.getElementById('empty-gallery-clear');
+      if (currentType) {
+        titleEl.textContent = 'No ' + currentType + ' yet in this campaign';
+        subEl.textContent = 'Switch tab or produce new assets in the Studio.';
+        clearBtn.style.display = '';
+        clearBtn.onclick = () => {
+          currentType = '';
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelector('.tab-btn[data-type=""]')?.classList.add('active');
+          loadItems(true);
+        };
+      } else {
+        titleEl.textContent = 'No assets yet';
+        subEl.textContent = 'Open the Studio to start producing assets for this campaign';
+        clearBtn.style.display = 'none';
+      }
+      emptyGallery.classList.remove('hidden');
+      loadMoreDiv.classList.add('hidden');
+      return;
+    }
+
+    emptyGallery.classList.add('hidden');
+
+    const activeItems = items.filter(item => !getExpiryInfo(item).isExpired);
+    activeItems.forEach(item => _campaignItems.set(item.id, item));
+
+    if (!activeItems.length && reset) {
+      emptyGallery.classList.remove('hidden');
+      loadMoreDiv.classList.add('hidden');
+      return;
+    }
+
+    grid.innerHTML += activeItems.map(item => {
+      const isVideo = item.type === 'video' || item.type === 'vid-upscale';
+      const isAudio = item.type === 'tts' || item.type === 'sfx';
+      const expiry = getExpiryInfo(item);
+      const date = new Date(item.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const dur = formatDuration(item.created_at, item.completed_at);
+      const typeLabel = item.type === 'tts' ? 'TTS' : item.type === 'sfx' ? 'SFX' : item.type;
+
+      let mediaHtml;
+      if (isAudio && item.result_url) {
+        const audioIcon = item.type === 'tts'
+          ? `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="audio-icon"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`
+          : `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="audio-icon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+        const audioLabel = item.type === 'tts' ? 'Text to Speech' : 'Sound Effect';
+        mediaHtml = `
+          <div class="audio-thumb" onclick="openLB(${item.id})">
+            ${audioIcon}
+            <span class="audio-label">${audioLabel}</span>
+          </div>
+          <div class="audio-player" onclick="event.stopPropagation()">
+            <audio controls preload="none" src="${escapeHtml(item.result_url)}"></audio>
+          </div>`;
+      } else if (isVideo) {
+        mediaHtml = `<video src="${escapeHtml(item.result_url)}" muted loop playsinline preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0" onclick="openLB(${item.id})" style="cursor:pointer" onerror="imgFallback(this)"></video>`;
+      } else {
+        mediaHtml = `<img src="${escapeHtml(item.result_url)}" alt="${escapeHtml(item.prompt || 'Generation')}" loading="lazy" onclick="openLB(${item.id})" style="cursor:pointer" onerror="imgFallback(this)">`;
+      }
+
+      return `
+        <div class="gallery-item ${isVideo ? 'video-item' : ''}" id="camp-${item.id}">
+          <span class="expiry-badge ${expiry.urgency}">${expiry.label}</span>
+          ${mediaHtml}
+          ${!isAudio ? `<div class="gallery-actions">
+            <button type="button" class="gallery-action-btn" onclick="openLB(${item.id})" aria-label="View asset">View</button>
+            <button type="button" class="gallery-action-btn" onclick="dlGen(${jsArg(encodeURIComponent(item.result_url))},'keou-${encodeURIComponent(item.type)}-${encodeURIComponent(String(item.id))}')" aria-label="Download asset">&#8595;</button>
+          </div>` : ''}
+          <div class="gallery-info">
+            <span class="gen-type">${typeLabel}</span>
+            <span class="gen-date" style="float:right">${date}${dur ? ` · ${dur}` : ''}</span>
+            ${item.userName ? `<div class="gen-user">by ${escapeHtml(item.userName)}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (reset) requestAnimationFrame(() => grid.classList.add('stagger-in'));
+
+    offset += items.length;
+    loadMoreDiv.classList.toggle('hidden', items.length < limit);
+  } catch (e) {
+    console.error('Gallery load error:', e);
+  }
+}
+
+function loadMore() { loadGallery(false); }
+
+function getExpiryInfo(item) {
+  if (!item.created_at) return { label: '\u2014', urgency: 'ok', isExpired: false };
+  const created = new Date(item.created_at);
+  const expires = new Date(created.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const daysLeft = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+  if (daysLeft <= 0) return { label: 'Expired', urgency: 'expired', isExpired: true };
+  if (daysLeft <= 2) return { label: `${daysLeft}d left`, urgency: 'critical', isExpired: false };
+  if (daysLeft <= 5) return { label: `${daysLeft}d left`, urgency: 'warning', isExpired: false };
+  return { label: `${daysLeft}d left`, urgency: 'ok', isExpired: false };
+}
+
+function openInStudio() {
+  window.location.href = `/studio.html?project=${projectId}&campaign=${campaignId}`;
+}
+
+function openEditModal() {
+  if (!campaign) return;
+  document.getElementById('edit-name').value = campaign.name;
+  document.getElementById('edit-desc').value = campaign.description || '';
+  document.getElementById('edit-status').value = campaign.status;
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+}
+
+async function archiveCampaign() {
+  const isArchived = campaign.status === 'archived';
+  const action = isArchived ? 'Restore' : 'Archive';
+  if (!await confirmDialog({ title: `${action} this campaign?`, message: isArchived ? 'The campaign will be active again.' : 'The campaign will be hidden but can be restored later.', confirmLabel: action, danger: !isArchived })) return;
+
+  try {
+    if (isArchived) {
+      const res = await Auth.authFetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active' }),
+      });
+      if (res.ok) { toast('Campaign restored'); await loadCampaign(); }
+    } else {
+      const res = await Auth.authFetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' });
+      if (res.ok) { toast('Campaign archived'); window.location.href = `/project.html?id=${projectId}`; }
+    }
+  } catch (e) {
+    toast('Failed', true);
+  }
+}
+
+document.getElementById('edit-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+function imgFallback(el) {
+  if (!el._retried && el.tagName === 'IMG' && el.src) {
+    el._retried = true;
+    const src = el.src;
+    el.src = '';
+    setTimeout(() => { el.src = src; }, 1500);
+    return;
+  }
+  el.onerror = null;
+  const isVid = el.tagName === 'VIDEO';
+  const wrap = document.createElement('div');
+  wrap.className = 'img-broken';
+  wrap.style.aspectRatio = '1';
+  wrap.innerHTML = Icons.sized(isVid ? 'video' : 'image', 32, 1.2);
+  el.replaceWith(wrap);
+}
+
+// ── Authenticated download ──
+async function dlGen(encodedUrl, fname) {
+  try {
+    const url = decodeURIComponent(encodedUrl);
+    const ext = url.split('/').pop().split('?')[0].split('.').pop() || 'png';
+    const fullName = `${fname}.${ext}`;
+    const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(fullName)}`;
+    const res = await Auth.authFetch(proxyUrl);
+    if (!res.ok) throw new Error('Download failed');
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = fullName;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    toast('Download failed', true);
+  }
+}
+
+const VIDEO_COSTS = { 'grok-imagine': 0.15, 'kling-2.6': 0.55, 'kling-3.0': 0.72, 'seedance-2': 1.64, 'veo3': 1.25 };
+function formatDuration(createdAt, completedAt) {
+  if (!createdAt || !completedAt) return '';
+  const ms = new Date(completedAt) - new Date(createdAt);
+  if (ms <= 0 || ms > 3600000) return '';
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+function _parseMeta(g) {
+  try { return typeof g.metadata === 'string' ? JSON.parse(g.metadata || '{}') : (g.metadata || {}); } catch { return {}; }
+}
+function getGenCost(g) {
+  if (g.type === 'video') { const m = _parseMeta(g).videoModel || 'grok-imagine'; return `$${(VIDEO_COSTS[m] || 0.15).toFixed(2)}`; }
+  return '$0.09';
+}
+
+// ── Lightbox with metadata + Polish/Video/Adapt/Remix ──
+function openLB(genId) {
+  const g = _campaignItems.get(genId);
+  if (!g || !g.result_url) return;
+  const date = new Date(g.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  const isImage = g.type === 'image' || g.type === 'polish' || g.type === 'img-upscale';
+  const isVideo = g.type === 'video' || g.type === 'vid-upscale';
+  const isAudio = g.type === 'tts' || g.type === 'sfx';
+  const pm = _parseMeta(g);
+  // Derive action and model labels
+  const ACTION_MAP = { 'image': 'Generate', 'polish': 'Polish', 'video': 'Video', 'img-upscale': 'Upscale', 'vid-upscale': 'Upscale', 'tts': 'Voice-over', 'sfx': 'Sound Effect' };
+  const MODEL_LABELS = { 'grok-imagine': 'Grok Imagine', 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2.0', 'veo3': 'Veo 3.1' };
+  const actionLabel = pm.remixPrompt ? 'Remix' : (ACTION_MAP[g.type] || g.type);
+  const modelLabel = pm.videoModel ? (MODEL_LABELS[pm.videoModel] || pm.videoModel) : null;
+
+  const meta = {
+    generationId: genId,
+    genType: g.type,
+    action: actionLabel,
+    model: modelLabel,
+    format: g.format || null,
+    date,
+    duration: formatDuration(g.created_at, g.completed_at),
+    cost: getGenCost(g),
+    userName: g.userName || '',
+    creativeDirection: pm.creativeDirection || pm.remixPrompt || null,
+    inputUrl: g.input_url || null,
+  };
+  if (isImage) {
+    meta.onPolish = () => polishFromCampaign(genId, g.result_url, g.format);
+    meta.onVideo = (cd) => videoFromCampaignWithCD(genId, g.result_url, cd);
+    if (g.result_url) meta.onAdapt = () => adaptFromCampaign(genId, g.result_url, g.format);
+    meta.onRemix = (prompt) => remixFromCampaign(genId, g.result_url, prompt, g.format);
+  } else if (isVideo) {
+    if (g.type === 'video') meta.onUpscale = () => upscaleFromCampaign(genId, g.result_url);
+  }
+  const lbType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
+  Lightbox.open(g.result_url, lbType, meta);
+}
+
+function _buildBody(extra) {
+  const body = { ...extra };
+  if (projectId) body.projectId = parseInt(projectId, 10);
+  if (campaignId) body.campaignId = parseInt(campaignId, 10);
+  return body;
+}
+
+// ── Adapt All Formats ──
+async function adaptFromCampaign(genId, resultUrl, currentFormat) {
+  const allFormats = ['1:1', '3:4', '9:16', '16:9'];
+  const formats = allFormats.filter(f => f !== currentFormat);
+  if (!formats.length) { toast('Already in all formats', true); return; }
+  toast(`Adapting to ${formats.length} formats...`);
+  const promises = formats.map(async (fmt) => {
+    try {
+      const res = await Auth.authFetch('/api/adapt', { method: 'POST', body: JSON.stringify(_buildBody({ imageUrl: resultUrl, ratio: fmt })) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return { ok: true };
+    } catch { return { ok: false }; }
+  });
+  const results = await Promise.all(promises);
+  const ok = results.filter(r => r.ok).length;
+  if (ok > 0) { toast(`${ok} format(s) adapting`); setTimeout(() => loadGallery(true), 5000); }
+  if (ok < formats.length) toast(`${formats.length - ok} failed`, true);
+}
+
+// ── Remix ──
+async function remixFromCampaign(genId, imageUrl, remixPrompt, ratio) {
+  toast('Remixing...');
+  try {
+    const res = await Auth.authFetch('/api/remix', { method: 'POST', body: JSON.stringify(_buildBody({ imageUrl, remixPrompt, ratio: ratio || '1:1' })) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const pp = new URLSearchParams();
+    if (data.generationId) pp.set('generationId', data.generationId);
+    if (data.recordId) pp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/image/${data.taskId}?${pp}`, 6000, 300000);
+    toast('Remix complete!');
+    loadGallery(true);
+    Lightbox.open(resultUrl, 'image', { genType: 'image', cost: '$0.09', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), creativeDirection: remixPrompt });
+  } catch (e) {
+    toast(`Remix failed: ${escapeHtml(e.message)}`, true);
+  }
+}
+
+// ── Video Upscale 4K ──
+async function upscaleFromCampaign(genId, videoUrl) {
+  const card = document.getElementById(`camp-${genId}`);
+  if (!card) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Upscaling to 4K...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+  try {
+    const res = await Auth.authFetch('/api/upscale', { method: 'POST', body: JSON.stringify(_buildBody({ videoUrl })) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const up = new URLSearchParams();
+    if (data.generationId) up.set('generationId', data.generationId);
+    if (data.recordId) up.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/upscale/${data.taskId}?${up}`, 15000, 600000);
+    toast('4K upscale complete!');
+    loadGallery(true);
+    Lightbox.open(resultUrl, 'video', { genType: 'upscale', cost: '$0.70', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+  } catch (e) {
+    toast(`Upscale failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="h-action" onclick="this.closest('.gen-overlay').remove()" style="border:1.5px solid var(--border);border-radius:100px;padding:6px 16px;margin-top:4px;background:var(--surface)">Dismiss</button>`;
+  }
+}
+
+// ── Video with Creative Direction ──
+async function videoFromCampaignWithCD(genId, imageUrl, creativeDirection) {
+  const card = document.getElementById(`camp-${genId}`);
+  if (!card) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Rendering video...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+  try {
+    const body = _buildBody({ imageUrl });
+    if (creativeDirection) body.creativeDirection = creativeDirection;
+    const res = await Auth.authFetch('/api/video', { method: 'POST', body: JSON.stringify(body) });
+    if (res.status === 402) throw new Error('API error');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const vp = new URLSearchParams();
+    if (data.generationId) vp.set('generationId', data.generationId);
+    if (data.recordId) vp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/video/${data.taskId}?${vp}`, 15000, 600000);
+    toast('Video generated');
+    if (typeof Lightbox !== 'undefined' && Lightbox.open) {
+      Lightbox.open(resultUrl, 'video', { genType: 'video', action: 'Video', date: new Date().toLocaleDateString('en-GB') });
+    }
+    loadGallery(true);
+  } catch (e) {
+    toast(`Video failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="action-btn" onclick="this.closest('.gen-overlay').remove()" style="margin-top:8px">Dismiss</button>`;
+  }
+}
+
+// ── Polish ──
+async function polishFromCampaign(genId, imageUrl, ratio) {
+  const card = document.getElementById(`camp-${genId}`);
+  if (!card) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'gen-overlay';
+  overlay.innerHTML = '<div class="spinner"></div><span>Polishing...</span>';
+  card.style.position = 'relative';
+  card.appendChild(overlay);
+  try {
+    const res = await Auth.authFetch('/api/polish', { method: 'POST', body: JSON.stringify(_buildBody({ imageUrl, ratio: ratio || '1:1' })) });
+    if (res.status === 402) throw new Error('API error');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const pp = new URLSearchParams();
+    if (data.generationId) pp.set('generationId', data.generationId);
+    if (data.recordId) pp.set('recordId', data.recordId);
+    const resultUrl = await pollTask(`/api/status/polish/${data.taskId}?${pp}`, 6000, 300000);
+    toast('Polish complete!');
+    loadGallery(true);
+  } catch (e) {
+    toast(`Polish failed: ${escapeHtml(e.message)}`, true);
+    overlay.innerHTML = `<span style="font-size:12px;color:var(--error);font-weight:600;text-align:center;padding:0 12px">${escapeHtml(e.message)}</span>
+      <button class="action-btn" onclick="this.closest('.gen-overlay').remove()" style="margin-top:8px">Dismiss</button>`;
+  }
+}
+
+// ── Download All ──
+let _dlCancelled = false;
+
+async function shareAssets() {
+  if (!campaign) return;
+  // Get all completed generation IDs for this campaign
+  try {
+    const res = await Auth.authFetch(`/api/history?campaignId=${campaignId}&limit=50`);
+    const data = await res.json();
+    const items = (data.items || []).filter(i => i.status === 'completed' && i.result_url);
+    if (!items.length) { toast('No completed assets to share', true); return; }
+
+    const genIds = items.map(i => i.id);
+    const shareRes = await Auth.authFetch('/api/share', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId: campaign.project_id,
+        generationIds: genIds,
+        title: campaign.name || 'Shared Assets',
+        expiresInDays: 30,
+      }),
+    });
+    const shareData = await shareRes.json();
+    if (shareData.ok) {
+      const url = window.location.origin + shareData.url;
+      await navigator.clipboard.writeText(url);
+      toast(`Share link copied (${shareData.itemCount} items)`);
+    } else {
+      toast(shareData.error || 'Share failed', true);
+    }
+  } catch (e) {
+    toast('Failed to create share link', true);
+  }
+}
+
+async function downloadAll() {
+  if (!campaign) return;
+  _dlCancelled = false;
+  const btn = document.getElementById('dl-all-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.5';
+  btn.style.pointerEvents = 'none';
+  const progressEl = document.getElementById('dl-progress');
+  const textEl = document.getElementById('dl-progress-text');
+  const fillEl = document.getElementById('dl-progress-fill');
+  progressEl.classList.add('show');
+  textEl.textContent = 'Collecting assets...';
+  fillEl.style.width = '0%';
+
+  try {
+    let allItems = [];
+    let page = 1;
+    const pageSize = 50;
+    let hasMore = true;
+    while (hasMore) {
+      if (_dlCancelled) throw new Error('cancelled');
+      const params = new URLSearchParams({ page, limit: pageSize });
+      const res = await Auth.authFetch(`/api/history?campaignId=${campaignId}&${params}`);
+      const data = await res.json();
+      const items = data.items || [];
+      allItems = allItems.concat(items);
+      hasMore = items.length >= pageSize;
+      page++;
+    }
+    allItems = allItems.filter(item => {
+      if (!item.result_url || item.status === 'failed') return false;
+      return !getExpiryInfo(item).isExpired;
+    });
+    if (!allItems.length) {
+      toast('No active assets to download', true);
+      progressEl.classList.remove('show');
+      btn.disabled = false; btn.style.opacity = ''; btn.style.pointerEvents = '';
+      return;
+    }
+    textEl.textContent = `Downloading 0/${allItems.length}...`;
+    const zip = new JSZip();
+    const campName = (campaign.name || 'campaign').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    let downloaded = 0;
+    for (const item of allItems) {
+      if (_dlCancelled) throw new Error('cancelled');
+      try {
+        const ext = item.result_url.split('/').pop().split('?')[0].split('.').pop() || (item.type === 'video' ? 'mp4' : 'png');
+        const fname = `keou-${item.type}-${item.id}.${ext}`;
+        const proxyUrl = `/api/download?url=${encodeURIComponent(item.result_url)}&name=${encodeURIComponent(fname)}`;
+        const res = await Auth.authFetch(proxyUrl);
+        if (!res.ok) throw new Error('Failed');
+        const blob = await res.blob();
+        zip.file(fname, blob);
+        downloaded++;
+        fillEl.style.width = Math.round((downloaded / allItems.length) * 100) + '%';
+        textEl.textContent = `Downloading ${downloaded}/${allItems.length}...`;
+      } catch (e) {
+        if (e.message === 'cancelled') throw e;
+        downloaded++;
+      }
+    }
+    if (_dlCancelled) throw new Error('cancelled');
+    textEl.textContent = 'Creating ZIP...';
+    fillEl.style.width = '100%';
+    const ts = new Date().toISOString().slice(0, 10);
+    const zipBlob = await zip.generateAsync({ type: 'blob' }, (meta) => {
+      fillEl.style.width = `${Math.round(meta.percent)}%`;
+    });
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = `keou-${campName}-${ts}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(zipUrl);
+    toast(`${downloaded} asset(s) downloaded`);
+  } catch (e) {
+    if (e.message === 'cancelled') toast('Download cancelled');
+    else { console.error('Download All error:', e); toast('Download failed', true); }
+  } finally {
+    progressEl.classList.remove('show');
+    btn.disabled = false; btn.style.opacity = ''; btn.style.pointerEvents = '';
+  }
+}
+
+function cancelDownloadAll() { _dlCancelled = true; }
+
+async function exportContactSheet() {
+  if (!campaign) return;
+  toast('Preparing contact sheet...');
+
+  try {
+    let allItems = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const res = await Auth.authFetch(`/api/history?campaignId=${campaignId}&page=${page}&limit=50`);
+      const data = await res.json();
+      const items = (data.items || []).filter(i => i.status === 'completed' && i.result_url);
+      allItems = allItems.concat(items);
+      hasMore = items.length === 50;
+      page++;
+    }
+
+    if (!allItems.length) { toast('No completed assets to export', true); return; }
+
+    let agencyName = 'Studio';
+    try {
+      const aRes = await Auth.authFetch('/api/admin/stats');
+      if (aRes.ok) { const ad = await aRes.json(); agencyName = ad.agency?.name || 'Studio'; }
+    } catch {}
+
+    // Generate the contact sheet HTML and download it as a file (no popup window).
+    // The user opens it from their downloads, prints from there. Keeps platform UX in-tab.
+    const sheetHtml = `<!DOCTYPE html><html><head>
+      <title>Contact Sheet — ${campaign.name || 'Campaign'}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 24px; color: #1a1a1a; background: #fff; }
+        .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
+        .header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .header p { font-size: 12px; color: #888; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .item { border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; break-inside: avoid; }
+        .item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+        .item-meta { padding: 6px 8px; font-size: 9px; color: #888; display: flex; justify-content: space-between; }
+        .footer { text-align: center; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e5e5; font-size: 10px; color: #aaa; }
+        @media print {
+          body { padding: 12px; }
+          .grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+          .item { break-inside: avoid; }
+        }
+      </style>
+    </head><body>
+      <div class="header">
+        <h1>${agencyName} — ${campaign.name || 'Campaign'}</h1>
+        <p>${allItems.length} assets · Generated ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+      </div>
+      <div class="grid">
+        ${allItems.map(item => `
+          <div class="item">
+            <img src="${escapeHtml(item.result_url)}" alt="Asset #${escapeHtml(String(item.id))}" crossorigin="anonymous">
+            <div class="item-meta">
+              <span>#${escapeHtml(String(item.id))} · ${escapeHtml(item.type)}</span>
+              <span>${new Date(item.created_at).toLocaleDateString('en', { day: '2-digit', month: 'short' })}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="footer">${agencyName} · Powered by Keou Studio</div>
+    </body></html>`;
+    const blob = new Blob([sheetHtml], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `contact-sheet-${(campaign.name || 'campaign').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('Contact sheet downloaded — open the file to print');
+
+  } catch (e) {
+    toast('Failed to generate contact sheet', true);
+  }
+}
+
+// ── Poll Task ──
+function pollTask(url, interval, timeout) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    let networkErrors = 0;
+    const MAX_NET = 5;
+    const check = async () => {
+      if (Date.now() - start > timeout) return reject(new Error('Timed out'));
+      try {
+        const res = await Auth.authFetch(url);
+        if (!res.ok) { if (res.status === 401 || res.status === 403) return reject(new Error('Session expired')); setTimeout(check, interval); return; }
+        networkErrors = 0;
+        const data = await res.json();
+        if (data.ready && data.resultUrl) return resolve(data.resultUrl);
+        if (data.failed) return reject(new Error(data.error || 'Generation failed'));
+      } catch (err) {
+        networkErrors++;
+        if (networkErrors >= MAX_NET) return reject(new Error('Network error'));
+      }
+      setTimeout(check, interval);
+    };
+    setTimeout(check, 3000);
+  });
+}
+</script>
+</body>
+</html>

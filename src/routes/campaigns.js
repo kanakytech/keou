@@ -115,6 +115,11 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
     const { name, description, color, status } = req.body;
+    // La création valide la couleur (ligne 24) ; la mise à jour ne le faisait
+    // pas, alors que projects.js:120 le fait pour les projets. La valeur
+    // ressortait telle quelle et finissait interpolée dans un attribut style.
+    if (color != null && !HEX_COLOR.test(color)) return res.status(400).json({ error: 'Color must be a hex value' });
+
     const campaign = await queryOne('SELECT * FROM campaigns WHERE id = $1', [req.params.id]);
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
@@ -142,6 +147,11 @@ router.patch('/:id', requireAuth, async (req, res) => {
 // ─── Archive Campaign ───
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
+    // La création valide la couleur (ligne 24) ; la mise à jour ne le faisait
+    // pas, alors que projects.js:120 le fait pour les projets. La valeur
+    // ressortait telle quelle et finissait interpolée dans un attribut style.
+    if (color != null && !HEX_COLOR.test(color)) return res.status(400).json({ error: 'Color must be a hex value' });
+
     const campaign = await queryOne('SELECT * FROM campaigns WHERE id = $1', [req.params.id]);
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 

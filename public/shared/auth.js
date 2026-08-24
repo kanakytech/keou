@@ -6,6 +6,21 @@
 /* ── Dark mode only — no theme switching ── */
 
 /** Escape HTML special characters to prevent XSS */
+/* Rend une valeur utilisable comme ARGUMENT JavaScript dans un attribut HTML.
+ *
+ * escapeHtml ne suffit PAS dans ce contexte : la valeur traverse deux
+ * analyseurs, et le parseur HTML décode les entités AVANT que le moteur JS ne
+ * lise la ligne. Une apostrophe encodée redevient une apostrophe et referme la
+ * chaîne. Il faut donc encoder pour le contexte JS — JSON.stringify, qui pose
+ * des guillemets doubles et échappe ce qu'il faut — PUIS pour l'attribut.
+ *
+ *   onclick="fn(1, ${jsArg(nom)})"     ← correct
+ *   onclick="fn(1, '${escapeHtml(n)}')" ← s'échappe sur une apostrophe
+ */
+function jsArg(v) {
+  return escapeHtml(JSON.stringify(String(v == null ? '' : v)));
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)

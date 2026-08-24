@@ -274,30 +274,13 @@ const MIGRATIONS = [
   // user has never opened the bell yet, so all feedback is unread.
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS feedback_seen_at TIMESTAMP`,
 
-  // ═══ KEOU PRO SUBSCRIPTIONS (Stripe-backed) ═══
+  // ═══ ABONNEMENTS — instance hébergée uniquement (Stripe) ═══
+  // Colonnes conservées pour les déploiements managés existants. Le studio ne
+  // les lit jamais : aucune fonctionnalité n'en dépend.
   // One row per user with an active or past subscription. Free users have
   // no row at all — `users.plan = 'free'` is the source of truth for plan
   // tier, while this table tracks Stripe-side state for billing operations.
   // Status values mirror Stripe Subscription.status.
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free'`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT UNIQUE`,
-  `ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_period_end TIMESTAMP`,
-  `CREATE TABLE IF NOT EXISTS subscriptions (
-    id                       SERIAL PRIMARY KEY,
-    user_id                  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    stripe_subscription_id   TEXT    NOT NULL UNIQUE,
-    stripe_customer_id       TEXT    NOT NULL,
-    stripe_price_id          TEXT    NOT NULL,
-    status                   TEXT    NOT NULL,
-    current_period_start     TIMESTAMP,
-    current_period_end       TIMESTAMP,
-    cancel_at_period_end     BOOLEAN NOT NULL DEFAULT FALSE,
-    canceled_at              TIMESTAMP,
-    created_at               TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at               TIMESTAMP NOT NULL DEFAULT NOW()
-  )`,
-  `CREATE INDEX IF NOT EXISTS idx_sub_user ON subscriptions(user_id)`,
-  `CREATE INDEX IF NOT EXISTS idx_sub_status ON subscriptions(status)`,
 
   // ═══ API KEYS (MCP / programmatic access) ═══
   // Long-lived bearer tokens issued per-user for headless clients (Claude MCP, scripts).
@@ -352,6 +335,35 @@ const MIGRATIONS = [
   // simple), image (visuel produit), polish, remix, adapt.
   `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'text'`,
 ];
+/* Schéma de facturation.
+ *
+ * Il n'a de sens que sur l'instance commerciale : dans le build open source,
+ * aucune de ces colonnes n'est jamais lue — les routes qui les utilisent sont
+ * sur la liste noire du build. Les créer quand même revenait à poser, dans la
+ * base de chaque auto-hébergeur, la plomberie d'abonnement d'un service qui
+ * n'est pas le sien. */
+const MIGRATIONS_FACTURATION = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free'`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT UNIQUE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_period_end TIMESTAMP`,
+  `CREATE TABLE IF NOT EXISTS subscriptions (
+    id                       SERIAL PRIMARY KEY,
+    user_id                  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stripe_subscription_id   TEXT    NOT NULL UNIQUE,
+    stripe_customer_id       TEXT    NOT NULL,
+    stripe_price_id          TEXT    NOT NULL,
+    status                   TEXT    NOT NULL,
+    current_period_start     TIMESTAMP,
+    current_period_end       TIMESTAMP,
+    cancel_at_period_end     BOOLEAN NOT NULL DEFAULT FALSE,
+    canceled_at              TIMESTAMP,
+    created_at               TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at               TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_sub_user ON subscriptions(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_sub_status ON subscriptions(status)`,
+];
+
 
 export async function runMigrations() {
   const client = await pool.connect();
@@ -359,6 +371,12 @@ export async function runMigrations() {
     await client.query('BEGIN');
     for (const sql of MIGRATIONS) {
       await client.query(sql);
+    }
+    // La plomberie d'abonnement ne se pose que là où elle sert.
+    if (config.edition === 'enterprise') {
+      for (const sql of MIGRATIONS_FACTURATION) {
+        await client.query(sql);
+      }
     }
     await client.query('COMMIT');
     console.log('  [DB] Migrations complete — 9 tables ready');
@@ -397,6 +415,18 @@ export async function seedAgency() {
   }
 
   const adminExists = await queryOne('SELECT id FROM users LIMIT 1');
+  // Une base vide SANS identifiants d'amorçage est une impasse : l'instance
+  // démarre, la sonde passe au vert, la page de connexion s'affiche — et il
+  // n'existe aucun compte pour la franchir. Le login répond « Invalid
+  // credentials », ce qui laisse chercher un mot de passe qui n'existe pas.
+  // On le dit au démarrage, là où l'exploitant regarde.
+  if (!adminExists && !(config.admin.email && config.admin.password)) {
+    console.warn('');
+    console.warn('  [SETUP] The database is empty and no account can be created.');
+    console.warn('  [SETUP] Set ADMIN_EMAIL and ADMIN_PASSWORD in .env, then restart.');
+    console.warn('  [SETUP] Without them the sign-in page loads, but nothing gets past it.');
+    console.warn('');
+  }
   if (!adminExists && config.admin.email && config.admin.password) {
     const hash = await hashPassword(config.admin.password);
     const adminResult = await query(

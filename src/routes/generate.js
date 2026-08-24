@@ -8,7 +8,6 @@
 import { Router } from 'express';
 import { config } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
-import { requirePro } from '../middleware/pro.js';
 import { requireCredits } from '../middleware/credits.js';
 import { requireMembership } from '../middleware/edition.js';
 import { billingMode } from '../utils/credits.js';
@@ -395,7 +394,7 @@ router.get('/packs', requireMembership, requireAuth, (req, res) => {
  * Each format is fired in parallel via executeAdapt. Each row in DB gets
  * a shared pack_id so the ZIP endpoint can group them.
  */
-router.post('/pack', requireMembership, requireAuth, requirePro, requireCredits('image', 1), async (req, res) => {
+router.post('/pack', requireMembership, requireAuth, requireCredits('image', 1), async (req, res) => {
   try {
     const { sourceGenerationId, packId, projectId, campaignId } = req.body;
     const sgi = parseInt(sourceGenerationId);

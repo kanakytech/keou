@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Clients & Campaigns — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+.projects-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+
+/* ── Create Form ── */
+.create-card{
+  background:linear-gradient(135deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;margin-bottom:32px;
+}
+.create-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.create-form .form-group{flex:1;min-width:160px;margin-bottom:0}
+.color-chips{display:flex;gap:6px;margin-top:6px}
+.color-chip{
+  width:26px;height:26px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;
+  transition:all .25s var(--ease-out);
+}
+.color-chip:hover{transform:scale(1.15);box-shadow:var(--shadow-sm)}
+.color-chip:active{transform:scale(0.85);transition-duration:.06s}
+.color-chip.active{transform:scale(1.15);border-color:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--ink)}
+
+/* ── Filter Tabs (uses design system tab-bar / tab-btn) ── */
+.filters{margin-bottom:24px}
+
+/* ── Project Grid ── */
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.project-card{
+  border:1px solid var(--border);border-radius:var(--radius);border-top:3px solid var(--project-color,var(--border));
+  padding:20px;transition:all .3s var(--ease-out);position:relative;display:block;
+}
+.project-card:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.project-card:active{transform:translateY(0) scale(0.98);transition-duration:.1s}
+.project-card.archived{opacity:.5}
+.project-color{
+  width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;flex-shrink:0;
+}
+.project-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center}
+.project-desc{font-size:13px;color:var(--ink-muted);margin-top:6px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.project-stats{display:flex;gap:12px;margin-top:12px;font-size:12px;color:var(--ink-muted)}
+.project-stats .stat{display:flex;align-items:center;gap:4px}
+.project-status{
+  position:absolute;top:16px;right:16px;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:100px;text-transform:capitalize;
+}
+.project-status.active{background:rgba(22,163,74,.12);color:#22c55e}
+.project-status.completed{background:rgba(217,119,6,.12);color:#fbbf24}
+.project-status.archived{background:var(--surface-3);color:var(--ink-faint)}
+
+.project-actions{display:flex;gap:6px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.project-actions button{
+  font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;
+  padding:5px 12px;border-radius:100px;cursor:pointer;transition:all .2s;
+  border:1px solid var(--border);background:var(--surface);color:var(--ink-muted);
+}
+.project-actions button:hover{border-color:var(--ink);color:var(--ink)}
+.project-actions .btn-danger{color:#f87171;border-color:rgba(220,38,38,.3)}
+.project-actions .btn-danger:hover{background:rgba(220,38,38,.15);border-color:#f87171}
+
+/* empty-state uses design system defaults from styles.css */
+
+@media(max-width:768px){
+  .create-form{flex-direction:column}
+  .create-form .form-group{min-width:100%}
+  .projects-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container" id="content" style="display:none">
+  <div class="projects-header">
+    <h2>Clients</h2>
+    <span class="nav-tag" id="project-count">0 clients</span>
+  </div>
+
+  <!-- Create Project -->
+  <div class="create-card">
+    <p class="section-label">New Client</p>
+    <form class="create-form" id="create-form">
+      <div class="form-group">
+        <label class="form-label">Client name</label>
+        <input class="form-input" id="project-name" type="text" placeholder="Nike NZ" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Industry / Notes (optional)</label>
+        <input class="form-input" id="project-desc" type="text" placeholder="Sportswear — Summer campaign assets">
+      </div>
+      <div class="form-group" style="min-width:auto;flex:0">
+        <label class="form-label">Color</label>
+        <div class="color-chips" id="color-chips">
+          <div class="color-chip active" data-color="#3B82F6" style="background:#3B82F6"></div>
+          <div class="color-chip" data-color="#10B981" style="background:#10B981"></div>
+          <div class="color-chip" data-color="#F59E0B" style="background:#F59E0B"></div>
+          <div class="color-chip" data-color="#EF4444" style="background:#EF4444"></div>
+          <div class="color-chip" data-color="#8B5CF6" style="background:#8B5CF6"></div>
+          <div class="color-chip" data-color="#EC4899" style="background:#EC4899"></div>
+          <div class="color-chip" data-color="#050505" style="background:#050505"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" id="create-btn" style="height:46px;white-space:nowrap">Create</button>
+    </form>
+  </div>
+
+  <!-- Filter + Search -->
+  <div class="filters" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-status="">All</button>
+      <button class="tab-btn" data-status="active">Active</button>
+      <button class="tab-btn" data-status="completed">Paused</button>
+      <button class="tab-btn" data-status="archived">Archived</button>
+    </div>
+    <div style="position:relative;min-width:200px;flex-shrink:0">
+      <span id="search-icon" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);display:flex;pointer-events:none"></span>
+      <input class="form-input" id="project-search" type="text" placeholder="Search clients..."
+        style="padding-left:34px;padding-right:32px;height:38px;border-radius:100px;font-size:12px;border:1.5px solid var(--border)">
+      <button id="search-clear" onclick="document.getElementById('project-search').value='';filterProjectsBySearch();this.style.display='none'"
+        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:var(--surface-3);border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;color:var(--ink-muted);display:none;line-height:1;padding:0">×</button>
+    </div>
+  </div>
+
+  <div class="projects-grid" id="projects-grid"></div>
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-icon" id="empty-icon-slot"></div>
+    <h3>No clients yet</h3>
+    <p>Add your first client to start producing assets</p>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/confirm.js"></script>
+<script>
+let selectedColor = '#3B82F6';
+let currentStatus = '';
+let isCreating = false; // prevent double submit
+
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  Nav.render({ active: 'projects' });
+  const contentEl = document.getElementById('content');
+  contentEl.style.display = '';
+  requestAnimationFrame(() => contentEl.classList.add('page-enter'));
+
+  // Icons
+  document.getElementById('empty-icon-slot').innerHTML = Icons.empty('folder');
+  document.getElementById('search-icon').innerHTML = Icons.get('search');
+
+  // Search (debounced 300ms)
+  let _searchTimer = null;
+  document.getElementById('project-search').addEventListener('input', () => {
+    document.getElementById('search-clear').style.display = document.getElementById('project-search').value ? 'block' : 'none';
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(filterProjectsBySearch, 300);
+  });
+
+  // Color chips
+  document.querySelectorAll('.color-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedColor = chip.dataset.color;
+    });
+  });
+
+  // Status filters
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStatus = btn.dataset.status;
+      loadProjects();
+    });
+  });
+
+  // Create form — with double-submit guard
+  document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isCreating) return; // block double submit
+    isCreating = true;
+
+    const btn = document.getElementById('create-btn');
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: document.getElementById('project-name').value.trim(),
+          description: document.getElementById('project-desc').value.trim(),
+          color: selectedColor,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Failed to create', true); return; }
+
+      toast(`Client created`);
+      document.getElementById('create-form').reset();
+      await loadProjects();
+    } catch (err) {
+      toast('Failed to create client', true);
+    } finally {
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+      isCreating = false;
+    }
+  });
+
+  await loadProjects();
+})();
+
+async function loadProjects() {
+  try {
+    const params = new URLSearchParams();
+    if (currentStatus) params.set('status', currentStatus);
+
+    const res = await Auth.authFetch(`/api/projects?${params}`);
+    const data = await res.json();
+    // Hide the internal "General" project — it's a system project for unsorted generations
+    const projects = (data.projects || []).filter(p => p.name !== 'General');
+
+    document.getElementById('project-count').textContent = `${projects.length} client${projects.length !== 1 ? 's' : ''}`;
+
+    const grid = document.getElementById('projects-grid');
+    const emptyState = document.getElementById('empty-state');
+
+    if (!projects.length) {
+      grid.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    // Re-trigger stagger animation
+    grid.classList.remove('stagger-in');
+
+    grid.innerHTML = projects.map(p => {
+      const date = new Date(p.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const images = p.imageCount || p.images || 0;
+      const videos = p.videoCount || p.videos || 0;
+      const campaigns = p.campaignCount || 0;
+
+      return `
+        <div class="project-card ${p.status === 'archived' ? 'archived' : ''}" style="--project-color:${hexColor(p.color)}">
+          <span class="project-status ${p.status}">${p.status === 'completed' ? 'paused' : p.status}</span>
+          <a href="/project.html?id=${p.id}" style="text-decoration:none;color:inherit">
+            <div class="project-name">
+              <span class="project-color" style="background:${hexColor(p.color)}"></span>
+              ${esc(p.name)}
+            </div>
+            ${p.description ? `<div class="project-desc">${esc(p.description)}</div>` : ''}
+            <div class="project-stats">
+              <span class="stat">${Icons.get('folder')} ${campaigns}</span>
+              <span class="stat">${Icons.get('image')} ${images}</span>
+              <span class="stat">${Icons.get('video')} ${videos}</span>
+              <span class="stat">${Icons.get('calendar')} ${date}</span>
+            </div>
+          </a>
+          <div class="project-actions">
+            <button onclick="window.location.href='/studio.html?project=${p.id}'">Create Assets</button>
+            <button class="btn-danger" onclick="deleteProject(${p.id}, ${jsArg(p.name)})">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    requestAnimationFrame(() => grid.classList.add('stagger-in'));
+
+  } catch (e) {
+    console.error('Projects load error:', e);
+    toast('Failed to load clients', true);
+  }
+}
+
+async function deleteProject(id, name) {
+  if (!await confirmDialog({ title: `Archive client "${name}"`, message: 'The client will be hidden from active lists. You can restore it later.', confirmLabel: 'Archive' })) return;
+  try {
+    const res = await Auth.authFetch(`/api/projects/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Client archived');
+      loadProjects();
+    } else {
+      toast('Failed to delete', true);
+    }
+  } catch {
+    toast('Failed to delete', true);
+  }
+}
+
+function filterProjectsBySearch() {
+  const query = document.getElementById('project-search').value.toLowerCase().trim();
+  const cards = document.querySelectorAll('.project-card');
+  cards.forEach(card => {
+    const name = card.querySelector('.project-name')?.textContent?.toLowerCase() || '';
+    const desc = card.querySelector('.project-desc')?.textContent?.toLowerCase() || '';
+    card.style.display = (!query || name.includes(query) || desc.includes(query)) ? '' : 'none';
+  });
+}
+
+/* Rend une valeur utilisable comme ARGUMENT JavaScript dans un attribut HTML.
+     esc() ne suffit pas ici : il n'échappe ni l'apostrophe ni le guillemet, et
+     le parseur HTML décode les entités AVANT que le moteur JS ne lise la ligne.
+     Une apostrophe dans un nom refermait donc la chaîne et exécutait la suite. */
+  /* Une couleur venue de la base n'entre dans un attribut style que si elle EST
+     une couleur : une valeur libre fermerait l'attribut et en ouvrirait un autre. */
+  function hexColor(v) {
+    return /^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? String(v) : '#3B82F6';
+  }
+
+  function jsArg(v) {
+    return JSON.stringify(String(v ?? ''))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+
+</script>
+</body>
+</html>

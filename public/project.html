@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<meta name="color-scheme" content="dark">
+<title>Client — Keou Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/styles.css">
+<style>
+.project-header{display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+.project-header h2{display:flex;align-items:center;gap:10px}
+.project-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.project-meta{font-size:13px;color:var(--ink-muted);margin-bottom:24px;display:flex;gap:16px;flex-wrap:wrap}
+
+.project-actions{display:flex;gap:8px;margin-left:auto}
+.action-btn{
+  padding:7px 16px;border:1.5px solid var(--border);border-radius:100px;
+  background:var(--surface);color:var(--ink);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;
+}
+.action-btn:hover{border-color:var(--ink);background:var(--surface-2)}
+.action-btn.primary{background:var(--ink);color:#050505;border-color:var(--ink);font-weight:700}
+.action-btn.primary:hover{opacity:.85}
+.action-btn.danger{color:#f87171;border-color:rgba(248,113,113,.3)}
+.action-btn.danger:hover{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5)}
+
+/* ── Stats Row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+
+/* ── Create Campaign Form ── */
+.create-card{
+  background:linear-gradient(135deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;margin-bottom:32px;
+}
+.create-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.create-form .form-group{flex:1;min-width:160px;margin-bottom:0}
+.color-chips{display:flex;gap:6px;margin-top:6px}
+.color-chip{
+  width:26px;height:26px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;
+  transition:all .25s var(--ease-out);
+}
+.color-chip:hover{transform:scale(1.15);box-shadow:var(--shadow-sm)}
+.color-chip:active{transform:scale(0.85);transition-duration:.06s}
+.color-chip.active{transform:scale(1.15);border-color:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--ink)}
+
+/* ── Filter Tabs ── */
+.filters{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+
+/* ── Campaign Grid ── */
+.campaigns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.campaign-card{
+  border:1px solid var(--border);border-radius:var(--radius);border-top:3px solid var(--campaign-color,var(--border));
+  padding:20px;transition:all .3s var(--ease-out);position:relative;display:block;
+}
+.campaign-card:hover{border-color:var(--ink);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.campaign-card:active{transform:translateY(0) scale(0.98);transition-duration:.1s}
+.campaign-card.archived{opacity:.5}
+.campaign-color{
+  width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;flex-shrink:0;
+}
+.campaign-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center}
+.campaign-desc{font-size:13px;color:var(--ink-muted);margin-top:6px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.campaign-stats{display:flex;gap:12px;margin-top:12px;font-size:12px;color:var(--ink-muted)}
+.campaign-stats .stat{display:flex;align-items:center;gap:4px}
+.campaign-status{
+  position:absolute;top:16px;right:16px;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:100px;text-transform:capitalize;
+}
+.campaign-status.active{background:rgba(22,163,74,.12);color:#22c55e}
+.campaign-status.archived{background:var(--surface-3);color:var(--ink-faint)}
+
+.campaign-actions{display:flex;gap:6px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.campaign-actions button{
+  font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;
+  padding:5px 12px;border-radius:100px;cursor:pointer;transition:all .2s;
+  border:1px solid var(--border);background:var(--surface);color:var(--ink-muted);
+}
+.campaign-actions button:hover{border-color:var(--ink);color:var(--ink)}
+.campaign-actions .btn-danger{color:#f87171;border-color:rgba(220,38,38,.3)}
+.campaign-actions .btn-danger:hover{background:rgba(220,38,38,.15);border-color:#f87171}
+
+/* ── Feedback list ── */
+.fb-card{
+  display:flex;gap:14px;padding:14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm,12px);
+  transition:border-color .15s;
+}
+.fb-card:hover{border-color:var(--border-strong)}
+.fb-card.resolved{opacity:.55}
+/* Highlight when arriving via deep-link from the notifications bell */
+.fb-card-flash{
+  animation:fbCardFlash 2.2s var(--ease-out) both;
+}
+@keyframes fbCardFlash{
+  0%,100%{box-shadow:0 0 0 0 rgba(200,240,96,0)}
+  10%,40%{box-shadow:0 0 0 4px rgba(200,240,96,.35),0 0 28px rgba(200,240,96,.25);border-color:rgba(200,240,96,.6)}
+}
+.fb-thumb{
+  width:64px;height:64px;flex-shrink:0;border-radius:8px;overflow:hidden;
+  background:var(--surface-2);border:1px solid var(--border);cursor:pointer;
+}
+.fb-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.fb-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.fb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fb-type-pill{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;
+  font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+}
+.fb-type-pill.approve{background:rgba(34,197,94,.14);color:#4ade80}
+.fb-type-pill.reject{background:rgba(239,68,68,.14);color:#f87171}
+.fb-type-pill.comment{background:rgba(200,240,96,.14);color:#c8f060}
+.fb-type-pill svg{width:11px;height:11px}
+.fb-reviewer{font-size:12px;font-weight:600;color:var(--ink)}
+.fb-time{font-size:11px;color:var(--ink-faint)}
+.fb-share-link{font-size:11px;color:var(--ink-muted);text-decoration:none}
+.fb-share-link:hover{color:var(--ink);text-decoration:underline}
+.fb-comment{font-size:13px;color:var(--ink-muted);line-height:1.5;word-break:break-word}
+.fb-actions{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.fb-actions button{
+  padding:5px 12px;border-radius:100px;font-size:11px;font-weight:600;
+  border:1px solid var(--border);background:transparent;color:var(--ink-muted);
+  cursor:pointer;transition:all .15s;font-family:'Space Grotesk',sans-serif;
+}
+.fb-actions button:hover{border-color:var(--ink);color:var(--ink);background:var(--surface-2)}
+@media(max-width:480px){
+  .fb-card{padding:12px;gap:10px}
+  .fb-thumb{width:52px;height:52px}
+}
+
+/* ── Edit Modal ── */
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.15);
+  backdrop-filter:blur(12px) saturate(120%);-webkit-backdrop-filter:blur(12px) saturate(120%);
+  display:flex;align-items:center;justify-content:center;z-index:1000;
+  opacity:0;pointer-events:none;transition:all .25s var(--ease-smooth);
+}
+.modal-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+.modal{
+  background:var(--surface);border-radius:20px;padding:28px;
+  width:100%;max-width:440px;box-shadow:var(--shadow-xl);
+  transform:scale(0.95) translateY(12px);
+  transition:transform .3s var(--ease-out);
+}
+.modal-overlay.show .modal{transform:scale(1) translateY(0)}
+.modal h3{margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+@media(max-width:768px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .campaigns-grid{grid-template-columns:1fr}
+  .project-actions{width:100%;justify-content:flex-end}
+  .create-form{flex-direction:column}
+  .create-form .form-group{min-width:100%}
+}
+@media(max-width:480px){
+  .project-header{flex-direction:column;align-items:flex-start}
+  .project-actions{width:100%;justify-content:stretch}
+  .action-btn{flex:1;text-align:center;font-size:11px;padding:8px 10px}
+  .stats-row{gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<nav class="navbar"></nav>
+
+<div class="page-container" id="content" style="display:none">
+  <div class="project-header">
+    <h2 id="project-title">
+      <span class="project-color-dot" id="project-dot"></span>
+      <span id="project-name-text">Loading...</span>
+    </h2>
+    <div class="project-actions">
+      <button class="action-btn primary" onclick="openInStudio()">Create Assets</button>
+      <button class="action-btn" onclick="openEditModal()">Edit</button>
+      <button class="action-btn danger" id="archive-btn" onclick="archiveProject()">Archive</button>
+    </div>
+  </div>
+  <div class="project-meta" id="project-meta"></div>
+
+  <!-- Stats -->
+  <div class="stats-row stagger-in">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-campaigns">0</div>
+      <div class="stat-label">Campaigns</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-images">0</div>
+      <div class="stat-label">Images</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-videos">0</div>
+      <div class="stat-label">Videos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-label">Total assets</div>
+    </div>
+  </div>
+
+  <!-- Create Campaign -->
+  <div class="create-card">
+    <p class="section-label">New Campaign</p>
+    <form class="create-form" id="create-form">
+      <div class="form-group">
+        <label class="form-label">Campaign name</label>
+        <input class="form-input" id="campaign-name" type="text" placeholder="Summer 2026" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (optional)</label>
+        <input class="form-input" id="campaign-desc" type="text" placeholder="Social media ads for summer collection">
+      </div>
+      <div class="form-group" style="min-width:auto;flex:0">
+        <label class="form-label">Color</label>
+        <div class="color-chips" id="color-chips">
+          <div class="color-chip active" data-color="#06B6D4" style="background:#06B6D4"></div>
+          <div class="color-chip" data-color="#3B82F6" style="background:#3B82F6"></div>
+          <div class="color-chip" data-color="#10B981" style="background:#10B981"></div>
+          <div class="color-chip" data-color="#F59E0B" style="background:#F59E0B"></div>
+          <div class="color-chip" data-color="#EF4444" style="background:#EF4444"></div>
+          <div class="color-chip" data-color="#8B5CF6" style="background:#8B5CF6"></div>
+          <div class="color-chip" data-color="#EC4899" style="background:#EC4899"></div>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" id="create-btn" style="height:46px;white-space:nowrap">Create</button>
+    </form>
+  </div>
+
+  <!-- Client feedback (rendered when feedback exists) -->
+  <section id="feedback-section" style="display:none;margin-bottom:32px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap">
+      <h3 style="margin:0;font-size:15px">Client feedback <span id="fb-count-badge" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:100px;background:rgba(248,113,113,.14);color:#f87171;margin-left:6px;display:none"></span></h3>
+      <div class="tab-bar" style="margin:0">
+        <button class="tab-btn active" data-fb-filter="open">Open</button>
+        <button class="tab-btn" data-fb-filter="resolved">Resolved</button>
+        <button class="tab-btn" data-fb-filter="all">All</button>
+      </div>
+    </div>
+    <div id="feedback-list" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-status="">All</button>
+      <button class="tab-btn" data-status="active">Active</button>
+      <button class="tab-btn" data-status="archived">Archived</button>
+    </div>
+  </div>
+
+  <!-- Campaign Grid -->
+  <div class="campaigns-grid" id="campaigns-grid"></div>
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-icon" id="empty-icon-slot"></div>
+    <h3>No campaigns yet</h3>
+    <p>Create your first campaign to start organizing assets</p>
+  </div>
+</div>
+
+<!-- Edit Modal (Client) -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>Edit Client</h3>
+    <form id="edit-form">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="edit-name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input class="form-input" id="edit-desc" type="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="edit-status">
+          <option value="active">Active</option>
+          <option value="completed">Paused</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="action-btn" onclick="closeEditModal()">Cancel</button>
+        <button type="submit" class="action-btn primary" id="edit-submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-tagline"><a href="https://studio.kanaky.xyz">Keou Studio</a> &mdash; <a href="https://kanaky.xyz" class="by-kanaky">by kanaky.xyz</a></span>
+  <div class="footer-socials">
+    <a href="https://www.linkedin.com/company/kanaky-tech/" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+    <a href="https://github.com/kanakytech" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<script src="/shared/auth.js"></script>
+<script src="/shared/nav.js"></script>
+<script src="/shared/select.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/toast.js"></script>
+<script src="/shared/confirm.js"></script>
+<script src="/shared/lightbox.js"></script>
+<script src="/shared/modal.js"></script>
+<script>
+let projectId = null;
+let project = null;
+let currentStatus = '';
+let selectedColor = '#06B6D4';
+let isCreating = false;
+
+(async () => {
+  const ok = await Auth.guard();
+  if (!ok) return;
+
+  Nav.render({ active: 'projects' });
+  const contentEl = document.getElementById('content');
+  contentEl.style.display = '';
+  requestAnimationFrame(() => contentEl.classList.add('page-enter'));
+
+  // Get project ID from URL
+  const params = new URLSearchParams(window.location.search);
+  projectId = params.get('id');
+  if (!projectId) {
+    window.location.href = '/projects.html';
+    return;
+  }
+
+  // Icons
+  document.getElementById('empty-icon-slot').innerHTML = Icons.empty('folder');
+
+  // Color chips
+  document.querySelectorAll('.color-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedColor = chip.dataset.color;
+    });
+  });
+
+  // Status filters
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStatus = btn.dataset.status;
+      loadCampaigns();
+    });
+  });
+
+  // Create campaign form
+  document.getElementById('create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isCreating) return;
+    isCreating = true;
+
+    const btn = document.getElementById('create-btn');
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch('/api/campaigns', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: parseInt(projectId, 10),
+          name: document.getElementById('campaign-name').value.trim(),
+          description: document.getElementById('campaign-desc').value.trim(),
+          color: selectedColor,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error || 'Failed to create', true); return; }
+
+      toast('Campaign created');
+      document.getElementById('create-form').reset();
+      await loadCampaigns();
+    } catch (err) {
+      toast('Failed to create campaign', true);
+    } finally {
+      btn.classList.remove('btn-loading');
+      btn.disabled = false;
+      isCreating = false;
+    }
+  });
+
+  // Edit form
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('edit-submit');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+      const res = await Auth.authFetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: document.getElementById('edit-name').value.trim(),
+          description: document.getElementById('edit-desc').value.trim(),
+          status: document.getElementById('edit-status').value,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('Client updated');
+        closeEditModal();
+        await loadProject();
+      } else {
+        toast(data.error || 'Failed to update', true);
+      }
+    } catch (err) {
+      toast('Failed to update', true);
+    } finally {
+      btn.textContent = 'Save';
+      btn.disabled = false;
+    }
+  });
+
+  // If URL hash points to a specific feedback (#feedback-123) — coming from
+  // the notifications bell — switch the filter to "all" before render so the
+  // target card is in the DOM regardless of its open/resolved status.
+  const hashMatch = (location.hash || '').match(/^#feedback-(\d+)$/);
+  if (hashMatch) _fbFilter = 'all';
+
+  await Promise.all([loadProject(), loadCampaigns(), loadFeedback()]);
+
+  // After feedback renders, scroll the hash-targeted card into view + flash it.
+  if (hashMatch) {
+    requestAnimationFrame(() => {
+      const target = document.getElementById('feedback-' + hashMatch[1]);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('fb-card-flash');
+        setTimeout(() => target.classList.remove('fb-card-flash'), 2200);
+      }
+      // Reflect the active tab — All — visually
+      document.querySelectorAll('[data-fb-filter]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.fbFilter === 'all');
+      });
+    });
+  }
+
+  // Tab filter for feedback
+  document.querySelectorAll('[data-fb-filter]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-fb-filter]').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _fbFilter = btn.dataset.fbFilter;
+      renderFeedback();
+    });
+  });
+})();
+
+let _allFeedback = [];
+let _fbFilter = 'open';
+
+async function loadFeedback() {
+  try {
+    const res = await Auth.authFetch(`/api/share/feedback/by-project/${projectId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    _allFeedback = data.feedback || [];
+    renderFeedback();
+  } catch (e) { /* silent — feedback section just stays hidden */ }
+}
+
+function renderFeedback() {
+  const section = document.getElementById('feedback-section');
+  const list = document.getElementById('feedback-list');
+  const badge = document.getElementById('fb-count-badge');
+  if (!_allFeedback.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const openCount = _allFeedback.filter(function(f) { return f.status === 'open'; }).length;
+  if (openCount > 0) { badge.textContent = openCount + ' open'; badge.style.display = ''; }
+  else badge.style.display = 'none';
+
+  const filtered = _fbFilter === 'all' ? _allFeedback : _allFeedback.filter(function(f) { return f.status === _fbFilter; });
+
+  if (!filtered.length) {
+    list.classList.remove('stagger-in');
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-faint);font-size:13px">No ' + escapeHtml(_fbFilter) + ' feedback</div>';
+    return;
+  }
+
+  // Replay stagger entrance on every render (filter switch, after resolve, etc.)
+  list.classList.remove('stagger-in');
+
+  const TYPE_ICONS = {
+    approve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    reject: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  };
+  const TYPE_LABEL = { approve: 'Approved', reject: 'Changes requested', comment: 'Comment' };
+
+  list.innerHTML = filtered.map(function(f) {
+    const time = formatRelativeTime(f.created_at);
+    const thumbUrl = f.result_url || '';
+    return '<div class="fb-card' + (f.status === 'resolved' ? ' resolved' : '') + '" id="feedback-' + f.id + '">' +
+      (thumbUrl ? '<div class="fb-thumb" data-gen="' + f.generation_id + '" data-url="' + escapeAttr(thumbUrl) + '"><img src="' + escapeAttr(thumbUrl) + '" alt=""></div>' : '<div class="fb-thumb"></div>') +
+      '<div class="fb-body">' +
+        '<div class="fb-head">' +
+          '<span class="fb-type-pill ' + f.type + '">' + TYPE_ICONS[f.type] + ' ' + TYPE_LABEL[f.type] + '</span>' +
+          '<span class="fb-reviewer">' + escapeHtml(f.reviewer_name || 'Anonymous') + '</span>' +
+          '<span class="fb-time">' + time + '</span>' +
+          '<a class="fb-share-link" href="/share.html?t=' + escapeAttr(f.share_token) + '" title="' + escapeAttr(f.share_title || '') + '">→ ' + escapeHtml(f.share_title || 'share') + '</a>' +
+        '</div>' +
+        (f.comment ? '<div class="fb-comment">' + escapeHtml(f.comment) + '</div>' : '') +
+        '<div class="fb-actions">' +
+          (thumbUrl ? '<button data-act="open" data-gen="' + f.generation_id + '" data-url="' + escapeAttr(thumbUrl) + '">View asset</button>' : '') +
+          '<button data-act="' + (f.status === 'open' ? 'resolve' : 'reopen') + '" data-id="' + f.id + '">' +
+            (f.status === 'open' ? 'Mark resolved' : 'Reopen') + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Trigger stagger animation on the just-rendered cards (force reflow first)
+  // eslint-disable-next-line no-unused-expressions
+  list.offsetHeight;
+  list.classList.add('stagger-in');
+
+  // Bind actions
+  list.querySelectorAll('[data-act]').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      const act = btn.dataset.act;
+      if (act === 'open') {
+        const url = btn.dataset.url;
+        if (typeof Lightbox !== 'undefined' && Lightbox.open && url) {
+          Lightbox.open(url, 'image', { genType: 'image', action: 'Asset' });
+        }
+      } else if (act === 'resolve' || act === 'reopen') {
+        const id = parseInt(btn.dataset.id);
+        const newStatus = act === 'resolve' ? 'resolved' : 'open';
+        btn.disabled = true;
+        try {
+          const res = await Auth.authFetch(`/api/share/feedback/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus }),
+          });
+          if (res.ok) {
+            const fb = _allFeedback.find(function(x) { return x.id === id; });
+            if (fb) fb.status = newStatus;
+            renderFeedback();
+            if (typeof toast === 'function') toast(newStatus === 'resolved' ? 'Marked resolved' : 'Reopened');
+          } else {
+            toast('Failed to update', true);
+            btn.disabled = false;
+          }
+        } catch { toast('Failed to update', true); btn.disabled = false; }
+      }
+    });
+  });
+  list.querySelectorAll('.fb-thumb').forEach(function(thumb) {
+    thumb.addEventListener('click', function() {
+      const url = thumb.dataset.url;
+      if (typeof Lightbox !== 'undefined' && Lightbox.open && url) {
+        Lightbox.open(url, 'image', { genType: 'image', action: 'Asset' });
+      }
+    });
+  });
+}
+
+function formatRelativeTime(dateStr) {
+  const then = new Date(dateStr);
+  const diff = (Date.now() - then.getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+  if (diff < 604800) return Math.round(diff / 86400) + 'd ago';
+  return then.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+
+async function loadProject() {
+  try {
+    const res = await Auth.authFetch(`/api/projects/${projectId}`);
+    if (!res.ok) { window.location.href = '/projects.html'; return; }
+    const projectData = await res.json();
+    project = projectData.project;
+
+    document.getElementById('project-dot').style.background = project.color || '#3B82F6';
+    document.getElementById('project-name-text').textContent = project.name;
+    document.title = `${project.name} — Keou Studio`;
+
+    const created = new Date(project.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const statusLabel = project.status === 'completed' ? 'paused' : project.status;
+    const meta = [`Created ${created}`, `Status: ${statusLabel}`];
+    if (project.description) meta.push(project.description);
+    // La description est saisie libre : le serveur (src/routes/projects.js) n'en
+    // contrôle que le type et la longueur, jamais le balisage.
+    document.getElementById('project-meta').innerHTML = meta.map(m => `<span>${escapeHtml(m)}</span>`).join('');
+
+    // Update archive button
+    const archBtn = document.getElementById('archive-btn');
+    if (project.status === 'archived') {
+      archBtn.textContent = 'Restore';
+      archBtn.classList.remove('danger');
+    }
+
+    // Stats
+    const images = parseInt(project.images) || 0;
+    const videos = parseInt(project.videos) || 0;
+    document.getElementById('stat-images').textContent = images;
+    document.getElementById('stat-videos').textContent = videos;
+    document.getElementById('stat-total').textContent = parseInt(project.totalGens) || (images + videos);
+  } catch (e) {
+    console.error('Project load error:', e);
+    toast('Failed to load client', true);
+  }
+}
+
+async function loadCampaigns() {
+  try {
+    const params = new URLSearchParams({ projectId });
+    if (currentStatus) params.set('status', currentStatus);
+
+    const res = await Auth.authFetch(`/api/campaigns?${params}`);
+    const data = await res.json();
+    const campaigns = data.campaigns || [];
+
+    document.getElementById('stat-campaigns').textContent = campaigns.length;
+
+    const grid = document.getElementById('campaigns-grid');
+    const emptyState = document.getElementById('empty-state');
+
+    if (!campaigns.length) {
+      grid.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    grid.classList.remove('stagger-in');
+
+    grid.innerHTML = campaigns.map(c => {
+      const date = new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const images = parseInt(c.imageCount) || 0;
+      const videos = parseInt(c.videoCount) || 0;
+      const audio = parseInt(c.audioCount) || 0;
+
+      return `
+        <div class="campaign-card ${c.status === 'archived' ? 'archived' : ''}" style="--campaign-color:${hexColor(c.color)}">
+          <span class="campaign-status ${c.status}">${c.status}</span>
+          <a href="/campaign.html?id=${c.id}" style="text-decoration:none;color:inherit">
+            <div class="campaign-name">
+              <span class="campaign-color" style="background:${hexColor(c.color)}"></span>
+              ${esc(c.name)}
+            </div>
+            ${c.description ? `<div class="campaign-desc">${esc(c.description)}</div>` : ''}
+            <div class="campaign-stats">
+              <span class="stat">${Icons.get('image')} ${images}</span>
+              <span class="stat">${Icons.get('video')} ${videos}</span>
+              ${audio > 0 ? `<span class="stat">${Icons.get('audio')} ${audio}</span>` : ''}
+              <span class="stat">${Icons.get('calendar')} ${date}</span>
+            </div>
+          </a>
+          <div class="campaign-actions">
+            <button onclick="window.location.href='/studio.html?project=${projectId}&campaign=${c.id}'">Create Assets</button>
+            <button onclick="window.location.href='/campaign.html?id=${c.id}'">View</button>
+            <button class="btn-danger" onclick="archiveCampaign(${c.id}, ${jsArg(c.name)})">Archive</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    requestAnimationFrame(() => grid.classList.add('stagger-in'));
+
+  } catch (e) {
+    console.error('Campaigns load error:', e);
+    toast('Failed to load campaigns', true);
+  }
+}
+
+function openInStudio() {
+  window.location.href = `/studio.html?project=${projectId}`;
+}
+
+function openEditModal() {
+  if (!project) return;
+  document.getElementById('edit-name').value = project.name;
+  document.getElementById('edit-desc').value = project.description || '';
+  document.getElementById('edit-status').value = project.status;
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('show');
+}
+
+async function archiveProject() {
+  const isArchived = project.status === 'archived';
+  const action = isArchived ? 'Restore' : 'Archive';
+  if (!await confirmDialog({ title: `${action} this client?`, message: isArchived ? 'The client will be active again.' : 'The client will be hidden from active lists.', confirmLabel: action, danger: !isArchived })) return;
+
+  try {
+    if (isArchived) {
+      const res = await Auth.authFetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active' }),
+      });
+      if (res.ok) { toast('Client restored'); await loadProject(); }
+    } else {
+      const res = await Auth.authFetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+      if (res.ok) { toast('Client archived'); window.location.href = '/projects.html'; }
+    }
+  } catch (e) {
+    toast('Failed', true);
+  }
+}
+
+async function archiveCampaign(id, name) {
+  if (!await confirmDialog({ title: `Archive campaign "${name}"`, message: 'The campaign will be hidden but can be restored later.', confirmLabel: 'Archive' })) return;
+  try {
+    const res = await Auth.authFetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Campaign archived');
+      loadCampaigns();
+    } else {
+      toast('Failed to archive', true);
+    }
+  } catch {
+    toast('Failed to archive', true);
+  }
+}
+
+document.getElementById('edit-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+/* Rend une valeur utilisable comme ARGUMENT JavaScript dans un attribut HTML.
+     esc() ne suffit pas ici : il n'échappe ni l'apostrophe ni le guillemet, et
+     le parseur HTML décode les entités AVANT que le moteur JS ne lise la ligne.
+     Une apostrophe dans un nom refermait donc la chaîne et exécutait la suite. */
+  /* Une couleur venue de la base n'entre dans un attribut style que si elle EST
+     une couleur. Le serveur valide désormais à la création comme à la mise à
+     jour, mais une base peut avoir été peuplée avant ce correctif — et une
+     valeur de style interpolée sans filtre ferme l'attribut et en ouvre un
+     autre. Deux verrous valent mieux qu'un. */
+  function hexColor(v) {
+    return /^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? String(v) : '#06B6D4';
+  }
+
+  function jsArg(v) {
+    return JSON.stringify(String(v ?? ''))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

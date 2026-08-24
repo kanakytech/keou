@@ -6,6 +6,14 @@
    ═══════════════════════════════════════════ */
 
 const Lightbox = (() => {
+  /* Échappement local, volontairement pas emprunté à auth.js : share.html
+     charge cette visionneuse SANS auth.js. S'appuyer sur un global défini
+     ailleurs transformerait un correctif d'injection en page cassée sur la
+     seule surface que voient les clients de l'agence. */
+  const esc = (v) => String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
   let _el = null;
   let _overlay = null;
   let _body = null;
@@ -732,7 +740,7 @@ const Lightbox = (() => {
     } else if (type === 'video') {
       _body.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:min(90vw,1200px);max-height:72vh;border-radius:12px;box-shadow:0 32px 80px rgba(0,0,0,.35)"></video>`;
     } else {
-      _body.innerHTML = `<img src="${url}" alt="Preview" draggable="false">`;
+      _body.innerHTML = `<img src="${esc(url)}" alt="Preview" draggable="false">`;
     }
 
     // Render metadata bar
@@ -743,11 +751,15 @@ const Lightbox = (() => {
       if (meta.model) pills.push(meta.model);
       if (meta.format) pills.push(meta.format);
       if (meta.date) pills.push(meta.date);
-      if (meta.duration) pills.push(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;display:inline;vertical-align:-1px;margin-right:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${meta.duration}`);
+      if (meta.duration) pills.push({ html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;display:inline;vertical-align:-1px;margin-right:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${meta.duration}` });
       if (meta.cost) pills.push(meta.cost);
       if (meta.userName) pills.push(meta.userName);
+      // Une pastille et une seule porte du HTML voulu — l'icône de durée,
+      // qui arrive sous la forme { html }. Tout le reste est du texte fourni
+      // par un utilisateur : il s'échappe.
       _metaBar.innerHTML = pills.map((p, i) =>
-        (i > 0 ? '<span class="lb-meta-sep"></span>' : '') + `<span class="lb-meta-pill">${p}</span>`
+        (i > 0 ? '<span class="lb-meta-sep"></span>' : '')
+        + `<span class="lb-meta-pill">${p && p.html ? p.html : esc(p)}</span>`
       ).join('');
       _metaBar.style.display = pills.length ? 'flex' : 'none';
 

@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link rel="icon" type="image/png" href="/logo.png">
+<link rel="icon" type="image/png" href="/logo-keou.png">
 <meta name="color-scheme" content="dark">
-<title>Login — Keou Studio</title>
+<title>Keou Studio — Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -30,6 +30,11 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
 .auth-switch button{flex:1;padding:9px 0;border:none;border-radius:9px;background:transparent;color:var(--ink-faint);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
 .auth-switch button.active{background:var(--accent);color:#fff}
 </style>
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<link rel="alternate" hreflang="en" href="https://studio.kanaky.xyz/login.html">
+<link rel="alternate" hreflang="fr" href="https://studio.kanaky.xyz/login.html?lang=fr">
+<link rel="alternate" hreflang="x-default" href="https://studio.kanaky.xyz/login.html">
 </head>
 <body>
 
@@ -39,7 +44,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="/logo.png" alt="Keou Studio" style="border-radius:50%">
+        <img src="/logo-keou.png" alt="Keou Studio" style="border-radius:50%">
         <span id="agency-name">Keou Studio</span>
       </div>
 
@@ -102,7 +107,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
         </form>
 
         <p class="auth-footer" style="color:var(--ink-faint);font-size:12px;margin-top:20px">
-          Your generations stay private to your account. Pro (lifetime license) — <a href="/pro.html" style="color:var(--accent)">learn more</a>.
+          Your generations stay private to your account. Need it shaped around your own workflow? <a href="/custom.html" style="color:var(--accent)">We build custom versions</a>.
         </p>
       </div>
 
@@ -117,7 +122,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
           <div class="form-group">
             <label class="form-label" for="new-password">New Password</label>
             <div class="pw-wrap">
-              <input class="form-input" id="new-password" type="password" placeholder="Min 8 characters" required minlength="8">
+              <input class="form-input" id="new-password" type="password" placeholder="12+ chars, mixed case, number, symbol" required minlength="12">
               <button type="button" class="pw-toggle" onclick="togglePw(this)" aria-label="Show password"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </div>
           </div>
@@ -279,7 +284,7 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
     const confirmPwd = document.getElementById('confirm-password').value;
 
     if (newPwd.length < 8) {
-      pwdError.textContent = 'Password must be at least 8 characters';
+      pwdError.textContent = I18N.t('Password must be at least 12 characters');
       pwdError.classList.add('show');
       return;
     }

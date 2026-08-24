@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Keou Studio — the visual production platform, free and without an account. Paste your KIE.AI key and generate. Everything created here is public.">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<title>Keou Studio — free, no account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#f0f0ec;--ink-soft:rgba(240,240,236,.72);--ink-muted:rgba(240,240,236,.55);--ink-faint:rgba(240,240,236,.4);
+  --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
+  --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
+  --danger:#f0716a;
+  --radius:16px;--radius-sm:12px;
+}
+body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
+.ambient{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.ambient::before{content:'';position:absolute;top:-25%;right:-12%;width:720px;height:720px;background:radial-gradient(circle,rgba(200,240,96,.06),transparent 68%);border-radius:50%}
+
+/* ── Nav ── */
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(5,5,5,.72);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%);border-bottom:1px solid rgba(255,255,255,.08)}
+.lp-brand{display:flex;align-items:center;gap:11px;text-decoration:none}
+.lp-brand img{height:30px;width:auto;border-radius:50%}
+.lp-brand-name{display:flex;flex-direction:column;line-height:1.15}
+.lp-brand-name strong{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
+.lp-nav-links{display:flex;gap:6px;align-items:center}
+.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
+.lp-nav-link.primary{background:var(--accent);color:#050505;font-weight:600}
+.lp-nav-link.primary:hover{background:#d6f57e}
+
+/* ── Layout ── */
+.wrap{max-width:880px;margin:0 auto;padding:120px 24px 80px}
+.page-head{text-align:center;margin-bottom:34px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:18px}
+.eyebrow svg{color:var(--accent)}
+.page-head h1{font-size:clamp(28px,4.4vw,44px);font-weight:800;margin-bottom:12px}
+.page-head h1 em{font-style:normal;color:var(--accent)}
+.page-head .sub{font-size:15.5px;color:var(--ink-muted);max-width:560px;margin:0 auto;line-height:1.7}
+
+/* ── Bannière publique ── */
+.public-banner{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border:1px solid rgba(200,240,96,.3);border-radius:var(--radius);background:var(--accent-soft);margin-bottom:22px}
+.public-banner svg{flex:none;color:var(--accent);margin-top:2px}
+.public-banner p{font-size:13.5px;color:var(--ink-soft);line-height:1.6}
+.public-banner p b{color:var(--ink)}
+.consent-row{display:flex;gap:10px;align-items:flex-start;margin-top:10px;cursor:pointer;font-size:13px;color:var(--ink-soft)}
+.consent-row input{margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex:none;cursor:pointer}
+
+/* ── Formulaire ── */
+.card{padding:26px 24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);margin-bottom:22px}
+.field{margin-bottom:18px}
+.field label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
+.field label .hint{font-weight:400;font-size:11.5px;color:var(--ink-faint)}
+.field input[type=password],.field input[type=text],.field textarea,.field select{width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--border-strong)}
+.field textarea{resize:vertical;min-height:88px}
+.field select{appearance:none;cursor:pointer}
+.key-row{display:flex;gap:8px}
+.key-row input{flex:1}
+.btn-ghost{padding:0 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-family:'Space Grotesk',sans-serif;font-size:12.5px;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{color:var(--ink);border-color:var(--border-strong)}
+.form-foot{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn-generate{padding:13px 28px;border-radius:100px;border:none;background:var(--accent);color:#050505;font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:9px;transition:all .25s}
+.btn-generate:hover:not(:disabled){background:#d6f57e;transform:translateY(-1px)}
+.btn-generate:disabled{opacity:.45;cursor:not-allowed}
+.char-count{font-size:11.5px;color:var(--ink-faint)}
+
+/* ── Statut ── */
+.status-card{display:none;padding:22px 24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);margin-bottom:22px;text-align:center}
+.status-card.visible{display:block}
+.status-line{display:inline-flex;align-items:center;gap:11px;font-size:14px;color:var(--ink-soft)}
+.status-line.err{color:var(--danger)}
+.spinner{width:16px;height:16px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.queue-pos{font-weight:700;color:var(--accent)}
+.result-wrap{margin-top:18px}
+
+/* ── Images protégées ── */
+.protected{position:relative;display:inline-block;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
+.protected img{display:block;max-width:100%;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:none}
+.protected::after{content:'';position:absolute;inset:0}
+
+/* ── Confiance BYOK ── */
+.trust{margin:44px 0 0}
+.trust-head{margin-bottom:20px}
+.trust-head h2{font-size:22px;font-weight:700;margin-bottom:6px}
+.trust-head p{font-size:13px;color:var(--ink-muted)}
+.trust-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media (max-width:640px){.trust-grid{grid-template-columns:1fr}}
+.trust-card{padding:20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
+.trust-card .t-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.trust-card h3{font-size:14.5px;font-weight:700;margin-bottom:7px}
+.trust-card p{font-size:13px;color:var(--ink-muted);line-height:1.65}
+.trust-card p a{color:var(--accent);text-decoration:none}
+.trust-card p a:hover{text-decoration:underline}
+.trust-note{grid-column:1/-1;display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border:1px dashed var(--border-strong);border-radius:var(--radius);background:transparent}
+.trust-note svg{flex:none;color:var(--ink-muted);margin-top:2px}
+.trust-note p{font-size:12.5px;color:var(--ink-muted);line-height:1.6}
+
+/* ── Galerie ── */
+.gallery-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:44px 0 20px}
+.gallery-head h2{font-size:22px;font-weight:700}
+.gallery-head p{font-size:12.5px;color:var(--ink-faint)}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:760px){.gallery-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:480px){.gallery-grid{grid-template-columns:1fr}}
+.g-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);overflow:hidden;display:flex;flex-direction:column}
+.g-card .protected{border:none;border-radius:0;width:100%}
+.g-card .protected img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.g-meta{padding:12px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
+.g-prompt{font-size:12.5px;color:var(--ink-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;flex:1}
+.g-actions{display:flex;gap:8px;align-items:center}
+.btn-report,.btn-delete{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:100px;border:1px solid var(--border);background:transparent;font-family:'Space Grotesk',sans-serif;font-size:11.5px;cursor:pointer;transition:all .2s}
+.btn-report{color:var(--ink-faint)}
+.btn-report:hover:not(:disabled){color:var(--ink-soft);border-color:var(--border-strong)}
+.btn-report:disabled{opacity:.5;cursor:default}
+.btn-delete{color:var(--danger);border-color:rgba(240,113,106,.3)}
+.btn-delete:hover{background:rgba(240,113,106,.1)}
+.gallery-more{text-align:center;margin-top:24px}
+.gallery-empty{padding:36px;text-align:center;color:var(--ink-faint);font-size:13.5px;border:1px dashed var(--border);border-radius:var(--radius)}
+
+.lp-footer{border-top:1px solid var(--border);padding:30px 32px;text-align:center;color:var(--ink-faint);font-size:12.5px}
+.lp-footer a{color:var(--ink-muted)}
+</style>
+<script src="/shared/i18n-fr.js"></script>
+<script src="/shared/i18n.js"></script>
+<link rel="alternate" hreflang="en" href="https://studio.kanaky.xyz/essai.html">
+<link rel="alternate" hreflang="fr" href="https://studio.kanaky.xyz/essai.html?lang=fr">
+<link rel="alternate" hreflang="x-default" href="https://studio.kanaky.xyz/essai.html">
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<nav class="lp-nav">
+  <a class="lp-brand" href="/">
+    <img src="/logo-keou.png" alt="Keou Studio">
+    <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
+  </a>
+  <div class="lp-nav-links">
+    <a class="lp-nav-link" href="/custom.html">Custom builds</a>
+    <a class="lp-nav-link" href="/login.html">Sign in</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <header class="page-head">
+    <span class="eyebrow">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Free, no account — your key, your credits
+    </span>
+    <h1>Keou Studio, <em>free and without an account</em></h1>
+    <p class="sub">The open studio and the community gallery: paste your KIE.AI API key, describe a visual, and generate. Your key stays in your browser — it is never written to our servers.</p>
+    <p class="sub" style="margin-top:10px;font-size:13px"><a href="/launch" style="color:var(--accent);font-weight:600">Open the full studio →</a> (product batches, polish, remix, formats — still no account) · <a href="https://github.com/kanakytech/keou" rel="noopener" style="color:var(--accent)">source on GitHub</a> · <a href="/custom.html" style="color:var(--accent)">custom builds</a>.</p>
+  </header>
+
+  <!-- ═══ Bannière publique + consentement ═══ -->
+  <div class="public-banner">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <div>
+      <p><b>Everything you create here is public.</b> Every image generated here appears in the community gallery below, with its prompt, visible to everyone. Images stay on the platform (no download) and carry a studio.kanaky.xyz watermark. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.</p>
+      <label class="consent-row">
+        <input type="checkbox" id="consent">
+        <span>I understand: my creations will be public in the community gallery.</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ═══ Formulaire ═══ -->
+  <section class="card">
+    <div class="field">
+      <label for="api-key">KIE.AI API key <span class="hint">your key stays in your browser (localStorage) and travels only for the length of the request</span></label>
+      <div class="key-row">
+        <input type="password" id="api-key" placeholder="Paste your KIE.AI key" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn-ghost" id="toggle-key">Reveal</button>
+        <button type="button" class="btn-ghost" id="forget-key" title="Erases the key from this browser (localStorage)">Forget my key</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="prompt">Your visual <span class="char-count"><span id="char-count">0</span>/500</span></label>
+      <textarea id="prompt" maxlength="500" placeholder="e.g. a bottle of tropical juice on volcanic rock, turquoise lagoon behind, late-afternoon light, advertising photography"></textarea>
+    </div>
+    <div class="field" style="max-width:220px">
+      <label for="format">Ratio</label>
+      <select id="format">
+        <option value="1:1">Square — 1:1</option>
+        <option value="16:9">Landscape — 16:9</option>
+        <option value="9:16">Story — 9:16</option>
+        <option value="4:3">Classic — 4:3</option>
+        <option value="3:4">Portrait — 3:4</option>
+        <option value="3:2">Photo — 3:2</option>
+        <option value="2:3">Poster — 2:3</option>
+      </select>
+    </div>
+    <div class="form-foot">
+      <button class="btn-generate" id="btn-generate" disabled>
+        Generate
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <span class="char-count">Shared queue — generations run one at a time.</span>
+    </div>
+  </section>
+
+  <!-- ═══ Statut ═══ -->
+  <section class="status-card" id="status-card">
+    <div class="status-line" id="status-line"></div>
+    <div class="result-wrap" id="result-wrap"></div>
+  </section>
+
+  <!-- ═══ Votre clé, en sécurité ═══
+       Chaque affirmation ci-dessous est vérifiée dans le code :
+       - Clé lue UNIQUEMENT depuis le header X-Provider-Key, jamais depuis le body :
+         src/utils/requestContext.js (AsyncLocalStorage par requête) +
+         src/routes/essai.js (getRequestProviderKey, aucun log de la clé).
+       - Clé en RAM le temps du job puis effacée (job.apiKey = null), jamais en base,
+         jamais dans un log ni un message d'erreur : src/lib/essai-queue.js
+         (contrat de sécurité en tête de fichier + safeErrorMessage).
+       - Stockage côté navigateur : localStorage « keou.providerKey »
+         (public/shared/auth.js), effaçable via le bouton « Oublier ma clé ». -->
+  <section class="trust">
+    <div class="trust-head">
+      <h2>Your key, kept safe</h2>
+      <p>What we do with your API key — and above all what we never do with it.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-card">
+        <div class="t-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><circle cx="5.5" cy="6" r=".5"/></svg></div>
+        <h3>Your key stays in your browser</h3>
+        <p>It is kept locally (localStorage), on your device only. The “Forget my key” button erases it in one click — there is nothing to delete on our side, because we never had it.</p>
+      </div>
+      <div class="trust-card">
+        <div class="t-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Never written to the database, never to the logs</h3>
+        <p>It travels encrypted (TLS) only at generation time, is held in memory for the length of the job, then discarded. It appears neither in our database, nor in our logs, nor in error messages.</p>
+      </div>
+      <div class="trust-card">
+        <div class="t-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+        <h3>A dedicated key, under your control</h3>
+        <p>Create a key dedicated to this use at <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">kie.ai</a>, cap its budget, and revoke it whenever you like. You keep control from end to end.</p>
+      </div>
+      <div class="trust-card">
+        <div class="t-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <h3>Auditable code</h3>
+        <p>The <a href="https://github.com/kanakytech/keou" rel="noopener">entire platform is open source on GitHub</a> — nothing is hidden. Everything this page promises, anyone can verify line by line.</p>
+      </div>
+      <div class="trust-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <p>An honest word: no system is perfect. Use a key dedicated to this use, with a low cap — not your production key.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Galerie communautaire ═══ -->
+  <div class="gallery-head">
+    <h2>Community gallery</h2>
+    <p>Everything created here, most recent first.</p>
+  </div>
+  <div class="gallery-grid" id="gallery"></div>
+  <div class="gallery-empty" id="gallery-empty" style="display:none">Nothing created yet — yours could be the first.</div>
+  <div class="gallery-more" id="gallery-more" style="display:none">
+    <button class="btn-ghost" id="btn-more" style="padding:11px 22px">Show more</button>
+  </div>
+
+</main>
+
+<footer class="lp-footer">
+  Keou Studio — free platform, no account · The <a href="https://github.com/kanakytech/keou" rel="noopener">full source is public on GitHub</a>, MIT licensed · <a href="/custom.html">Custom builds</a> shaped around your workflow.
+</footer>
+
+<script src="/shared/auth.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  // Filet : la page d'essai reste fonctionnelle (mode anonyme) même si
+  // shared/auth.js ne charge pas — seuls les boutons admin en dépendent.
+  const Auth = window.Auth || {
+    getProviderKey: () => { try { return localStorage.getItem('keou.providerKey') || ''; } catch { return ''; } },
+    setProviderKey: (k) => { try { k ? localStorage.setItem('keou.providerKey', k.trim()) : localStorage.removeItem('keou.providerKey'); } catch {} },
+    refresh: async () => false,
+    isAdmin: () => false,
+    authFetch: async () => { throw new Error('auth indisponible'); },
+  };
+  const escapeHtml = window.escapeHtml || ((s) => String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+
+  const $ = (id) => document.getElementById(id);
+  const keyInput = $('api-key'), promptInput = $('prompt'), formatSel = $('format');
+  const consentBox = $('consent'), genBtn = $('btn-generate');
+  const statusCard = $('status-card'), statusLine = $('status-line'), resultWrap = $('result-wrap');
+  const gallery = $('gallery'), galleryEmpty = $('gallery-empty'), moreWrap = $('gallery-more'), moreBtn = $('btn-more');
+
+  let isAdmin = false;
+  let page = 1;
+  let pollTimer = null;
+
+  // ── Clé BYOK : même stockage local que le studio (jamais côté serveur) ──
+  keyInput.value = Auth.getProviderKey();
+  keyInput.addEventListener('change', () => Auth.setProviderKey(keyInput.value.trim()));
+  $('toggle-key').addEventListener('click', () => {
+    const show = keyInput.type === 'password';
+    keyInput.type = show ? 'text' : 'password';
+    $('toggle-key').textContent = show ? 'Masquer' : 'Afficher';
+  });
+
+  // « Oublier ma clé » : efface le champ ET le localStorage — il ne reste rien.
+  $('forget-key').addEventListener('click', () => {
+    keyInput.value = '';
+    Auth.setProviderKey('');
+    refreshButton();
+    $('forget-key').textContent = I18N.t('Key forgotten');
+    setTimeout(() => { $('forget-key').textContent = I18N.t('Forget my key'); }, 1800);
+  });
+
+  // ── Activation du bouton ──
+  function refreshButton() {
+    genBtn.disabled = !(consentBox.checked && keyInput.value.trim().length > 8 && promptInput.value.trim().length >= 3);
+  }
+  [consentBox, keyInput, promptInput].forEach((el) => el.addEventListener('input', refreshButton));
+  promptInput.addEventListener('input', () => { $('char-count').textContent = promptInput.value.length; });
+
+  // ── Protection légère des images (le filigrane serveur fait le vrai travail) ──
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('.protected')) e.preventDefault(); });
+  document.addEventListener('dragstart', (e) => { if (e.target.closest('.protected')) e.preventDefault(); });
+
+  function protectedImg(url, alt) {
+    const box = document.createElement('span');
+    box.className = 'protected';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = alt || I18N.t('Keou creation (community gallery)');
+    img.loading = 'lazy';
+    img.draggable = false;
+    box.appendChild(img);
+    return box;
+  }
+
+  function setStatus(html, isError) {
+    statusCard.classList.add('visible');
+    statusLine.className = 'status-line' + (isError ? ' err' : '');
+    statusLine.innerHTML = html;
+  }
+
+  // ── Génération ──
+  genBtn.addEventListener('click', async () => {
+    const apiKey = keyInput.value.trim();
+    Auth.setProviderKey(apiKey);
+    genBtn.disabled = true;
+    resultWrap.innerHTML = '';
+    setStatus('<span class="spinner"></span> Envoi de la demande…');
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+
+    try {
+      const res = await fetch('/api/essai/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Provider-Key': apiKey },
+        body: JSON.stringify({ prompt: promptInput.value.trim(), format: formatSel.value, consent: consentBox.checked }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStatus(escapeHtml(I18N.t(data.error || 'Could not start the generation')), true);
+        refreshButton();
+        return;
+      }
+      pollStatus(data.id);
+    } catch {
+      setStatus(I18N.t('Network error — try again.'), true);
+      refreshButton();
+    }
+  });
+
+  function pollStatus(id) {
+    const tick = async () => {
+      try {
+        const res = await fetch('/api/essai/statut/' + encodeURIComponent(id));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { setStatus(escapeHtml(I18N.t(data.error || 'Status unavailable')), true); refreshButton(); return; }
+
+        if (data.status === 'queued') {
+          const pos = data.position || 1;
+          setStatus('<span class="spinner"></span> En file d\'attente — position <span class="queue-pos">' + pos + '</span>');
+        } else if (data.status === 'processing') {
+          setStatus('<span class="spinner"></span> ' + I18N.t('Generating… (30 to 90 seconds)'));
+        } else if (data.status === 'completed') {
+          setStatus(I18N.t('Done — your creation is public in the gallery below.'));
+          resultWrap.innerHTML = '';
+          resultWrap.appendChild(protectedImg(data.imageUrl, promptInput.value.trim()));
+          refreshButton();
+          reloadGallery();
+          return;
+        } else if (data.status === 'failed') {
+          setStatus(escapeHtml(I18N.t(data.error || 'The generation failed')), true);
+          refreshButton();
+          return;
+        }
+        pollTimer = setTimeout(tick, 2500);
+      } catch {
+        pollTimer = setTimeout(tick, 4000);
+      }
+    };
+    tick();
+  }
+
+  // ── Galerie ──
+  function galleryCard(item) {
+    const card = document.createElement('div');
+    card.className = 'g-card';
+    card.appendChild(protectedImg(item.imageUrl, item.prompt));
+
+    const meta = document.createElement('div');
+    meta.className = 'g-meta';
+    const p = document.createElement('p');
+    p.className = 'g-prompt';
+    p.textContent = item.prompt;
+    p.title = item.prompt;
+    meta.appendChild(p);
+
+    const actions = document.createElement('div');
+    actions.className = 'g-actions';
+
+    const report = document.createElement('button');
+    report.className = 'btn-report';
+    report.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Signaler';
+    report.addEventListener('click', async () => {
+      report.disabled = true;
+      try {
+        const res = await fetch('/api/essai/signaler/' + encodeURIComponent(item.id), { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        report.innerHTML = res.ok ? I18N.t('Reported — thank you') : escapeHtml(I18N.t(data.error || 'Error'));
+        if (data.hidden) card.remove();
+      } catch { report.disabled = false; }
+    });
+    actions.appendChild(report);
+
+    if (isAdmin) {
+      const del = document.createElement('button');
+      del.className = 'btn-delete';
+      del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer';
+      del.addEventListener('click', async () => {
+        del.disabled = true;
+        try {
+          const res = await Auth.authFetch('/api/essai/admin/' + encodeURIComponent(item.id), { method: 'DELETE' });
+          if (res.ok) card.remove(); else del.disabled = false;
+        } catch { del.disabled = false; }
+      });
+      actions.appendChild(del);
+    }
+
+    meta.appendChild(actions);
+    card.appendChild(meta);
+    return card;
+  }
+
+  async function loadGallery(pageNum, replace) {
+    try {
+      const res = await fetch('/api/essai/galerie?page=' + pageNum);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (replace) gallery.innerHTML = '';
+      (data.items || []).forEach((item) => gallery.appendChild(galleryCard(item)));
+      galleryEmpty.style.display = gallery.children.length === 0 ? 'block' : 'none';
+      moreWrap.style.display = data.hasMore ? 'block' : 'none';
+      page = pageNum;
+    } catch { /* réseau — silencieux */ }
+    finally { if (gallery.children.length === 0) galleryEmpty.style.display = 'block'; }
+  }
+  function reloadGallery() { loadGallery(1, true); }
+  moreBtn.addEventListener('click', () => loadGallery(page + 1, false));
+
+  // ── Admin : réutilise la session existante si elle est déjà ouverte ──
+  (async () => {
+    try {
+      const ok = await Auth.refresh();
+      if (ok && Auth.isAdmin()) { isAdmin = true; reloadGallery(); }
+    } catch { /* pas connecté — visiteur anonyme, comportement normal */ }
+  })();
+
+  refreshButton();
+  reloadGallery();
+})();
+</script>
+</body>
+</html>

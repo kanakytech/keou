@@ -16,6 +16,25 @@ const r2 = new S3Client({
 const BUCKET = config.r2.bucket;
 
 /**
+ * Le stockage est-il configuré ?
+ *
+ * Sans lui AUCUNE image ne peut entrer, et c'est le premier geste du produit.
+ * La réponse doit donc nommer ce qui manque, plutôt que de laisser remonter un
+ * « Resolved credential object is not valid » dans les logs du serveur.
+ *
+ * On ne teste PAS le bucket : config.js lui donne un repli en dur, il est donc
+ * toujours défini. Le tester donnait un garde de trois conditions déguisé en
+ * quatre, et un message qui demandait de poser R2_BUCKET alors que ce n'est
+ * jamais la variable réellement absente.
+ */
+export function storageConfigured() {
+  return !!(config.r2?.accountId && config.r2?.accessKeyId && config.r2?.secretAccessKey);
+}
+
+export const STORAGE_MISSING = 'Object storage is not configured. Set R2_ACCOUNT_ID, '
+  + 'R2_ACCESS_KEY and R2_SECRET_KEY — uploads cannot work without them.';
+
+/**
  * Upload a buffer to R2.
  * Returns a long-lived URL — public if R2_PUBLIC_URL is configured, otherwise
  * a 7-day presigned URL. Long enough for KIE.AI to fetch AND for the lightbox
