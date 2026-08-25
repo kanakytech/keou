@@ -104,12 +104,12 @@ function waitMinutes(jobsAhead) {
  * s'il faut y poser un filigrane. runJob() n'a plus alors aucune connaissance
  * du format — ajouter une opération, c'est ajouter une ligne ici.
  *
- * Pourquoi la vidéo et l'audio ne sont PAS filigranés : le seul outil média
- * embarqué côté serveur est sharp, qui ne sait ouvrir que des images. Le
- * conteneur n'installe pas ffmpeg (Dockerfile : curl et rien d'autre), et
- * marquer un MP4 ou un MP3 imposerait un ré-encodage complet. Nous préférons
- * l'annoncer — le texte de consentement du studio anonyme le dit tel quel —
- * plutôt que laisser croire à une protection qui n'existe pas.
+ * Ce que porte le filigrane : l'image (sharp) ET la vidéo (ffmpeg, installé par
+ * le Dockerfile depuis le 25/08 — voir src/lib/watermark-video.js). Le son n'en
+ * porte aucun, et c'est un choix : rien ne s'inscrit dans une piste sonore sans
+ * abîmer précisément ce que le visiteur est venu chercher. Le consentement du
+ * studio anonyme dit exactement cela — ne jamais laisser ces trois textes
+ * diverger, ils décrivent la seule protection réelle du travail publié.
  *
  * `watermark` dit ce que MÉRITE un kind en général ; c'est shouldWatermark()
  * qui tranche pour un job donné. La table ignore en effet d'où vient la

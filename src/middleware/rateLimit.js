@@ -97,7 +97,16 @@ const MAX_MAILLONS = 20;
 export function clientIp(req) {
   const xff = req.headers?.['x-forwarded-for'];
   if (typeof xff === 'string' && xff.length > 0) {
-    const maillons = xff.split(',', MAX_MAILLONS).map((v) => v.trim());
+    /* On garde les DERNIERS maillons, pas les premiers.
+     *
+     * `split(',', 20)` rend les vingt PREMIERS éléments — c'est-à-dire
+     * précisément ceux qu'un client peut fabriquer, puisque les proxys de
+     * confiance écrivent à DROITE. Un en-tête de vingt-cinq fausses adresses
+     * suffisait donc à faire disparaître le vrai maillon et à rendre la
+     * lecture par la droite inopérante : le plafond redevenait contournable.
+     * On découpe donc tout, puis on ne conserve que la queue. */
+    const bruts = xff.split(',');
+    const maillons = bruts.slice(Math.max(0, bruts.length - MAX_MAILLONS)).map((v) => v.trim());
     for (let i = maillons.length - 1; i >= 0; i--) {
       const m = maillons[i];
       if (RESSEMBLE_A_UNE_IP.test(m) && !estInterne(m)) return m;

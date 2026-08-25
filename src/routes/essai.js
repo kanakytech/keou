@@ -26,11 +26,11 @@
  *     le studio — requestContext), n'est jamais persistée ni loggée.
  *   - ids UUID v4 : non séquentiels, non devinables.
  *   - Le média est servi par proxy : aucune URL R2/provider n'atteint le client.
- *   - Toute sortie anonyme est publiée dans la galerie, sans téléchargement —
- *     c'est la modération par transparence. Le filigrane, lui, ne couvre que
- *     les images : le conteneur n'embarque que sharp (pas de ffmpeg), donc
- *     marquer un MP4 ou un MP3 est hors de portée ici. On l'annonce au
- *     visiteur plutôt que de laisser croire à une protection inexistante.
+ *   - Toute sortie anonyme est publiée dans la galerie — c'est la modération
+ *     par transparence. Elle est aussi enregistrable : le filigrane est ce qui
+ *     protège le travail, pas un bouton absent. Il couvre l'image (sharp) et la
+ *     vidéo (ffmpeg, depuis le 25/08) ; le son n'en porte aucun, faute de
+ *     pouvoir marquer une piste sonore sans l'abîmer. On l'annonce au visiteur.
  */
 
 import { Router } from 'express';

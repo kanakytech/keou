@@ -759,11 +759,54 @@ const Lightbox = (() => {
    *   labelled "Upscale 4K" on a video, "Upscale 4x" on an image
    * @param {Function} [meta.onPack] - callback for Export Pack action (K)
    */
+  /* Les éléments auxquels on a donné un nom de transition, pour pouvoir le
+   * reprendre à coup sûr — les rechercher dans le DOM échouait dès que le
+   * contenu avait changé de nature entre-temps (une image devenue vidéo). */
+  const _morphes = new Set();
+
+  /** Retire tout nom de transition encore en place, d'où qu'il vienne. */
+  function _libererMorph() {
+    for (const el of _morphes) {
+      try { el.style.viewTransitionName = ''; } catch { /* élément détaché */ }
+    }
+    _morphes.clear();
+    // Ceinture et bretelles : un nom posé par un chemin qu'on aurait oublié.
+    if (_el) {
+      for (const el of _el.querySelectorAll('[style*="view-transition-name"]')) {
+        el.style.viewTransitionName = '';
+      }
+    }
+  }
+
   function open(url, type = 'image', meta = null) {
-    // Liquid morph: the clicked thumbnail grows into the lightbox via the
-    // View Transitions API. Re-enters open() inside the snapshot callback;
-    // _vtBusy makes the inner call take the normal path. Falls through
-    // silently on browsers without VT or with reduced motion.
+    /* Le fondu d'ouverture ne doit JAMAIS laisser une image collée à l'écran.
+     *
+     * ─── Le défaut, tel qu'il se voyait (25/08/2026) ───
+     *
+     * Après avoir généré une vidéo, le studio affichait la première image figée
+     * PAR-DESSUS, la vidéo tournant derrière. Un élément qui porte un
+     * `view-transition-name` est promu dans la couche de transition, laquelle se
+     * peint au-dessus de tout le reste ; tant que le nom n'est pas retiré,
+     * l'instantané reste à l'écran.
+     *
+     * Trois raisons de ne pas le retirer, toutes présentes ici :
+     *  1. le nettoyage cherchait `_body.querySelector('img')`. Quand le corps
+     *     était devenu une VIDÉO entre-temps, il ne trouvait rien et ne nettoyait
+     *     donc rien. On garde maintenant une référence directe à l'élément qu'on
+     *     a nommé, au lieu de le rechercher.
+     *  2. `vt.finished` REJETTE quand la transition est sautée — ce que le
+     *     navigateur fait dès qu'une seconde transition démarre. La console de
+     *     production le montrait : « AbortError: Transition was skipped ». La
+     *     promesse n'était pas rattrapée.
+     *  3. rien n'empêchait une deuxième transition de commencer pendant la
+     *     première, ce qui est exactement ce qui arrive en cliquant « Video »
+     *     juste après avoir ouvert l'image.
+     *
+     * D'où le garde-fou en tête : à chaque ouverture on efface tout nom resté en
+     * place, quelle qu'en soit la cause. Un fondu raté doit coûter un fondu, pas
+     * une image collée sur le produit. */
+    _libererMorph();
+
     if (type === 'image' && !_vtBusy && document.startViewTransition
         && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const thumb = Array.from(document.querySelectorAll('img')).find(
@@ -772,17 +815,26 @@ const Lightbox = (() => {
       if (thumb) {
         _vtBusy = true;
         thumb.style.viewTransitionName = 'lb-morph';
+        _morphes.add(thumb);
         const vt = document.startViewTransition(() => {
           thumb.style.viewTransitionName = '';
+          _morphes.delete(thumb);
           open(url, type, meta);
           const lbImg = _body && _body.querySelector('img');
-          if (lbImg) lbImg.style.viewTransitionName = 'lb-morph';
+          if (lbImg) {
+            lbImg.style.viewTransitionName = 'lb-morph';
+            _morphes.add(lbImg);           // on retient l'élément, on ne le recherche plus
+          }
         });
-        vt.finished.finally(() => {
+        // `finished` rejette sur transition sautée : on rattrape, sinon la
+        // promesse remonte en erreur non gérée dans la console du visiteur.
+        vt.finished.catch(() => {}).finally(() => {
           _vtBusy = false;
-          const lbImg = _body && _body.querySelector('img');
-          if (lbImg) lbImg.style.viewTransitionName = '';
+          _libererMorph();
         });
+        // Filet : si la promesse ne se règle jamais (onglet en arrière-plan,
+        // transition avortée par le navigateur), on libère quand même.
+        setTimeout(() => { if (_vtBusy) { _vtBusy = false; _libererMorph(); } }, 2000);
         return;
       }
     }
@@ -997,6 +1049,9 @@ const Lightbox = (() => {
   }
 
   function close() {
+    // Une transition interrompue par la fermeture laisserait son instantané
+    // peint au-dessus de la page.
+    _libererMorph();
     if (!_el) return;
     _el.classList.remove('open');
     _el.setAttribute('aria-hidden', 'true');
