@@ -1983,7 +1983,7 @@ window.videoJob = async (id) => {
 };
 
 // ─── Video with Creative Direction (from Lightbox) ───
-window.videoJobWithCD = async (id, creativeDirection, videoModel, duration) => {
+window.videoJobWithCD = async (id, creativeDirection, videoModel, duration, variant) => {
   const job = jobs.find(j => j.id === id);
   if (!job || !job.resultUrl) return;
   const modelLabel = videoModel === 'seedance-2' ? 'Seedance 2.0' : videoModel === 'kling-3.0' ? 'Kling 3.0' : videoModel === 'kling-2.6' ? 'Kling 2.6' : videoModel === 'veo3' ? 'Veo 3.1' : 'Grok Imagine';
@@ -2000,6 +2000,10 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration) => {
     if (creativeDirection) body.creativeDirection = creativeDirection;
     if (videoModel) body.videoModel = videoModel;
     if (duration) body.duration = duration;
+    /* La qualité Veo change le prix d'un facteur huit — et c'est le visiteur
+     * qui paie, sur sa propre clé. Sans ce champ, le fournisseur retombait
+     * toujours sur la variante la plus chère, quel que soit le choix fait. */
+    if (variant) body.variant = variant;
 
     const res = await Auth.authFetch('/api/video', {
       method: 'POST',
@@ -2170,7 +2174,7 @@ window.openModal = (id, type) => {
     creativeDirection: cd || null,
     inputUrl: job.uploadUrl,
     onPolish: () => polishJob(id),
-    onVideo: (cd, model, duration) => videoJobWithCD(id, cd, model, duration),
+    onVideo: (cd, model, duration, variant) => videoJobWithCD(id, cd, model, duration, variant),
     onAdapt: () => adaptAllFormats(id),
     onRemix: (remixPrompt) => remixJob(id, remixPrompt),
     onPack: window.IS_ANON ? undefined : () => openExportPack(id, job.generationId || ''),

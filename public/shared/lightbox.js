@@ -444,6 +444,7 @@ const Lightbox = (() => {
       if (!chip) return;
       _el.querySelectorAll('#lb-model-chips .lb-model-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
+      _rendreDurees(chip.dataset.model);
     });
 
     // Duration chip selection
@@ -462,8 +463,10 @@ const Lightbox = (() => {
       const model = activeModelChip ? activeModelChip.dataset.model : 'grok-imagine';
       const activeDurationChip = _el.querySelector('#lb-duration-chips .lb-model-chip.active');
       const duration = activeDurationChip ? parseInt(activeDurationChip.dataset.duration) : 10;
+      // Sur Veo, la même rangée porte la qualité : c'est elle qui part.
+      const variant = activeDurationChip ? activeDurationChip.dataset.variant : undefined;
       _cdWrap.classList.remove('visible');
-      _currentMeta.onVideo(cd, model, duration);
+      _currentMeta.onVideo(cd, model, duration, variant);
       close();
     });
 
@@ -762,7 +765,66 @@ const Lightbox = (() => {
   /* Les éléments auxquels on a donné un nom de transition, pour pouvoir le
    * reprendre à coup sûr — les rechercher dans le DOM échouait dès que le
    * contenu avait changé de nature entre-temps (une image devenue vidéo). */
+  /* Ce que chaque modèle accepte VRAIMENT comme durée.
+   *
+   * Les puces annonçaient 5, 10 et 15 secondes pour tout le monde. Or
+   * src/lib/providers/kie.js borne chaque modèle à sa propre plage, en silence :
+   *   grok-imagine  Math.max(6, …)   → « 5 s » devenait 6 s
+   *   kling-2.6     '5' ou '10'      → « 15 s » devenait 10 s
+   *   veo3          la durée n'est même pas envoyée dans la charge utile
+   * Le visiteur payait donc une durée qu'il n'avait pas demandée, sans un mot.
+   * Une commande qui ne commande rien ment autant qu'une phrase fausse : on
+   * n'affiche que ce que le modèle choisi sait faire, et on le dit quand il ne
+   * sait rien faire du tout. */
+  /* Veo se décline en trois qualités dont le prix va de 1 à 8.
+   *
+   * Le studio ne proposait aucun choix et partait toujours sur la plus chère,
+   * alors que la page Outils, elle, offre les trois. Même opération, deux
+   * surfaces, un facteur huit sur la facture du VISITEUR — qui paie sur sa
+   * propre clé. On lui rend le choix, avec le prix écrit dessus. */
+  const VARIANTES_VEO = [
+    { valeur: 'veo3_lite', libelle: 'Lite', prix: '$0.15' },
+    { valeur: 'veo3_fast', libelle: 'Fast', prix: '$0.30' },
+    { valeur: 'veo3',      libelle: 'Quality', prix: '$1.25' },
+  ];
+
+  const DUREES_PAR_MODELE = {
+    'grok-imagine': [6, 10, 15, 30],
+    'kling-2.6':    [5, 10],
+    'kling-3.0':    [5, 10, 15],
+    'seedance-2':   [5, 10, 15],
+    'veo3':         null,
+  };
+
   const _morphes = new Set();
+
+  /** Reconstruit les puces de durée pour le modèle choisi. */
+  function _rendreDurees(modele) {
+    const zone = _el && _el.querySelector('#lb-duration-chips');
+    if (!zone) return;
+    const libelle = zone.previousElementSibling;
+    const durees = DUREES_PAR_MODELE[modele] !== undefined
+      ? DUREES_PAR_MODELE[modele]
+      : DUREES_PAR_MODELE['grok-imagine'];
+
+    if (!durees) {
+      /* Veo ne prend pas de durée — le fournisseur la fixe. La place n'est pas
+       * perdue pour autant : elle sert à choisir la qualité, seul réglage qui
+       * change vraiment quelque chose ici, et le seul qui touche au prix. */
+      if (libelle) { libelle.style.display = ''; libelle.textContent = 'Quality'; }
+      zone.innerHTML = VARIANTES_VEO.map((v, i) =>
+        '<button class="lb-model-chip' + (i === 0 ? ' active' : '') + '" data-variant="' + v.valeur + '">'
+        + v.libelle + ' <span style="opacity:.55">' + v.prix + '</span></button>'
+      ).join('');
+      return;
+    }
+    if (libelle) libelle.textContent = 'Duration';
+    if (libelle) libelle.style.display = '';
+    const defaut = durees.includes(10) ? 10 : durees[0];
+    zone.innerHTML = durees.map((d) =>
+      '<button class="lb-model-chip' + (d === defaut ? ' active' : '') + '" data-duration="' + d + '">' + d + 's</button>'
+    ).join('');
+  }
 
   /** Retire tout nom de transition encore en place, d'où qu'il vienne. */
   function _libererMorph() {
@@ -1025,6 +1087,9 @@ const Lightbox = (() => {
     if (movePanel) movePanel.classList.remove('visible');
     // Reset model selection to default (Grok Imagine)
     _el.querySelectorAll('#lb-model-chips .lb-model-chip').forEach(c => c.classList.remove('active'));
+    // Chaque ouverture repart du modèle par défaut — et de SES durées, pas
+    // d'une liste figée qui promettrait ce que le modèle ne sait pas faire.
+    _rendreDurees('grok-imagine');
     const defaultChip = _el.querySelector('#lb-model-chips .lb-model-chip[data-model="grok-imagine"]');
     if (defaultChip) defaultChip.classList.add('active');
 
