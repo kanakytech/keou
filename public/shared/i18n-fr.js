@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1253 entrées. */
+   1257 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -54,6 +54,7 @@ window.KEOU_FR = {
   "Copy this prompt. Paste it into Claude (Claude Code, Claude Desktop, or claude.ai). Send. Claude installs the MCP, asks for your KIE.AI key, and runs a first test. ~60 seconds.": "Copiez ce prompt. Collez-le dans Claude (Claude Code, Claude Desktop ou claude.ai). Envoyez. Claude installe le MCP, demande votre clé KIE.AI et lance un premier test. ~60 secondes.",
   "Every feature ships in the public repository — nothing is held back for a paid tier. Run it yourself, or have us build a version shaped around how your team actually works.": "Chaque fonctionnalité est dans le dépôt public — rien n’est retenu pour un palier payant. Faites-le tourner vous-même, ou faites-nous construire une version taillée pour la façon dont votre équipe travaille vraiment.",
   "It is kept locally (localStorage), on your device only. The “Forget my key” button erases it in one click — there is nothing to delete on our side, because we never had it.": "Elle est conservée localement (localStorage), sur votre appareil uniquement. Le bouton « Oublier ma clé » l’efface d’un clic — il n’y a rien à supprimer chez nous, puisque nous ne l’avons pas.",
+  "No account needed. Everything you create here is public in the community gallery. Prices below are the provider's, billed straight to your own API key — Keou takes nothing.": "Aucun compte nécessaire. Tout ce que vous créez ici est public dans la galerie communautaire. Les tarifs ci-dessous sont ceux du fournisseur, débités directement sur votre propre clé API — Keou ne prend rien.",
   "Keou documentation — install, configure, deploy and extend the open-source AI product-visual studio. Architecture, full environment reference, HTTP API and security model.": "Documentation Keou — installer, configurer, déployer et étendre le studio open source de visuels produit par IA. Architecture, référence complète des variables d’environnement, API HTTP et modèle de sécurité.",
   "You bring your own API key — KIE.AI or Fal.ai bill you directly. Enable unlimited mode to remove the internal quota cap. Usage is still tracked in analytics for reporting.": "Vous utilisez votre propre clé API — KIE.AI ou Fal.ai vous facturent directement. Activez le mode illimité pour lever le plafond de quota interne. La consommation reste enregistrée dans les statistiques, pour le suivi.",
   "The open studio and the community gallery: paste your KIE.AI API key, describe a visual, and generate. Your key stays in your browser — it is never written to our servers.": "Le studio ouvert et la galerie communautaire : collez votre clé API KIE.AI, décrivez un visuel, générez. Votre clé reste dans votre navigateur — elle n’est jamais écrite sur nos serveurs.",
@@ -153,7 +154,7 @@ window.KEOU_FR = {
   "account. Each user pastes their own in the studio — the server does not need one.": "compte. Chaque utilisateur colle la sienne dans le studio — le serveur n’en a pas besoin.",
   "Organize your generations by client. A default campaign is created automatically.": "Organisez vos générations par client. Une campagne par défaut est créée automatiquement.",
   "Pick a template or write your own direction. Leave empty for default studio look.": "Choisissez un modèle ou écrivez votre propre direction. Laissez vide pour le rendu studio par défaut.",
-  "No account needed. Everything you create here is public in the community gallery.": "Aucun compte nécessaire. Tout ce que vous créez ici est public dans la galerie communautaire.",
+  "Still not finished after 6 minutes — it may still appear in the community gallery": "Toujours pas terminé après 6 minutes — le résultat peut encore apparaître dans la galerie communautaire",
   "paste the prompt, then paste your KIE.AI key when Claude asks for it. That's it.": "coller le prompt, puis coller votre clé KIE.AI quand Claude la demande. C’est tout.",
   "No account. No card. No trial clock. Just paste your own KIE.AI key and create.": "Pas de compte. Pas de carte. Pas de minuteur d’essai. Collez votre clé KIE.AI et créez.",
   "Internal counters only. There is no billing in this edition — leave them high.": "Compteurs internes uniquement. Il n’y a pas de facturation dans cette édition — laissez-les hauts.",
@@ -243,6 +244,7 @@ window.KEOU_FR = {
   "Generate assets, view own work, use creative tools": "Générer des visuels, voir son propre travail, utiliser les outils créatifs",
   "Optional — leave empty for default cinematic style": "Facultatif — laissez vide pour le style cinématique par défaut",
   "Source asset not yet saved — try again in a moment": "Visuel source pas encore enregistré — réessayez dans un instant",
+  "Connection lost — check your network and try again": "Connexion perdue — vérifiez votre réseau et réessayez",
   "MIT open source — every feature, no tier above it": "Open source MIT — toutes les fonctionnalités, aucun palier au-dessus",
   "Several replicas are polling. Set on all but one.": "Plusieurs réplicas interrogent les fournisseurs. Définissez sur tous sauf un.",
   "one or more product images (drag & drop or click)": "une ou plusieurs photos produit (glisser-déposer ou clic)",
@@ -381,6 +383,7 @@ window.KEOU_FR = {
   "Please describe the sound effect": "Décrivez l’effet sonore",
   "Text exceeds 450 character limit": "Texte trop long (450 caractères maximum)",
   "Failed to generate contact sheet": "Échec de la génération de la planche-contact",
+  "Queued — waiting for a free slot": "En file d’attente — en attente d’une place",
   "The creative production engine.": "Le moteur de production créative.",
   "BTC on the Bitcoin network only": "uniquement des BTC sur le réseau Bitcoin",
   "Can you host it for us instead?": "Pouvez-vous plutôt l’héberger pour nous ?",
@@ -457,6 +460,7 @@ window.KEOU_FR = {
   "Download failed — try again": "Échec du téléchargement — réessayez",
   "Failed to create share link": "Échec de la création du lien de partage",
   "Failed to load conversation": "Échec du chargement de la conversation",
+  "Connection lost — retrying…": "Connexion perdue — nouvelle tentative…",
   "for a different direction,": "pour une autre direction,",
   "Bucket name. Defaults to .": "Nom du bucket. Par défaut .",
   "Set and for the first boot": "Définissez et pour le premier démarrage",
@@ -469,7 +473,6 @@ window.KEOU_FR = {
   "Processing your request...": "Traitement en cours…",
   "Daily usage — Last 14 days": "Consommation quotidienne — 14 derniers jours",
   "Preparing contact sheet...": "Préparation de la planche-contact…",
-  "Billed to your own API key": "Débité sur votre propre clé API",
   "AI sound effect generation": "Bruitages générés par IA",
   "The fit is what we build.": "L’ajustement, c’est ce qu’on construit.",
   "What we sell is the work:": "Ce que nous vendons, c’est le travail :",
@@ -1020,6 +1023,7 @@ window.KEOU_FR = {
   "Video ready": "Vidéo prête",
   "Show less ↑": "Voir moins ↑",
   "Remixing...": "Remix…",
+  "Task failed": "Le travail a échoué",
   "On request": "Sur demande",
   "On Railway": "Sur Railway",
   "Sign up at": "Inscrivez-vous sur",

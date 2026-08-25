@@ -319,7 +319,7 @@
     // Le sous-titre « pour votre équipe » parle à une agence connectée. Le
     // visiteur anonyme a besoin de la règle, pas du slogan.
     const sub = document.querySelector('.tools-header p');
-    if (sub) sub.textContent = 'No account needed. Everything you create here is public in the community gallery.';
+    if (sub) sub.textContent = "No account needed. Everything you create here is public in the community gallery. Prices below are the provider's, billed straight to your own API key — Keou takes nothing.";
   }
   document.getElementById('app').style.display = '';
 
@@ -451,12 +451,12 @@
       <div class="tool-card-icon">${t.icon}</div>
       <div class="tool-card-name">${I18N.t(t.name)}</div>
       <div class="tool-card-desc">${I18N.t(t.desc)}</div>
-      <!-- En anonyme, Keou ne facture rien : la clé du visiteur est débitée
-           directement par le fournisseur. Afficher NOS tarifs sur cette page
-           laissait croire le contraire, alors que studio.html disait déjà la
-           vérité. Deux surfaces du même produit ne peuvent pas répondre
-           différemment à « qui paie ? ». -->
-      <div class="tool-card-cost">${window.IS_ANON ? I18N.t('Billed to your own API key') : t.cost}</div>
+      <!-- Le montant reste affiché, y compris en anonyme : quelqu'un qui paie
+             sur SA propre clé a plus besoin de connaître le prix, pas moins. Le
+             retirer était une erreur. Ce qui manquait n'était pas de cacher le
+             chiffre, c'était de dire À QUI il est facturé — et ça se dit une
+             fois, en tête de page, pas quatre fois sur les cartes. -->
+        <div class="tool-card-cost">${t.cost}</div>
     </div>
   `).join('');
 
@@ -1030,37 +1030,77 @@
   };
 
   // ─── Polling ───
+  /* L'attente doit DIRE ce qui se passe, et finir par s'arrêter.
+   *
+   * Trois défauts corrigés ici, tous constatés en production :
+   *  - aucun délai maximal : un travail perdu faisait tourner le compteur
+   *    indéfiniment, et l'écran restait bloqué sur « Processing… » sans que
+   *    rien n'arrive jamais. On s'arrête au bout de six minutes de TRAVAIL.
+   *  - le rang en file n'était jamais montré : quand la file anonyme est
+   *    chargée, le visiteur regarde un compteur monter en croyant que c'est
+   *    cassé, alors que son travail attend simplement son tour.
+   *  - le compteur incluait l'attente en file, si bien qu'un travail pouvait
+   *    « expirer » avant même d'avoir commencé. Le budget s'applique au
+   *    travail réel, pas à la place dans la queue — même règle que le studio.
+   *  - une erreur réseau n'était que journalisée : après vingt échecs
+   *    d'affilée, on le dit au visiteur au lieu de sonder dans le vide. */
   function startPolling(type, taskId, genId) {
     if (pollingTimer) clearInterval(pollingTimer);
-    let elapsed = 0;
+    let travail = 0;                 // secondes de traitement réel
+    let echecs = 0;                  // erreurs réseau consécutives
+    const MAX_TRAVAIL = 360;         // six minutes, comme le studio
+    const MAX_ECHECS = 20;
+
+    const stop = () => { clearInterval(pollingTimer); pollingTimer = null; };
 
     pollingTimer = setInterval(async () => {
-      elapsed += 3;
       const txt = document.getElementById('processing-text');
-      if (txt) txt.textContent = `Processing... ${elapsed}s`;
-
       try {
         const res = await Auth.authFetch(`/api/status/${type}/${taskId}?generationId=${genId}`);
         const data = await res.json();
+        echecs = 0;
 
         if (data.failed) {
-          clearInterval(pollingTimer);
-          pollingTimer = null;
-          toast(data.error || 'Task failed', true);
+          stop();
+          toast(data.error || I18N.t('Task failed'), true);
           renderWorkspace(currentTool);
           return;
         }
 
         if (data.ready) {
-          clearInterval(pollingTimer);
-          pollingTimer = null;
+          stop();
           showResult(type, data.resultUrl);
-          toast('Done!');
+          toast(I18N.t('Done!'));
           // Re-render workspace (user can submit again)
+          renderWorkspace(currentTool);
+          return;
+        }
+
+        if (data.state === 'queued') {
+          if (txt) {
+            txt.textContent = data.position
+              ? `${I18N.t('Queued — position')} ${data.position}`
+              : I18N.t('Queued — waiting for a free slot');
+          }
+          return;                    // l'attente en file ne consomme pas le budget
+        }
+
+        travail += 3;
+        if (txt) txt.textContent = `${I18N.t('Processing')}… ${travail}s`;
+        if (travail >= MAX_TRAVAIL) {
+          stop();
+          toast(I18N.t('Still not finished after 6 minutes — it may still appear in the community gallery'), true);
           renderWorkspace(currentTool);
         }
       } catch (err) {
+        echecs++;
         console.error('Poll error:', err);
+        if (txt && echecs > 2) txt.textContent = I18N.t('Connection lost — retrying…');
+        if (echecs >= MAX_ECHECS) {
+          stop();
+          toast(I18N.t('Connection lost — check your network and try again'), true);
+          renderWorkspace(currentTool);
+        }
       }
     }, 3000);
   }
