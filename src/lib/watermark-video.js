@@ -114,20 +114,34 @@ export async function watermarkVideo(buffer) {
     // 1080p, où il paraît seulement un peu plus discret.
     await writeFile(marque, await bandeau(1280));
 
-    await lancer([
+    /* Deux tentatives, parce qu'une seule laissait la vidéo NUE en silence.
+     *
+     * La piste sonore est d'abord recopiée telle quelle : la réencoder
+     * n'apporterait rien et abîmerait un son que le visiteur a payé. Mais une
+     * copie de flux échoue dès que le conteneur de sortie n'accepte pas le
+     * codec d'entrée tel quel — et comme ce module rend la vidéo d'origine
+     * quand il échoue, la panne était totalement muette : la vidéo sortait sans
+     * filigrane et rien ne le disait. Constaté en production le 26/08 sur trois
+     * générations, alors que le même code marchait sur une vidéo synthétique.
+     *
+     * On réessaie donc une fois en réencodant l'audio. Perdre un peu de qualité
+     * sonore vaut mieux que publier un travail sans protection. */
+    const base = [
       '-y', '-loglevel', 'error',
       '-i', entree,
       '-i', marque,
       '-filter_complex', 'overlay=W-w-16:H-h-16',
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
-      // La piste sonore est recopiée telle quelle : la réencoder n'apporterait
-      // rien et abîmerait un son que le visiteur a payé.
-      '-c:a', 'copy',
       // Déplace l'index en tête : sans ça une vidéo servie en flux ne démarre
       // qu'une fois entièrement téléchargée.
       '-movflags', '+faststart',
-      sortie,
-    ]);
+    ];
+    try {
+      await lancer([...base.slice(0, -2), '-c:a', 'copy', ...base.slice(-2), sortie]);
+    } catch (premiere) {
+      console.warn('[FILIGRANE vidéo] copie audio refusée, réencodage —', premiere.message.slice(0, 140));
+      await lancer([...base.slice(0, -2), '-c:a', 'aac', '-b:a', '128k', ...base.slice(-2), sortie]);
+    }
 
     const res = await readFile(sortie);
     return res.length > 0 ? res : buffer;
