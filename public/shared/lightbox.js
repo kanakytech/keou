@@ -49,6 +49,7 @@ const Lightbox = (() => {
     'audio/ogg': 'ogg', 'audio/flac': 'flac',
   };
   let _previousFocus = null; // a11y: focus to restore on close
+  let _timerVidage = null;   // vidage différé du corps, armé par close()
   let _vtBusy = false; // re-entrance guard for the thumbnail→lightbox morph
   // API cache (60s TTL) — avoid refetching on every lightbox open
   let _projectsCache = null;
@@ -462,7 +463,14 @@ const Lightbox = (() => {
       const activeModelChip = _el.querySelector('#lb-model-chips .lb-model-chip.active');
       const model = activeModelChip ? activeModelChip.dataset.model : 'grok-imagine';
       const activeDurationChip = _el.querySelector('#lb-duration-chips .lb-model-chip.active');
-      const duration = activeDurationChip ? parseInt(activeDurationChip.dataset.duration) : 10;
+      /* Sur Veo, la rangée ne porte pas de durée : ses puces n'ont qu'un
+       * `data-variant`. parseInt(undefined) rendait NaN, et ce NaN partait tel
+       * quel à l'appelant. studio.html le laisse tomber par chance — il teste
+       * `if (duration)` — mais un appelant qui écrirait `duration ?? 10`
+       * enverrait NaN au fournisseur. On ne transmet un nombre que s'il en est
+       * un ; sinon rien, et chacun applique son propre défaut. */
+      const dureeLue = activeDurationChip ? parseInt(activeDurationChip.dataset.duration, 10) : 10;
+      const duration = Number.isFinite(dureeLue) ? dureeLue : undefined;
       // Sur Veo, la même rangée porte la qualité : c'est elle qui part.
       const variant = activeDurationChip ? activeDurationChip.dataset.variant : undefined;
       _cdWrap.classList.remove('visible');
@@ -499,6 +507,15 @@ const Lightbox = (() => {
     document.addEventListener('keydown', (e) => {
       if (!_el.classList.contains('open')) return;
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+      /* Un raccourci du NAVIGATEUR n'est pas un raccourci de la visionneuse.
+       *
+       * Les lettres nues sont à nous ; ⌘/Ctrl + lettre appartient au
+       * navigateur. Sans ce filtre, ⌘A (tout sélectionner) déclenchait
+       * « Adapt », ⌘P (imprimer) « Polish » et Ctrl+U (code source)
+       * « Upscale » : trois générations PAYÉES sur la clé du visiteur pour un
+       * geste qui ne demandait rien de tel — et la visionneuse se fermait
+       * dans la foulée, sans qu'il comprenne ce qu'il venait d'acheter. */
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'Escape') close();
       if (e.key === 'd' || e.key === 'D') _download();
       if ((e.key === 'a' || e.key === 'A') && _currentMeta?.onAdapt) {
@@ -556,10 +573,20 @@ const Lightbox = (() => {
         _projectsCacheAt = now;
       }
       if (!projects.length) { list.innerHTML = '<div class="lb-move-loading">No clients found</div>'; return; }
+      /* Tout ce qui vient de l'API s'échappe, et s'échappe avec `esc`.
+       *
+       * Deux défauts tenaient dans ces trois lignes. `escapeHtml` est un global
+       * d'auth.js — que share.html ne charge PAS : le panneau « Move » y aurait
+       * levé un ReferenceError au premier clic, sur la seule surface que voient
+       * les clients de l'agence. Et le nom n'était protégé qu'à moitié
+       * (`.replace(/"/g)`, qui explose en prime sur un nom nul) tandis que la
+       * couleur, elle, s'interpolait nue dans un attribut : un guillemet dans
+       * `color` et l'attribut se referme. `esc`, défini en tête de ce module,
+       * couvre les cinq caractères et les trois emplacements. */
       list.innerHTML = projects.map(p =>
-        `<div class="lb-move-item" data-pid="${p.id}" data-pname="${p.name.replace(/"/g, '&quot;')}">
-          <span class="lb-move-dot" style="background:${p.color || '#6B7280'}"></span>
-          ${escapeHtml(p.name)}
+        `<div class="lb-move-item" data-pid="${esc(p.id)}" data-pname="${esc(p.name)}">
+          <span class="lb-move-dot" style="background:${esc(p.color || '#6B7280')}"></span>
+          ${esc(p.name)}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;margin-left:auto;opacity:.4"><polyline points="9 18 15 12 9 6"/></svg>
         </div>`
       ).join('');
@@ -572,7 +599,7 @@ const Lightbox = (() => {
   async function _loadCampaigns(projectId, projectName) {
     const list = _el.querySelector('#lb-move-list');
     const title = _el.querySelector('#lb-move-title');
-    title.innerHTML = `<span style="cursor:pointer;opacity:.6" id="lb-move-back">&larr;</span> ${escapeHtml(projectName)}`;
+    title.innerHTML = `<span style="cursor:pointer;opacity:.6" id="lb-move-back">&larr;</span> ${esc(projectName)}`;
     list.innerHTML = '<div class="lb-move-loading">Loading campaigns...</div>';
 
     // Back button to return to project list
@@ -594,10 +621,12 @@ const Lightbox = (() => {
         _campaignsCacheAt[projectId] = now;
       }
       if (!campaigns.length) { list.innerHTML = '<div class="lb-move-loading">No campaigns found</div>'; return; }
+      // Même règle que pour les clients ci-dessus : `esc`, partout, sur tout ce
+      // que rend l'API.
       list.innerHTML = campaigns.map(c =>
-        `<div class="lb-move-item" data-cid="${c.id}" data-cname="${(c.name || '').replace(/"/g, '&quot;')}">
-          <span class="lb-move-dot" style="background:${c.color || '#06B6D4'}"></span>
-          ${escapeHtml(c.name)}
+        `<div class="lb-move-item" data-cid="${esc(c.id)}" data-cname="${esc(c.name)}">
+          <span class="lb-move-dot" style="background:${esc(c.color || '#06B6D4')}"></span>
+          ${esc(c.name)}
         </div>`
       ).join('');
       list.querySelectorAll('.lb-move-item').forEach(item => {
@@ -888,19 +917,34 @@ const Lightbox = (() => {
             _morphes.add(lbImg);           // on retient l'élément, on ne le recherche plus
           }
         });
+        /* Filet : si la promesse ne se règle jamais (onglet en arrière-plan,
+         * transition avortée par le navigateur), on libère quand même.
+         *
+         * Il est ANNULÉ dès que la transition se règle. Laissé courir, il
+         * tombait au milieu de l'ouverture SUIVANTE : deux images ouvertes à
+         * moins de deux secondes d'intervalle, et le filet de la première
+         * arrachait le nom de transition de la seconde en plein fondu — le
+         * défaut même que tout ce garde-fou cherche à empêcher. */
+        const filet = setTimeout(() => { if (_vtBusy) { _vtBusy = false; _libererMorph(); } }, 2000);
         // `finished` rejette sur transition sautée : on rattrape, sinon la
         // promesse remonte en erreur non gérée dans la console du visiteur.
         vt.finished.catch(() => {}).finally(() => {
+          clearTimeout(filet);
           _vtBusy = false;
           _libererMorph();
         });
-        // Filet : si la promesse ne se règle jamais (onglet en arrière-plan,
-        // transition avortée par le navigateur), on libère quand même.
-        setTimeout(() => { if (_vtBusy) { _vtBusy = false; _libererMorph(); } }, 2000);
         return;
       }
     }
     _build();
+    /* Le vidage différé de la fermeture précédente ne doit pas emporter ce
+     * contenu-ci. close() attend 300 ms — le temps du fondu — avant d'effacer
+     * le corps et la barre d'actions. Rouvrir la visionneuse dans cet
+     * intervalle (fermer, puis cliquer la vignette d'à côté) laissait le
+     * minuteur d'avant vider l'image qu'on venait d'afficher : visionneuse
+     * ouverte, écran vide, aucun bouton. */
+    clearTimeout(_timerVidage);
+    _timerVidage = null;
     _currentUrl = url;
     _currentMeta = meta;
     /* Le type ouvert est retenu : c'est lui qui nomme le fichier enregistré et
@@ -941,7 +985,10 @@ const Lightbox = (() => {
       if (meta.model) pills.push(meta.model);
       if (meta.format) pills.push(meta.format);
       if (meta.date) pills.push(meta.date);
-      if (meta.duration) pills.push({ html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;display:inline;vertical-align:-1px;margin-right:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${meta.duration}` });
+      // L'icône est du HTML voulu ; la durée qui la suit reste une valeur, et
+      // se traite comme les autres — sans quoi la seule pastille exemptée
+      // d'échappement serait aussi la seule à porter une donnée.
+      if (meta.duration) pills.push({ html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;display:inline;vertical-align:-1px;margin-right:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${esc(meta.duration)}` });
       if (meta.cost) pills.push(meta.cost);
       if (meta.userName) pills.push(meta.userName);
       // Une pastille et une seule porte du HTML voulu — l'icône de durée,
@@ -1093,10 +1140,16 @@ const Lightbox = (() => {
     const defaultChip = _el.querySelector('#lb-model-chips .lb-model-chip[data-model="grok-imagine"]');
     if (defaultChip) defaultChip.classList.add('active');
 
-    // Reset duration selection to default (10s)
-    _el.querySelectorAll('#lb-duration-chips .lb-model-chip').forEach(c => c.classList.remove('active'));
-    const defaultDuration = _el.querySelector('#lb-duration-chips .lb-model-chip[data-duration="10"]');
-    if (defaultDuration) defaultDuration.classList.add('active');
+    /* La durée active est posée par _rendreDurees ci-dessus, et par lui seul.
+     *
+     * Le rappel qui traînait ici cochait « 10s » en dur. Il tombe juste tant que
+     * le modèle par défaut propose 10 s — c'est le cas de grok-imagine — mais il
+     * double une décision qui ne lui appartient plus : que le défaut change pour
+     * un modèle sans 10 s et ce rappel décochait TOUT sans rien recocher, la
+     * rangée restait vide, et le bouton repartait alors sur son repli de 10 s,
+     * une durée que le modèle choisi ne sait pas rendre. C'est exactement le
+     * mensonge que DUREES_PAR_MODELE vient de supprimer. Un seul endroit décide
+     * de cet état. */
 
     document.body.style.overflow = 'hidden';
     // A11y: remember which element had focus so we can restore on close, then move
@@ -1145,7 +1198,9 @@ const Lightbox = (() => {
     const refEl = _el?.querySelector('#lb-ref');
     if (refEl) refEl.style.display = 'none';
 
-    setTimeout(() => {
+    clearTimeout(_timerVidage);
+    _timerVidage = setTimeout(() => {
+      _timerVidage = null;
       if (_body) _body.innerHTML = '';
       if (_actionBar) _actionBar.innerHTML = '';
     }, 300);

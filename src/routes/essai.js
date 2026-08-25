@@ -1,7 +1,7 @@
 /**
  * Essai communautaire — génération anonyme BYOK + galerie publique
  *
- * POST   /api/essai/generer      filtre de prompt → job en file FIFO
+ * POST   /api/essai/generer      filtre de prompt → job mis en file
  * GET    /api/essai/statut/:id   statut + position dans la file (polling)
  * GET    /api/essai/galerie      galerie publique paginée (récentes d'abord)
  * POST   /api/essai/signaler/:id signalement (auto-masquage à 3 signalements)
@@ -21,11 +21,24 @@
  * GET    /api/essai/studio/status/:id statut au format attendu par studio.html
  *                                     ({ ready, resultUrl, state, failed, media })
  *
+ * Ordonnancement : la file ne se sert plus en FIFO strict mais au tour par tour
+ * entre adresses IP (src/lib/essai-queue.js). L'en-tête annonçait « file FIFO »
+ * bien après le changement : la position rendue au client est un rang d'arrivée,
+ * pas une promesse d'ordre de service. Ne pas la présenter autrement.
+ *
  * Sécurité :
  *   - La clé du visiteur arrive via X-Provider-Key (même mécanisme BYOK que
  *     le studio — requestContext), n'est jamais persistée ni loggée.
  *   - ids UUID v4 : non séquentiels, non devinables.
- *   - Le média est servi par proxy : aucune URL R2/provider n'atteint le client.
+ *   - Le RÉSULTAT est servi par proxy : aucune URL R2 ni provider du média
+ *     produit n'atteint le client. Une seule URL R2 lui revient, et c'est la
+ *     sienne : POST /upload rend l'adresse de la source qu'il vient de
+ *     déposer, dont le studio a besoin pour enchaîner. L'affirmation absolue
+ *     d'avant (« aucune URL R2 n'atteint le client ») décrivait le fichier tel
+ *     qu'il était AVANT le studio anonyme.
+ *   - Une clé d'idempotence facultative (idempotencyKey) déduplique les
+ *     lancements — sans elle, un double-clic partait deux fois sur la clé
+ *     KIE.AI du visiteur, donc sur son argent. Voir « Idempotence » plus bas.
  *   - Toute sortie anonyme est publiée dans la galerie — c'est la modération
  *     par transparence. Elle est aussi enregistrable : le filigrane est ce qui
  *     protège le travail, pas un bouton absent. Il couvre l'image (sharp) et la
@@ -34,10 +47,10 @@
  */
 
 import { Router } from 'express';
-import { randomUUID, randomBytes } from 'crypto';
+import { randomUUID, randomBytes, createHash } from 'crypto';
 import multer from 'multer';
 import sharp from 'sharp';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { config } from '../config.js';
 import { query, queryOne, queryAll } from '../db.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -104,6 +117,170 @@ const THUMB_QUALITY = 72;
 // retélécharger, et un contenu masqué disparaît en quelques minutes au pire.
 const MEDIA_CACHE_SECONDS = 300;
 
+// ─── Idempotence ───
+//
+// Côté compte, une clé d'idempotence déduplique les lancements (findIdempotent
+// dans src/lib/keou-actions.js, appliquée par src/routes/generate.js et
+// src/routes/tools.js). Les routes anonymes ne la lisaient pas du tout : un
+// double-clic, ou un réessai après une réponse perdue en route, partait DEUX
+// fois. Sur un compte, un doublon coûte des crédits que la plateforme peut
+// rembourser ; ici il coûte au visiteur, sur SA clé KIE.AI, et rien ne le lui
+// rendra. C'est le pire endroit du produit pour ne pas dédupliquer.
+//
+// Ce qui est écrit en base n'est PAS la clé du client mais sha256(ip + clé) :
+//   - la clé brute d'un visiteur anonyme serait un identifiant durable de plus
+//     dans une table qui, par construction, n'en porte aucun ; une empreinte
+//     n'en est pas un et ne se relit pas ;
+//   - elle lie la clé à l'IP, ce qui est la règle demandée (« même clé, même
+//     IP ») et ferme au passage la porte évidente : sans ce lien, envoyer une
+//     clé devinée rendrait la tâche d'un autre visiteur.
+//
+// 200 caractères, parce que c'est EXACTEMENT la borne que l'adaptateur anonyme
+// applique avant d'envoyer (public/shared/anon.js). Une borne serveur plus
+// basse rejetterait en 400 une clé que le client tient pour valable : la
+// protection contre la double facturation deviendrait une panne.
+const MAX_IDEMPOTENCY_KEY = 200;
+
+// La colonne idempotency_key peut manquer : src/migrate.js n'appartient pas à
+// ce lot, et un déploiement peut précéder sa migration. Sans ce sondage, une
+// colonne absente ferait échouer CHAQUE génération anonyme (42703
+// undefined_column) — infiniment pire que le double-clic qu'on répare. On sonde
+// une fois par processus, puis on s'en souvient ; sans la colonne, la
+// déduplication est simplement inactive et tout le reste fonctionne.
+let colonneIdempotence = null;
+async function idempotenceDisponible() {
+  if (colonneIdempotence === null) {
+    try {
+      /* On vérifie la colonne ET l'index — pas seulement la colonne.
+       *
+       * `ON CONFLICT` exige une contrainte unique. Une migration à moitié
+       * appliquée (colonne posée, index oublié) faisait donc échouer CHAQUE
+       * génération anonyme en 42P10, et studio.html réessayait trois fois : le
+       * studio public tombait entier. Sonder la colonne seule laissait croire
+       * que tout allait bien. */
+      const trouvee = await queryOne(
+        `SELECT
+           (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'essai_generations' AND column_name = 'idempotency_key') AS colonne,
+           (SELECT 1 FROM pg_indexes
+             WHERE tablename = 'essai_generations' AND indexname = 'idx_essai_idempotency') AS index`
+      );
+      colonneIdempotence = Boolean(trouvee && trouvee.colonne && trouvee.index);
+      if (!colonneIdempotence) {
+        const manque = !trouvee?.colonne ? 'colonne' : 'index unique';
+        console.warn(`[ESSAI] ${manque} idempotency_key absent — deduplication anonyme inactive (sans danger)`);
+      }
+    } catch (err) {
+      console.error('[ESSAI sonde idempotence]', err.message);
+      colonneIdempotence = false;
+    }
+  }
+  return colonneIdempotence;
+}
+
+/**
+ * Empreinte d'idempotence du couple (IP, clé fournie par le client).
+ *
+ * Rend { empreinte: null } quand le client n'en fournit pas — c'est le cas
+ * normal aujourd'hui. Rend { error } quand la clé est inexploitable, plutôt que
+ * de l'ignorer en silence : une clé ignorée, c'est la garantie de
+ * non-double-facturation qui disparaît sans que personne s'en aperçoive.
+ *
+ * @param {import('express').Request} req
+ * @param {unknown} brut  req.body.idempotencyKey, tel qu'il arrive
+ * @returns {{ empreinte: string|null } | { error: string }}
+ */
+function empreinteIdempotence(req, brut) {
+  if (brut === undefined || brut === null || brut === '') return { empreinte: null };
+  if (typeof brut !== 'string') return { error: 'idempotencyKey must be a string' };
+  const cle = brut.trim();
+  if (!cle) return { empreinte: null };
+  if (cle.length > MAX_IDEMPOTENCY_KEY) {
+    return { error: `idempotencyKey must be ${MAX_IDEMPOTENCY_KEY} characters or less` };
+  }
+  // Le saut de ligne sépare les deux champs : sans lui, ('1.2.3.4', '5abc') et
+  // ('1.2.3.45', 'abc') donneraient la même empreinte, donc la tâche de l'un
+  // rendue à l'autre.
+  return { empreinte: createHash('sha256').update(`${clientIp(req)}\n${cle}`).digest('hex') };
+}
+
+/**
+ * La tâche déjà lancée sous cette empreinte, ou null.
+ *
+ * Deux bornes, et chacune évite un piège :
+ *
+ *  - on ignore les tâches ÉCHOUÉES. Sans ça, la relance automatique du studio
+ *    après un 500 recevait l'échec précédent au lieu de repartir : un raté
+ *    passager du fournisseur devenait définitif, et le bouton « réessayer »
+ *    ne pouvait plus rien réessayer.
+ *  - on ne remonte pas au-delà d'une heure. L'empreinte tient compte de
+ *    l'adresse et de la clé fournies par le client ; sans limite de temps, une
+ *    clé réutilisée le lendemain rendrait la création de la veille au lieu
+ *    d'en lancer une neuve.
+ *
+ * La fenêtre couvre largement le seul cas qu'on veut attraper : le double-clic
+ * et la relance après une réponse perdue, qui se comptent en secondes.
+ */
+function tacheParEmpreinte(empreinte) {
+  return queryOne(
+    `SELECT id, status, media, kind FROM essai_generations
+      WHERE idempotency_key = $1
+        AND status <> 'failed'
+        AND created_at > NOW() - INTERVAL '1 hour'`,
+    [empreinte]
+  );
+}
+
+/**
+ * Réponse rendue quand une clé d'idempotence désigne une tâche déjà lancée.
+ * `deduped` porte le même nom que sur le chemin d'un compte (generate.js) :
+ * un client qui sait le lire n'a pas deux vocabulaires à apprendre.
+ *
+ * @param {boolean} studio  format attendu par studio.html (taskId/generationId)
+ */
+function rendreTacheExistante(res, ligne, studio) {
+  const base = { id: ligne.id, position: positionOf(ligne.id), status: ligne.status, deduped: true };
+  if (!studio) return res.json(base);
+  return res.json({
+    ...base,
+    taskId: ligne.id,
+    generationId: ligne.id,
+    type: ligne.kind,
+    // Même résolution du média que partout ailleurs : la colonne fait foi, la
+    // table des kinds ne sert que de repli pour les lignes qui la précèdent.
+    media: ligne.media || mediaForKind(ligne.kind).media,
+  });
+}
+
+/**
+ * Insère la ligne de génération EN RÉSERVANT l'empreinte d'idempotence.
+ *
+ * La réservation se fait dans l'INSERT, pas par une lecture préalable : entre
+ * un SELECT et un INSERT, node rend la main, et deux requêtes jumelles (le
+ * double-clic, précisément) passent toutes les deux le SELECT avant que l'une
+ * ait inséré. C'est l'index unique qui tranche, pas nous.
+ *
+ * @returns {Promise<boolean>} false si l'empreinte était déjà prise — l'appelant
+ *   rend alors la tâche existante au lieu d'en mettre une seconde en file.
+ */
+async function reserverGeneration({ id, prompt, format, kind, media, empreinte }) {
+  if (empreinte) {
+    const ligne = await queryOne(
+      `INSERT INTO essai_generations (id, prompt, status, format, kind, media, idempotency_key)
+            VALUES ($1, $2, 'queued', $3, $4, $5, $6)
+       ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+         RETURNING id`,
+      [id, prompt, format, kind, media, empreinte]
+    );
+    return Boolean(ligne);
+  }
+  await query(
+    `INSERT INTO essai_generations (id, prompt, status, format, kind, media) VALUES ($1, $2, 'queued', $3, $4, $5)`,
+    [id, prompt, format, kind, media]
+  );
+  return true;
+}
+
 // ─── Générer ───
 router.post('/generer', async (req, res) => {
   try {
@@ -114,7 +291,7 @@ router.post('/generer', async (req, res) => {
       return res.status(400).json({ error: 'API key required — paste your KIE.AI key (it stays in your browser)' });
     }
 
-    const { prompt, format, consent } = req.body || {};
+    const { prompt, format, consent, idempotencyKey } = req.body || {};
     if (consent !== true) {
       return res.status(400).json({ error: 'Consent required: everything created here is public' });
     }
@@ -127,12 +304,31 @@ router.post('/generer', async (req, res) => {
     if (check.blocked) return res.status(422).json({ error: check.message, category: check.category });
 
     const cleanFormat = VALID_FORMATS.includes(format) ? format : '1:1';
+
+    const idem = empreinteIdempotence(req, idempotencyKey);
+    if (idem.error) return res.status(400).json({ error: idem.error });
+    const empreinte = idem.empreinte && (await idempotenceDisponible()) ? idem.empreinte : null;
+    if (empreinte) {
+      const deja = await tacheParEmpreinte(empreinte);
+      if (deja) return rendreTacheExistante(res, deja, false);
+    }
+
     const id = randomUUID();
 
-    await query(
-      `INSERT INTO essai_generations (id, prompt, status, format) VALUES ($1, $2, 'queued', $3)`,
-      [id, cleanPrompt, cleanFormat]
-    );
+    // kind et media étaient laissés aux valeurs par défaut de la table
+    // ('text' et 'image') ; on les écrit maintenant explicitement, parce que
+    // l'insertion est partagée avec le studio anonyme. Les valeurs sont
+    // exactement celles que la base posait — aucune ligne ne change de nature.
+    const reserve = await reserverGeneration({
+      id, prompt: cleanPrompt, format: cleanFormat, kind: 'text', media: 'image', empreinte,
+    });
+    if (!reserve) {
+      // Course perdue contre une requête jumelle : c'est le double-clic. On rend
+      // SA tâche plutôt que d'en facturer une seconde au visiteur.
+      const deja = await tacheParEmpreinte(empreinte);
+      if (deja) return rendreTacheExistante(res, deja, false);
+      return res.status(409).json({ error: 'Duplicate request — generation already in progress' });
+    }
 
     const q = enqueue({ id, prompt: cleanPrompt, format: cleanFormat, apiKey, ip: clientIp(req) });
     if (!q.ok) {
@@ -169,7 +365,14 @@ router.get('/statut/:id', async (req, res) => {
       // deuxième table écrite ici, qui divergerait au premier ajout.
       payload.media = row.media || mediaForKind(row.kind).media;
     }
-    if (row.status === 'failed') payload.error = row.error || 'La generation a echoue';
+    // Le repli s'écrit en anglais comme tout texte d'interface du dépôt — la
+    // traduction vit dans i18n/fr.json, qui porte déjà cette phrase exacte. En
+    // dur en français, un visiteur anglophone lisait du français, et le
+    // dictionnaire, qui apparie la chaîne anglaise EXACTE, n'avait aucune prise
+    // dessus. row.error vient de la file, qui parle anglais elle aussi
+    // (src/lib/essai-queue.js) — les deux moitiés de ce `||` sont enfin dans la
+    // même langue.
+    if (row.status === 'failed') payload.error = row.error || 'The generation failed';
     res.json(payload);
   } catch (e) {
     console.error('[ESSAI statut]', e.message);
@@ -208,7 +411,7 @@ router.get('/galerie', async (req, res) => {
     res.json({ items, page, hasMore, queue: queueStats() });
   } catch (e) {
     console.error('[ESSAI galerie]', e.message);
-    res.status(500).json({ error: 'Galerie indisponible' });
+    res.status(500).json({ error: 'Gallery unavailable' });
   }
 });
 
@@ -233,6 +436,32 @@ async function getObjectRange(key, range) {
     Range: range || undefined,
   }));
   return { body: out.Body, contentLength: out.ContentLength, contentRange: out.ContentRange };
+}
+
+/**
+ * Taille exacte d'un objet R2, ou null si elle ne peut pas être lue.
+ *
+ * Sert au seul Content-Range d'une réponse 416 — c'est la seule information qui
+ * permette au lecteur de redemander un intervalle valable au lieu de réessayer
+ * le même. HeadObject ne rapatrie aucun corps : le coût est une requête, et
+ * uniquement dans le cas rare d'un intervalle hors bornes.
+ *
+ * @param {string} key
+ * @returns {Promise<number|null>}
+ */
+async function tailleObjet(key) {
+  try {
+    const out = await r2Client.send(new HeadObjectCommand({
+      Bucket: config.r2.bucket,
+      Key: key,
+    }));
+    return typeof out.ContentLength === 'number' ? out.ContentLength : null;
+  } catch (err) {
+    // Jamais de détail au client (pas de fuite de clé d'objet) : on rend null
+    // et le 416 partira sans Content-Range.
+    console.error('[ESSAI taille objet]', err.name || err.message);
+    return null;
+  }
 }
 
 /**
@@ -339,7 +568,7 @@ router.get('/image/:id', async (req, res) => {
     if (!UUID_RE.test(id)) return res.status(404).end();
 
     const row = await queryOne(
-      `SELECT r2_key, hidden, status, kind FROM essai_generations WHERE id = $1`,
+      `SELECT r2_key, hidden, status, kind, media FROM essai_generations WHERE id = $1`,
       [id]
     );
     if (!row || row.status !== 'completed' || row.hidden || !row.r2_key) return res.status(404).end();
@@ -349,8 +578,15 @@ router.get('/image/:id', async (req, res) => {
     // plus bas, un MP4 annoncé en image/png ne se lirait nulle part : le
     // navigateur s'interdit de rattraper une déclaration fausse.
     const out = mediaForKind(row.kind);
+    // Cette route lisait le média par le SEUL kind, alors que /statut, /galerie
+    // et /studio/status lisent d'abord la colonne. Une ligne dont le kind ne
+    // serait pas (ou plus) dans la table retombe sur 'text', donc sur 'image' :
+    // c'est ici que sharp aurait reçu un MP4. La colonne fait foi, comme
+    // partout ailleurs ; le mime et l'extension, eux, n'existent que dans la
+    // table des kinds, d'où les deux lectures.
+    const media = row.media || out.media;
 
-    if (req.query.v === '1' && out.media === 'image') {
+    if (req.query.v === '1' && media === 'image') {
       const wantsWebp = /image\/webp/i.test(req.headers.accept || '');
       return await serveThumbnail(res, id, row.r2_key, wantsWebp);
     }
@@ -367,10 +603,29 @@ router.get('/image/:id', async (req, res) => {
       try {
         part = await getObjectRange(row.r2_key, rangeHeader);
       } catch (err) {
-        // Intervalle hors bornes (InvalidRange) : la norme permet d'ignorer un
-        // Range et de rendre l'objet entier. C'est plus sûr qu'un 416 dont on
-        // ne saurait pas remplir le Content-Range sans un HEAD supplémentaire.
-        if (err?.name !== 'InvalidRange') throw err;
+        // Intervalle hors bornes. On répondait alors l'objet ENTIER en 200 : un
+        // lecteur qui demandait 'bytes=99999999-' recevait donc plusieurs
+        // mégaoctets qu'il jetait aussitôt — sur la clé du visiteur c'est de la
+        // bande passante, et côté client le bug restait invisible. RFC 9110
+        // §15.4.17 demande un 416 qui DIT la taille réelle ; le prétexte
+        // d'alors (« on ne saurait pas remplir le Content-Range sans un HEAD »)
+        // décrivait exactement la solution : HeadObject rend la taille en une
+        // requête sans corps, et seulement dans ce cas rare.
+        //
+        // R2 n'est pas S3 : selon la version du SDK l'erreur arrive tantôt
+        // nommée InvalidRange, tantôt seulement en 416. On reconnaît les deux,
+        // faute de quoi le cas retombait dans le throw et sortait en 404.
+        const horsBornes = err?.name === 'InvalidRange'
+          || err?.Code === 'InvalidRange'
+          || err?.$metadata?.httpStatusCode === 416;
+        if (!horsBornes) throw err;
+        const taille = await tailleObjet(row.r2_key);
+        setMediaHeaders(res, { mime: out.mime, ext: out.ext, ranges: true });
+        // Sans la taille, on rend quand même 416 : la norme ne fait qu'y
+        // RECOMMANDER le Content-Range, et refuser franchement vaut mieux que
+        // servir un fichier entier que personne n'a demandé.
+        if (taille !== null) res.setHeader('Content-Range', `bytes */${taille}`);
+        return res.status(416).end();
       }
       if (part) {
         setMediaHeaders(res, { mime: out.mime, ext: out.ext, ranges: true });
@@ -479,12 +734,12 @@ async function resolveStudioSource({ sourceId, imageUrl }) {
     // galerie sous un nouvel uuid. Le masquage doit couper la chaîne entière.
     if (!row || row.status !== 'completed' || row.hidden || !row.r2_key) return { error: 'Source not found' };
     if (row.media && row.media !== 'image') {
-      return { error: 'Cette operation part d\'une image — la source choisie n\'en est pas une' };
+      return { error: 'This operation starts from an image — the source you picked is not one' };
     }
     return { url: await getPresignedUrl(row.r2_key, 3600) };
   }
   if (imageUrl) {
-    try { assertSafeUrl(imageUrl); } catch { return { error: 'URL d\'image invalide' }; }
+    try { assertSafeUrl(imageUrl); } catch { return { error: 'Invalid image URL' }; }
     return { url: imageUrl };
   }
   return { error: 'Source image required' };
@@ -527,6 +782,17 @@ async function launchStudioJob(req, res, { kind, galleryPrompt, userText, format
     if (check.blocked) return res.status(422).json({ error: check.message, category: check.category });
   }
 
+  // Clé d'idempotence : lue ici et non dans chacune des huit routes — un seul
+  // endroit à tenir, et aucune route ne peut être oubliée le jour où on en
+  // ajoute une neuvième.
+  const idem = empreinteIdempotence(req, req.body?.idempotencyKey);
+  if (idem.error) return res.status(400).json({ error: idem.error });
+  const empreinte = idem.empreinte && (await idempotenceDisponible()) ? idem.empreinte : null;
+  if (empreinte) {
+    const deja = await tacheParEmpreinte(empreinte);
+    if (deja) return rendreTacheExistante(res, deja, true);
+  }
+
   const cleanFormat = VALID_FORMATS.includes(format) ? format : '1:1';
   const id = randomUUID();
   const out = mediaForKind(kind);
@@ -535,10 +801,15 @@ async function launchStudioJob(req, res, { kind, galleryPrompt, userText, format
   // job : derrière une file chargée, un job attend parfois plusieurs minutes en
   // 'queued', et le client qui sonde doit savoir tout de suite s'il prépare une
   // image, une vidéo ou un son.
-  await query(
-    `INSERT INTO essai_generations (id, prompt, status, format, kind, media) VALUES ($1, $2, 'queued', $3, $4, $5)`,
-    [id, galleryPrompt, cleanFormat, kind, out.media]
-  );
+  const reserve = await reserverGeneration({
+    id, prompt: galleryPrompt, format: cleanFormat, kind, media: out.media, empreinte,
+  });
+  if (!reserve) {
+    // Course perdue contre une requête jumelle — le double-clic exactement.
+    const deja = await tacheParEmpreinte(empreinte);
+    if (deja) return rendreTacheExistante(res, deja, true);
+    return res.status(409).json({ error: 'Duplicate request — generation already in progress' });
+  }
 
   const q = enqueue({ id, prompt: galleryPrompt, format: cleanFormat, apiKey, ip: clientIp(req), kind, imageUrl, creativeDirection, ...params });
   if (!q.ok) {
@@ -565,7 +836,12 @@ router.post('/studio/generate', async (req, res) => {
 
     await launchStudioJob(req, res, {
       kind: 'image',
-      galleryPrompt: cd || 'Visuel produit — studio anonyme',
+      // Ces libellés de galerie sont eux aussi du texte d'interface : le mur
+      // public les affiche mot pour mot à la place du prompt, et ils étaient
+      // écrits en français dans un source anglais. Ils ne partent PAS chez le
+      // fournisseur (createProviderTask construit son propre prompt pour ce
+      // kind) : les traduire ne change rien à ce qui est généré.
+      galleryPrompt: cd || 'Product visual — anonymous studio',
       userText: cd || null,
       format,
       imageUrl: source.url,
@@ -586,7 +862,7 @@ router.post('/studio/polish', async (req, res) => {
 
     await launchStudioJob(req, res, {
       kind: 'polish',
-      galleryPrompt: 'Retouche studio (polish) — studio anonyme',
+      galleryPrompt: 'Studio retouch (polish) — anonymous studio',
       userText: null,
       format,
       imageUrl: source.url,
@@ -625,14 +901,14 @@ router.post('/studio/adapt', async (req, res) => {
   try {
     const { sourceId, imageUrl, format } = req.body || {};
     if (!VALID_FORMATS.includes(format)) {
-      return res.status(400).json({ error: `Format invalide. Formats acceptes : ${VALID_FORMATS.join(', ')}` });
+      return res.status(400).json({ error: `Invalid format. Accepted formats: ${VALID_FORMATS.join(', ')}` });
     }
     const source = await resolveStudioSource({ sourceId, imageUrl });
     if (source.error) return res.status(400).json({ error: source.error });
 
     await launchStudioJob(req, res, {
       kind: 'adapt',
-      galleryPrompt: `Adaptation de format ${format} — studio anonyme`,
+      galleryPrompt: `Format adaptation ${format} — anonymous studio`,
       userText: null,
       format,
       imageUrl: source.url,
@@ -660,7 +936,7 @@ router.post('/studio/video', async (req, res) => {
 
     await launchStudioJob(req, res, {
       kind: 'video',
-      galleryPrompt: cd || 'Vidéo — studio anonyme',
+      galleryPrompt: cd || 'Video — anonymous studio',
       userText: cd || null,
       format,
       imageUrl: source.url,
@@ -701,11 +977,21 @@ router.post('/studio/upscale', async (req, res) => {
     if (source.error) return res.status(400).json({ error: source.error });
 
     // Mêmes facteurs qu'un compte (POST /api/tools/image-upscale).
-    const factor = ['4', '8'].includes(String(upscaleFactor)) ? String(upscaleFactor) : '4';
+    /* Topaz n'agrandit que d'un facteur 1, 2 ou 4 — le « 8x » n'existe pas chez
+     * le fournisseur. Avant, la tâche partait et ÉCHOUAIT : visible, donc
+     * remboursable. Puis on s'est mis à la rabattre sur 4 en silence, et elle
+     * réussissait, facturée au tarif du 8x, sans que personne ne dise au client
+     * qu'il recevait la moitié. On avait remplacé une panne par un mensonge.
+     * On refuse, en nommant la raison. */
+    const demande = String(upscaleFactor ?? '4');
+    if (!['1', '2', '4'].includes(demande)) {
+      return res.status(400).json({ error: 'Upscale factor must be 2 or 4 — the provider does not do more' });
+    }
+    const factor = demande;
 
     await launchStudioJob(req, res, {
       kind: 'upscale',
-      galleryPrompt: `Définition ×${factor} — studio anonyme`,
+      galleryPrompt: `Resolution ×${factor} — anonymous studio`,
       userText: null,
       format: null,
       imageUrl: source.url,
@@ -813,7 +1099,7 @@ router.get('/studio/status/:id', async (req, res) => {
       return res.json({ ready: true, resultUrl: `/api/essai/image/${id}`, state: 'completed', media });
     }
     if (row.status === 'failed') {
-      return res.json({ ready: false, failed: true, state: 'failed', media, error: row.error || 'La generation a echoue' });
+      return res.json({ ready: false, failed: true, state: 'failed', media, error: row.error || 'The generation failed' });
     }
     const payload = { ready: false, state: row.status, media };
     if (row.status === 'queued') payload.position = positionOf(id);

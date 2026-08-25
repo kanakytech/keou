@@ -339,6 +339,20 @@ const MIGRATIONS = [
   // <video> ou un <audio> — le kind ne suffit pas, plusieurs kinds partagent
   // un même média. Défaut 'image' : toutes les lignes existantes sont des PNG.
   `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS media TEXT NOT NULL DEFAULT 'image'`,
+  /* La même protection pour le studio anonyme.
+   *
+   * Le code de déduplication a été écrit des deux côtés du tuyau — client et
+   * route — sans que personne ne pose la colonne : la protection était donc
+   * inerte, et un double-clic partait deux fois sur la clé du VISITEUR, son
+   * argent à lui. L'index partiel n'est pas décoratif : `ON CONFLICT` l'exige,
+   * et poser la colonne sans lui fait tomber tout le studio anonyme en 42P10
+   * (« no unique or exclusion constraint matching »). Les deux vont ensemble,
+   * dans cet ordre, toujours.
+   *
+   * La clé stockée est une empreinte sha256(ip + clé) : la clé API du visiteur
+   * n'atteint jamais la base. */
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS idempotency_key TEXT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_essai_idempotency ON essai_generations(idempotency_key) WHERE idempotency_key IS NOT NULL`,
 ];
 /* Schéma de facturation.
  *

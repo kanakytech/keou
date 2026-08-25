@@ -58,12 +58,29 @@ credit top-ups behind it. Nothing in the studio reads them.
 | **Format adapt** | One render becomes every aspect ratio your channels need, recomposed rather than cropped. |
 | **Export packs** | Platform-ready variants from a single approved visual, in one action. Three presets ship (1, 4 and 8 formats); `src/lib/packs.js` is a plain list you extend. |
 | **Voice & sound** | Voice-overs and sound effects for the clips, in the same pipeline. |
-| **Upscaling** | Images and video to 8K. |
+| **Upscaling** | Images and video, ×4 or ×8 (Topaz). Those are the only two factors the routes accept; anything else falls back to ×4. |
 | **Clients & campaigns** | Organise output by client, campaign and approval state. |
 | **Share links** | Send a client a review link and collect structured feedback. |
 | **Teams** | Accounts, roles and quotas for a studio of more than one. |
 | **Assistant** | A chat agent that drives the whole toolset for you. Needs your own Anthropic key. |
 | **Batch** | Dozens of generations queued in parallel with live progress. |
+
+### The hosted demo is not the same deal as your own install
+
+[studio.kanaky.xyz/launch](https://studio.kanaky.xyz/launch) lets you try all of
+this without installing anything, and it costs nothing — but it is a public,
+account-less surface, so it trades differently. Saying so here rather than
+letting you discover it after a generation:
+
+| | Hosted demo (`/launch`, no account) | Your own install |
+|---|---|---|
+| **Watermark** | Every image (sharp) and every video (ffmpeg) is stamped `studio.kanaky.xyz`. Audio is not — nothing can be written into a soundtrack without ruining it. | None. Nothing stamps anything. |
+| **Downloads** | No download button. Results are served through a protected proxy. | Full: signed downloads, export pack ZIPs. |
+| **Privacy** | Everything created is **public** in the community gallery. A blocking consent screen says so before your first generation. | Yours. Nothing is published anywhere. |
+| **Caps** | A shared queue: 3 generations running at once, 60 waiting, 20 per network address. When it is full it tells you how long to wait. | Whatever your provider key and your server allow. |
+
+The code behind that demo is in this repository — it is the `community` edition
+of the same server, and none of those limits apply to an install you run.
 
 ---
 
@@ -77,7 +94,21 @@ credit top-ups behind it. Nothing in the studio reads them.
 | **PostgreSQL** | any recent version |
 | **A provider key** | [KIE.AI](https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793) or [Fal.ai](https://fal.ai) — each user pastes their own |
 | **Object storage** | A Cloudflare R2 bucket (free tier is enough). **Required to upload anything** — `POST /api/upload` returns 503 without it, and uploading a photo is the product's first move. It also keeps results alive past the ~14 days a provider URL lasts. |
-| **ffmpeg** | Optional — only for the public anonymous studio. It stamps `studio.kanaky.xyz` into generated video the way sharp already does for images. Without it, video is served unwatermarked and a line is written to the log; nothing else breaks. The bundled `Dockerfile` installs it for you. |
+| **ffmpeg** | Optional — only for the public anonymous studio. It stamps `studio.kanaky.xyz` into generated video the way sharp already does for images. Without it, video is served unwatermarked and a line is written to the log; nothing else breaks. The bundled `Dockerfile` installs it for you. `GET /health` reports what is actually installed — see below. |
+
+`GET /health` answers with a `media` block so you never have to guess whether a
+rebuilt image still carries the watermarking tools:
+
+```json
+{ "ok": true, "uptime": 3812.4,
+  "media": { "ffmpeg": "6.1.1-3ubuntu5", "sharp": "0.35.3",
+             "videoWatermark": true, "imageWatermark": true } }
+```
+
+`null` means the binary is missing. It is reported, never enforced: a missing
+binary leaves `/health` green, because the service still works — it just
+watermarks less. The probe runs once at startup and is memoised, so container
+healthchecks hitting it every 30 s cost nothing.
 
 ### Run it
 
@@ -99,8 +130,13 @@ Four values in `.env`, and the last two matter as much as the first two:
 DATABASE_URL=postgresql://…      # your database
 JWT_SECRET=…                     # openssl rand -hex 32
 ADMIN_EMAIL=you@example.com      # seeds your account on first boot
-ADMIN_PASSWORD=…                 # 12+ chars
+ADMIN_PASSWORD=…                 # use 12+ chars — nothing checks this one
 ```
+
+`JWT_SECRET` is the only value validated at boot (16 chars minimum, or the
+process exits saying so). `ADMIN_PASSWORD` is hashed and seeded as given — the
+12-character minimum is enforced on *signup* and *password change*, never on
+the seed. Pick a real one: it is the account that owns the instance.
 
 Without `ADMIN_EMAIL` / `ADMIN_PASSWORD` the instance boots with **no way to sign in**:
 public self-serve signup is off by default in a self-hosted deployment, on purpose.
@@ -235,7 +271,7 @@ in, so treat storage as required rather than recommended.
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | **Effectively required.** Seeds your account on an empty database — without them a self-hosted instance has no way to sign in. |
 | `DATABASE_SSL` | — | Set to `0` to disable Postgres TLS. Needed with Docker against a local database. |
 | `AGENCY_NAME` | `Keou` | Shown across the interface |
-| `AGENCY_IMAGE_QUOTA` / `AGENCY_VIDEO_QUOTA` | `500` / `50` | Internal counters. There is no billing in this edition, but the defaults are NOT unlimited — raise them, or copy `.env.example`, which already does. |
+| `AGENCY_IMAGE_QUOTA` / `AGENCY_VIDEO_QUOTA` | `500` / `50` | Seed values for the counters shown in the admin panel. **Not enforced in this edition** — every generation is paid on the caller's own provider key, so there is nothing to meter: `requireCredits` returns immediately and `deductCredits` only records a row for the analytics screens. Raise them if you want the dashboard to read sensibly; you will not be cut off at 500. *(This table used to say the defaults were a real ceiling. They never were, in this edition.)* |
 | `JWT_EXPIRES` / `REFRESH_EXPIRES` | `15m` / `30d` | Token lifetimes |
 | `DATABASE_SSL_STRICT` / `DATABASE_CA` | — | Certificate pinning for managed Postgres |
 | `DISABLE_POLLER` | — | Set to `1` on replicas so only one instance polls |
@@ -277,7 +313,7 @@ never persisted, and you end up holding a provider URL that expires.
 
 | Route | Does |
 |---|---|
-| `/api/upload` | Source images and video (field name: `image`) |
+| `/api/upload` | Source images — field name `image`, 20 MB cap. Video is a separate route: `POST /api/upload/video`, field name `video`, 50 MB cap, `mp4` / `mov` / `mkv`. Both return 503 with the missing variable names if R2 is not configured. |
 | `/api/download` | Signed download of a result |
 | `/api/history` | Your library — list, tag, bulk-move, delete |
 | `/api/projects` | Clients |

@@ -420,7 +420,7 @@
       id: 'image-upscale',
       name: 'Image Upscale',
       desc: 'Sharper detail, up to 8x the pixels',
-      cost: '$0.10 (4K) / $0.20 (8K)',
+      cost: '$0.10 per image',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`,
     },
     {
@@ -645,13 +645,17 @@
             </div>
             <div class="section-label">Upscale Factor</div>
             <div class="factor-grid" id="img-factor-grid">
+              <!-- Topaz n'agrandit que d'un facteur 1, 2 ou 4. Le « 8x » qui figurait ici
+                   n'existe pas chez le fournisseur : la tache echouait, puis on s'est mis a
+                   la rabattre sur 4 en silence tout en la facturant au tarif du 8x. On
+                   n'affiche plus que ce qui existe, et le 2x — le moins cher — reparait. -->
+              <button class="factor-btn" data-factor="2" onclick="pickFactor('img',this)">
+                <span class="factor-label">2x</span>
+                <span class="factor-sub">HD</span>
+              </button>
               <button class="factor-btn active" data-factor="4" onclick="pickFactor('img',this)">
                 <span class="factor-label">4x</span>
                 <span class="factor-sub">4K</span>
-              </button>
-              <button class="factor-btn" data-factor="8" onclick="pickFactor('img',this)">
-                <span class="factor-label">8x</span>
-                <span class="factor-sub">8K</span>
               </button>
             </div>
             <button class="btn-primary full" id="btn-img-up" onclick="submitImageUpscale()">Upscale Image</button>

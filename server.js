@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { config } from './src/config.js';
@@ -162,6 +163,89 @@ app.get('/api/demo-video', async (req, res) => {
   }
 });
 
+// ─── Capacités média du conteneur : sondées UNE fois, au démarrage ───
+/*
+ * /health ne rendait que { ok, uptime }. Personne, depuis l'extérieur, ne
+ * pouvait donc vérifier que ffmpeg tourne VRAIMENT dans le conteneur — alors
+ * que le README public promet que la vidéo du studio anonyme sort filigranée,
+ * et que cette promesse ne tient qu'à un paquet apt (Dockerfile) qu'un rebuild
+ * peut perdre sans un bruit. Quand ffmpeg manque, src/lib/watermark-video.js
+ * rend la vidéo NUE, écrit une ligne de log que personne ne lit, et le service
+ * continue de répondre « ok ». Une promesse publique invérifiable finit
+ * toujours par ne plus être tenue.
+ *
+ * Sondé une seule fois puis mémorisé : le HEALTHCHECK du conteneur appelle
+ * cette route toutes les 30 s, Railway aussi, et les moniteurs externes bien
+ * plus souvent — lancer un processus à chaque appel coûterait plus cher que ce
+ * qu'on mesure. La sonde part au chargement du module et se termine pendant
+ * que la base migre : elle n'ajoute rien au temps de démarrage.
+ *
+ * Elle ne fait JAMAIS échouer /health : sans ffmpeg le service fonctionne, il
+ * filigrane seulement moins. Rendre 503 sortirait l'instance de la rotation
+ * pour un badge — exactement le contraire du service qu'on veut rendre.
+ *
+ * (watermark-video.js a bien son propre test de présence, mais il est privé,
+ * paresseux, et ne rend qu'un booléen : on veut ici la version, et on la veut
+ * avant la première vidéo plutôt qu'après.)
+ */
+const mediaCaps = { ffmpeg: null, sharp: null };
+
+/** Version de ffmpeg, ou null s'il est absent / muet / trop lent. */
+function probeFfmpeg() {
+  return new Promise((resolve) => {
+    let out = '';
+    let child;
+    try {
+      child = spawn('ffmpeg', ['-version'], { stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch {
+      return resolve(null); // binaire introuvable : spawn peut jeter en synchrone
+    }
+    // Un ffmpeg qui ne rend pas la main en 5 s au « -version » est cassé de
+    // toute façon ; on ne retient pas le démarrage du serveur pour lui.
+    const timer = setTimeout(() => { child.kill('SIGKILL'); resolve(null); }, 5000);
+    child.stdout.on('data', (d) => { if (out.length < 200) out += d.toString(); });
+    child.on('error', () => { clearTimeout(timer); resolve(null); });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (code !== 0) return resolve(null);
+      // « ffmpeg version 6.1.1-3ubuntu5 Copyright (c) … » → « 6.1.1-3ubuntu5 »
+      const m = out.match(/^ffmpeg version (\S+)/);
+      resolve(m ? m[1] : 'present');
+    });
+  });
+}
+
+/** Version de sharp, même logique : c'est lui qui filigrane les images. */
+async function probeSharp() {
+  try {
+    const { default: sharp } = await import('sharp');
+    return sharp?.versions?.sharp || 'present';
+  } catch {
+    return null; // binaire natif absent ou incompatible : les images sortiront nues
+  }
+}
+
+const mediaProbe = (async () => {
+  mediaCaps.ffmpeg = await probeFfmpeg();
+  mediaCaps.sharp = await probeSharp();
+  if (!mediaCaps.ffmpeg) {
+    console.warn('  [MEDIA] ffmpeg ABSENT — la video du studio anonyme sortira SANS filigrane');
+  }
+  if (!mediaCaps.sharp) {
+    console.warn('  [MEDIA] sharp ABSENT — les images sortiront SANS filigrane');
+  }
+})();
+
+/** Bloc `media` de /health : constant après la sonde, donc sans coût. */
+function mediaHealth() {
+  return {
+    ffmpeg: mediaCaps.ffmpeg,               // version, ou null si absent
+    sharp: mediaCaps.sharp,
+    videoWatermark: mediaCaps.ffmpeg !== null,
+    imageWatermark: mediaCaps.sharp !== null,
+  };
+}
+
 // ─── Health check (no auth, no rate limit) ───
 // Cached 2s to prevent DOS via repeated DB pings (Railway probes us every 30s,
 // but external uptime monitors and containers can hit this much more often).
@@ -175,11 +259,16 @@ app.get('/health', async (req, res) => {
   try {
     const { queryOne } = await import('./src/db.js');
     await queryOne('SELECT 1');
-    const body = { ok: true, uptime: process.uptime() };
+    // `media` est informatif, jamais bloquant : un conteneur sans ffmpeg reste
+    // « ok ». C'est la seule façon de rendre le filigrane vérifiable de
+    // l'extérieur sans transformer un badge manquant en panne.
+    const body = { ok: true, uptime: process.uptime(), media: mediaHealth() };
     _healthCache = { ok: true, ts: now, body };
     res.json(body);
   } catch {
-    const body = { ok: false, error: 'Database unavailable' };
+    // Même en panne de base on rend `media` : c'est au moment où l'on
+    // diagnostique qu'on a besoin de savoir ce que le conteneur embarque.
+    const body = { ok: false, error: 'Database unavailable', media: mediaHealth() };
     _healthCache = { ok: false, ts: now, body };
     res.status(503).json(body);
   }
@@ -188,34 +277,82 @@ app.get('/health', async (req, res) => {
 // ─── Per-request context (BYOK provider key in opensource edition) ───
 app.use('/api', requestContext);
 
-// ─── Rate limiting per route category ───
-app.use('/api/auth', rateLimit(15, 60 * 1000, 'connexion'));
-app.use('/api/upload', rateLimit(200, 60 * 1000, 'import'));   // lots du studio : 30+ images
+/* ─── Rate limiting per route category ───
+ *
+ * ─── Le principe, pour que les chiffres ci-dessous se relisent ───
+ *
+ * Le vrai garde-fou de charge n'est PAS ici : c'est la file d'essai
+ * (src/lib/essai-queue.js), qui borne les travaux simultanés (ESSAI_CONCURRENCY
+ * = 3), la taille totale (60) et le nombre de jobs par IP (ESSAI_MAX_PER_IP =
+ * 20). Elle sait attendre, elle chiffre l'attente qu'elle annonce, et elle
+ * n'invente pas de faute.
+ *
+ * Un limiteur de débit, lui, ne sait que claquer la porte pour dix minutes. Il
+ * ne doit donc JAMAIS refuser avant la file : quand c'est lui qui parle en
+ * premier, le visiteur reçoit un « trop de requêtes » là où il aurait dû
+ * recevoir « votre place est la quatrième, comptez trois minutes ».
+ *
+ * ─── Le lot de 20 variantes, compté sur dix minutes ───
+ *
+ * 20 variantes est le plus grand lot que propose le studio (public/studio.html,
+ * data-variants) et c'est aussi la valeur d'ESSAI_MAX_PER_IP. Ce lot coûte :
+ *
+ *   · envoi de la source  : 1 requête. Les 20 variantes partagent la même
+ *     photo et public/studio.html dédoublonne l'upload par Promise. Un lot de
+ *     20 photos DIFFERENTES coûte 20 uploads — et jusqu'à 60 si chacun doit
+ *     être réessayé (boucle `for tries < 3` du studio).
+ *   · lancement           : 20 POST /api/essai/studio/*. Le studio relance
+ *     automatiquement une fois les soumissions échouées : 40 au pire.
+ *   · sondage de statut   : GET, donc hors du seau « anonymous studio ». Le
+ *     studio sonde 10 tâches de front (POLL_CONCURRENCY) toutes les 8 s, soit
+ *     75 requêtes/minute au plus, quelle que soit la taille du lot. Contre les
+ *     600/minute du seau général : 12 % — il ne saute jamais le premier.
+ *
+ * Qui sautait en premier, avant cette revue : les DEUX seaux d'envoi, pas la
+ * file.
+ *
+ *   · « anonymous upload » à 20/10 min : 20 photos distinctes le remplissaient
+ *     exactement, et un seul réessai d'upload le faisait déborder — alors que
+ *     la file, elle, acceptait les 20 jobs.
+ *   · « anonymous studio » à 60/10 min : trois lots. Or un lot de 20 SONS
+ *     (tts/sfx, une quinzaine de secondes pièce) vide la file en deux minutes ;
+ *     le visiteur peut donc en enchaîner cinq honnêtement dans la fenêtre, et
+ *     c'est le limiteur qui le refusait au 61e alors que la file était vide.
+ *
+ * Les nouveaux chiffres viennent du débit maximal qu'une IP peut réellement
+ * obtenir de la file en dix minutes, pas d'une intuition :
+ *
+ *     ESSAI_CONCURRENCY (3) × 600 s ÷ durée plancher d'un job (~15 s, un
+ *     bruitage) = 120 jobs.
+ *
+ * Au-delà de 120 lancements en dix minutes, la file n'aurait de toute façon
+ * rien pu absorber : le plafond reste un plafond, il a seulement cessé de
+ * parler avant elle. Même raisonnement pour les uploads : 20 photos × 3
+ * tentatives = 60.
+ */
+app.use('/api/auth', rateLimit(15, 60 * 1000, 'sign-in'));
+app.use('/api/upload', rateLimit(200, 60 * 1000, 'upload'));   // lots du studio : 30+ images
 app.use('/api/jarvis', rateLimit(30, 60 * 1000, 'assistant'));
-app.use('/api/share', rateLimit(20, 60 * 1000, 'partage'));
-app.use('/api/platform', rateLimit(30, 60 * 1000, 'exploitant'));
+app.use('/api/share', rateLimit(20, 60 * 1000, 'share'));
+app.use('/api/platform', rateLimit(30, 60 * 1000, 'operator'));
 // Essai communautaire (anonyme) — generer très strict par IP, signaler modéré ;
 // statut/galerie/image retombent sur le bucket générique /api ci-dessous.
-app.use('/api/essai/generer', rateLimit(5, 10 * 60 * 1000, 'essai express'));
-app.use('/api/essai/signaler', rateLimit(10, 60 * 1000, 'signalement'));
+app.use('/api/essai/generer', rateLimit(5, 10 * 60 * 1000, 'quick trial'));
+app.use('/api/essai/signaler', rateLimit(10, 60 * 1000, 'report'));
 // Studio anonyme — uploads sources et lancements d'opérations (POST) limités
 // par IP ; le polling GET /studio/status retombe sur le bucket générique /api.
 // La file essai (ESSAI_MAX_PER_IP) reste le garde-fou dur de concurrence.
-app.use('/api/essai/upload', rateLimit(20, 10 * 60 * 1000, 'import anonyme'));
-/*
- * Le studio anonyme travaille par LOTS : une image × huit variantes fait huit
- * requêtes, et le studio relance automatiquement celles qui échouent — seize au
- * total pour une seule action de l'utilisateur. À trente, deux lots suffisaient
- * à fermer la porte, et l'utilisateur lisait « trop de requêtes » alors qu'il
- * n'avait cliqué que deux fois. Soixante laisse passer trois à quatre lots par
- * dix minutes, ce qui correspond à un usage réel, et la file (jobs simultanés
- * et taille totale) reste le vrai garde-fou de charge.
- */
-const essaiStudioLimit = rateLimit(60, 10 * 60 * 1000, 'studio anonyme');
+// 60 = 20 photos distinctes × les 3 tentatives d'upload du studio (voir le
+// calcul ci-dessus) : à 20, un seul réessai réseau fermait la porte.
+app.use('/api/essai/upload', rateLimit(60, 10 * 60 * 1000, 'anonymous upload'));
+// 120 = le débit maximal qu'une IP peut obtenir de la file en dix minutes
+// (3 travaux de front × 600 s ÷ ~15 s pour le job le plus court). Le limiteur
+// ne peut donc plus refuser avant la file, et il plafonne toujours.
+const essaiStudioLimit = rateLimit(120, 10 * 60 * 1000, 'anonymous studio');
 app.use('/api/essai/studio', (req, res, next) => (req.method === 'POST' ? essaiStudioLimit(req, res, next) : next()));
 // Public share consumption — separate strict bucket to prevent token enum + view_count spam
-app.get('/share/:token', rateLimit(30, 60 * 1000, 'page de partage'));
-app.use('/api', rateLimit(600, 60 * 1000, 'général'));   // le reste : compatible avec le sondage des lots (30 tâches × 8 s)
+app.get('/share/:token', rateLimit(30, 60 * 1000, 'share page'));
+app.use('/api', rateLimit(600, 60 * 1000, 'general'));   // le reste : compatible avec le sondage des lots (30 tâches × 8 s)
 
 // ─── Database (with retry) ───
 async function bootDatabase(retries = 3) {
@@ -237,6 +374,13 @@ async function bootDatabase(retries = 3) {
   }
 }
 await bootDatabase();
+
+// La sonde média est partie au chargement du module : elle a tourné pendant les
+// migrations et rend la main tout de suite. On l'attend quand même ici, pour que
+// /health ne puisse pas répondre « ffmpeg absent » simplement parce qu'il a été
+// interrogé une milliseconde trop tôt — un faux négatif sur cette route serait
+// exactement le genre de bruit qui fait ignorer les vrais.
+await mediaProbe;
 
 // ─── Auto-purge expired generations every hour ───
 const purgeTimer = setInterval(async () => {
@@ -365,6 +509,11 @@ const server = app.listen(PORT, () => {
   console.log(`  [AUTH] JWT + refresh cookie`);
   console.log(`  [SEC] Helmet + rate limiting enabled`);
   console.log(`  [PERF] gzip compression + 1h static cache enabled`);
+  // Le même couple que rend /health : ce que le conteneur peut filigraner. Écrit
+  // au démarrage pour qu'un opérateur qui lit ses logs de déploiement voie
+  // immédiatement ce qu'une image reconstruite a perdu en route.
+  console.log(`  [MEDIA] ffmpeg ${mediaCaps.ffmpeg || 'absent'} (video watermark: ${mediaCaps.ffmpeg ? 'on' : 'OFF'})`
+    + ` | sharp ${mediaCaps.sharp || 'absent'} (image watermark: ${mediaCaps.sharp ? 'on' : 'OFF'})`);
   console.log(`  [ROUTES] auth, generate, upload, download, dashboard, history, profile, admin, team, projects, campaigns, activity, tools, analytics, jarvis\n`);
 });
 

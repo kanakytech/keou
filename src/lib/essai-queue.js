@@ -12,8 +12,10 @@
  *     du job. Jamais en DB, jamais dans un log, jamais dans un message
  *     d'erreur. Elle est effacée (job.apiKey = null) dès l'état terminal.
  *   - L'URL temporaire du provider n'est JAMAIS stockée : le résultat est
- *     téléchargé, filigrané quand c'est possible, poussé sur R2
- *     (essai/<uuid>.<ext>), et seule la clé R2 est écrite en DB.
+ *     relu par nous, filigrané quand le média s'y prête, poussé sur R2
+ *     (essai/<uuid>.<ext>), et seule la clé R2 est écrite en DB. « Relu » et
+ *     non « téléchargé » : ce qui ne reçoit pas de filigrane passe de la
+ *     source à R2 en flux, sans jamais tenir en mémoire (persistProviderResult).
  *   - Les erreurs provider sont mappées vers des messages sûrs — jamais de
  *     texte brut du provider en DB ni vers le client.
  *
@@ -32,6 +34,11 @@
  * processeur est le filigrane. ESSAI_MAX_PER_IP (défaut 20) vaut la taille du
  * plus grand lot que propose l'interface (public/studio.html, data-variants) :
  * un lot que le studio offre ne doit jamais être tronqué en silence.
+ *
+ * Résolution : 2K pour TOUTE image, quel que soit le kind. Le détail du
+ * raisonnement est au-dessus de createProviderTask() — l'essentiel tient en une
+ * phrase : le studio est fait pour enchaîner, et une première image en 1K
+ * n'économisait rien puisque le geste suivant repartait en 2K depuis elle.
  */
 
 import sharp from 'sharp';
@@ -77,8 +84,11 @@ function countForIp(ip) {
  *
  * Un refus doit annoncer une attente, et une constante écrite en dur mentirait
  * dès que le catalogue bouge : une vidéo veo3 ne coûte pas le temps d'une
- * image 1K. On tient donc une moyenne glissante des jobs réellement terminés,
+ * image. On tient donc une moyenne glissante des jobs réellement terminés,
  * amorcée à 90 s — l'ordre de grandeur d'une image, le cas le plus fréquent.
+ * (L'amorce n'a plus à être révisée à chaque changement de résolution : c'est
+ * précisément le point d'une moyenne mesurée plutôt que devinée. Le passage de
+ * l'essai 1K au 2K la corrige tout seul, après quelques jobs.)
  */
 let avgJobMs = 90_000;
 
@@ -156,9 +166,12 @@ export async function watermarkImage(buffer) {
   // Le bandeau doit TENIR dans l'image. Avec un corps de 16 px plancher il
   // mesure ~200 px de large : sharp refuse de composer plus grand que le
   // support (« Image to composite must have same dimensions or smaller ») et
-  // c'est le job entier qui échouait, pour un badge. Aucune génération du
-  // catalogue ne descend sous 1K, mais un rendu étroit ne doit pas coûter la
-  // création elle-même — on rétrécit le corps jusqu'à ce qu'il rentre.
+  // c'est le job entier qui échouait, pour un badge. Le catalogue rend du 2K,
+  // donc aucun cas réel n'approche cette borne — mais un rendu étroit ne doit
+  // pas coûter la création elle-même. On rétrécit le corps jusqu'à ce qu'il
+  // rentre. Ce n'est pas de la paranoïa gratuite : le seul kind dont la taille
+  // ne vient pas de notre catalogue est l'agrandissement, qui part de ce que le
+  // visiteur lui a donné.
   const band = (f) => ({
     w: Math.round(text.length * f * 0.64) + Math.round(f * 0.9) * 2,
     h: f + Math.round(f * 0.9) * 2,
@@ -185,32 +198,65 @@ export async function watermarkImage(buffer) {
 
 // ─── Messages d'erreur sûrs (jamais le texte brut du provider) ───
 
+/**
+ * Traduit une erreur — la nôtre ou celle du fournisseur — en message sûr.
+ *
+ * Trois choses ont été corrigées ici, dans cet ordre :
+ *
+ * 1. Nos deux sentinelles (ESSAI_TOO_LARGE, ESSAI_TIMEOUT) passent EN PREMIER,
+ *    sur le message brut. Elles étaient testées après les motifs du
+ *    fournisseur : aucune ne se faisait happer aujourd'hui, mais il suffisait
+ *    d'un futur code sentinelle contenant « invalid » ou « 429 » pour que le
+ *    visiteur reçoive un diagnostic sans rapport. Ce qui nous appartient se
+ *    reconnaît avant ce qu'on devine.
+ *
+ * 2. La reconnaissance se fait en minuscules. Un fournisseur qui répond
+ *    « Unauthorized » ou « Insufficient credits » — capitalisé, comme la
+ *    plupart le font — tombait dans le message générique « réessayez » : le
+ *    visiteur cherchait une panne de notre côté alors qu'il avait une clé morte
+ *    ou un solde à zéro.
+ *
+ * 3. « invalid » seul ne conclut plus à une clé. « invalid prompt », « invalid
+ *    aspect_ratio » ou « invalid parameter » envoyaient le visiteur vérifier
+ *    une clé parfaitement bonne, et il n'avait aucun moyen de s'en apercevoir.
+ *    On exige désormais que la clé soit nommée.
+ *
+ * Les libellés sont en anglais : c'est la langue source du produit, et
+ * public/shared/i18n.js les rend en français depuis i18n/fr.json — y compris
+ * quand un script de page les injecte après coup.
+ */
 function safeErrorMessage(err) {
-  const msg = err?.message || '';
-  if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('invalid')) {
-    return 'Cle API invalide ou non autorisee — verifiez votre cle KIE.AI';
-  }
-  if (msg.includes('402') || msg.includes('insufficient') || msg.includes('exhausted')) {
-    return 'Credits KIE.AI epuises sur votre cle — rechargez sur kie.ai puis reessayez';
-  }
-  if (msg.includes('429') || msg.includes('rate limit')) {
-    return 'Limite de debit atteinte cote provider — patientez une minute et reessayez';
-  }
-  if (msg === 'ESSAI_TOO_LARGE') {
+  const raw = err?.message || '';
+  if (raw === 'ESSAI_TOO_LARGE') {
     return 'The provider returned a file too large to process — try a smaller format';
   }
-  if (msg === 'ESSAI_TIMEOUT') {
+  if (raw === 'ESSAI_TIMEOUT') {
     // Le délai dépend du média (4 min pour une image, 10 pour une vidéo) : le
     // message ne cite plus de durée, il mentirait une fois sur deux.
-    return 'Delai depasse — la generation a ete abandonnee, reessayez';
+    return 'Generation timed out and was abandoned — please try again';
   }
-  return 'La generation a echoue — reessayez dans un instant';
+  const msg = raw.toLowerCase();
+  if (msg.includes('401') || msg.includes('unauthorized')
+      || msg.includes('api key') || msg.includes('api_key') || msg.includes('apikey')) {
+    return 'Invalid or unauthorized API key — check your KIE.AI key';
+  }
+  if (msg.includes('402') || msg.includes('insufficient') || msg.includes('exhausted')) {
+    return 'Your KIE.AI credits are exhausted — top up on kie.ai and try again';
+  }
+  if (msg.includes('429') || msg.includes('rate limit')) {
+    return 'Provider rate limit reached — wait a minute and try again';
+  }
+  return 'Generation failed — please try again in a moment';
 }
 
 // ─── Worker ───
 
-// Mêmes modèles que POST /api/generate/video pour un compte : un modèle
-// inconnu retombe sur le moins cher plutôt que d'échouer chez le fournisseur.
+// Mêmes modèles que POST /api/video pour un compte — la liste est copiée à
+// l'identique de src/lib/keou-actions.js, repli compris. (Le chemin écrit ici
+// était « /api/generate/video » : il n'existe pas. src/routes/generate.js est
+// monté sur /api dans server.js, pas sur /api/generate, et c'est bien vers
+// /api/video que le studio poste.) Un modèle inconnu retombe sur le moins cher
+// plutôt que d'échouer chez le fournisseur.
 const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2'];
 
 function videoModelOf(job) {
@@ -227,6 +273,30 @@ function buildVideoPrompt(creativeDirection) {
  * Crée la tâche provider selon le kind du job. La forme du résultat (image,
  * vidéo ou son) n'est PAS déduite ici : elle vient de MEDIA_BY_KIND, seule
  * source de vérité de la chaîne aval.
+ *
+ * ─── Résolution : 2K partout, et c'est un choix ───
+ *
+ * L'essai simple ('text') et le visuel produit ('image') partaient en 1K, sous
+ * un commentaire qui annonçait qu'on ménageait les crédits du visiteur.
+ * L'économie n'existait pas. Polish et remix partent en 2K, et adapt est câblé
+ * en 2K chez le fournisseur (src/lib/providers/kie.js) : dès le deuxième geste
+ * — et le studio est fait pour enchaîner, chaque opération repart du rendu
+ * précédent — le visiteur payait le plein tarif. Pire, il le payait sur une
+ * source 1K que flux-2 devait étirer en 2K : plein tarif pour un rendu mou,
+ * pendant que le commentaire lui promettait le contraire.
+ *
+ * Le 1K partout était l'autre option défendable, et on l'écarte pour deux
+ * raisons vérifiables dans ce dépôt :
+ *   - adapt ne sait pas descendre. Sa résolution est en dur dans kie.adapt(),
+ *     qui n'accepte même pas le paramètre : la cohérence « tout en 1K » serait
+ *     donc fausse dès la première adaptation de format.
+ *   - la surface d'un compte génère en 2K (src/lib/keou-actions.js). Faire
+ *     essayer le produit en 1K, c'est montrer au visiteur une qualité
+ *     inférieure à celle qu'on lui vend ensuite.
+ *
+ * Conséquence assumée : la première génération coûte plus cher au visiteur
+ * qu'avant. On ne l'annonce simplement plus comme une économie — c'est sa clé
+ * et son budget, il a droit à un compte juste.
  */
 async function createProviderTask(job) {
   switch (job.kind) {
@@ -236,7 +306,7 @@ async function createProviderTask(job) {
         imageUrls: [job.imageUrl],
         aspectRatio: job.format,
         outputFormat: 'png',
-        resolution: '1K', // anonyme : on économise les crédits du visiteur
+        resolution: '2K',
       });
     case 'polish': // flux-2 : '2K' est la seule résolution éprouvée en prod
       return kie.polish(job.apiKey, {
@@ -267,14 +337,27 @@ async function createProviderTask(job) {
         resolution: job.resolution,
         mode: job.mode,
         sound: job.sound,
-        // Repli 16:9, et surtout PAS job.format. Le studio n'envoie ni ratio ni
-        // format sur /api/video (public/studio.html, videoJob) : le repli
-        // retombait donc sur le 1:1 que la route pose par défaut, et TOUTE
-        // vidéo anonyme sortait carrée là où un compte obtenait du 16:9 —
-        // sans un mot pour le dire. 16:9 est le format natif des modèles
-        // vidéo (c'est déjà le défaut de src/lib/providers/kie.js) ; le carré
-        // se demande, il ne se subit pas.
-        aspectRatio: job.aspectRatio || job.format || '16:9',
+        // Le cadrage vient d'`aspectRatio`, JAMAIS de `job.format`.
+        //
+        // Le commentaire d'avant affirmait déjà cela ; le code, lui, lisait
+        // encore `job.aspectRatio || job.format || '16:9'`. Or la route pose
+        // toujours un format — VALID_FORMATS sinon '1:1' (src/routes/essai.js,
+        // launchStudioJob) — donc `job.format` n'était jamais vide, le repli
+        // 16:9 était inatteignable, et toute vidéo dont le ratio n'avait pas
+        // été explicitement choisi sortait carrée là où un compte obtenait du
+        // 16:9, sans un mot pour le dire. Le bug que le commentaire décrivait
+        // comme réglé ne l'était pas.
+        //
+        // `format` sert le cadrage des images et la colonne du même nom en
+        // base ; il ne dit rien de celui d'une vidéo. En le retirant de la
+        // chaîne, le repli redevient atteignable — c'est-à-dire réel.
+        //
+        // 16:9 est le format natif des modèles vidéo (c'est déjà le défaut de
+        // src/lib/providers/kie.js) ; le carré se demande, il ne se subit pas.
+        // public/studio.html envoie bien `aspectRatio` aujourd'hui : le repli
+        // couvre les clients qui ne le font pas, et les valeurs hors
+        // VALID_FORMATS que la route remet à null.
+        aspectRatio: job.aspectRatio || '16:9',
         generateAudio: job.generateAudio,
         variant: job.variant,
       });
@@ -305,7 +388,11 @@ async function createProviderTask(job) {
         prompt: job.prompt,
         aspectRatio: job.format,
         outputFormat: 'png',
-        resolution: '1K', // essai : on économise les crédits du visiteur
+        // Explicite, alors que kie.textToImage retomberait sur 1K faute de
+        // valeur : un rendu d'essai peut servir de source à tout le studio
+        // (resolveStudioSource accepte n'importe quelle création terminée),
+        // il n'a donc aucune raison de naître plus mou que les autres.
+        resolution: '2K',
       });
   }
 }
@@ -380,16 +467,6 @@ function isTrialResultUrl(url) {
 }
 
 /**
- * Faut-il poser un filigrane sur CE job ?
- *
- * La table dit ce qu'un kind produit ; elle ignore d'où vient la source. Un
- * agrandissement anonyme part presque toujours d'une création d'essai —
- * essai/<uuid>.png, filigrane compris. Topaz l'étirait x4 ou x8, le filigrane
- * d'origine avec lui, et on en reposait un second par-dessus : deux adresses
- * empilées sur la même image, dont une énorme et floue. Celle qui est déjà
- * dans les pixels suffit.
- */
-/**
  * Appose le filigrane qui convient au média.
  *
  * L'image passe par sharp, la vidéo par ffmpeg. Le son n'en reçoit aucun : rien
@@ -408,6 +485,21 @@ async function apposerFiligrane(raw, out) {
   return raw;
 }
 
+/**
+ * Faut-il poser un filigrane sur CE job ?
+ *
+ * (Ce bloc documentait déjà shouldWatermark, mais il était posé au-dessus
+ * d'apposerFiligrane : deux docblocs empilés, le premier décrivant une fonction
+ * écrite trente lignes plus bas. Un lecteur pressé attribuait la règle de
+ * l'agrandissement à la mauvaise fonction.)
+ *
+ * La table dit ce qu'un kind produit ; elle ignore d'où vient la source. Un
+ * agrandissement anonyme part presque toujours d'une création d'essai —
+ * essai/<uuid>.png, filigrane compris. Topaz l'étirait x4 ou x8, le filigrane
+ * d'origine avec lui, et on en reposait un second par-dessus : deux adresses
+ * empilées sur la même image, dont une énorme et floue. Celle qui est déjà
+ * dans les pixels suffit.
+ */
 function shouldWatermark(job, out) {
   if (!out.watermark) return false;
   if (job.kind === 'upscale' && isTrialResultUrl(job.imageUrl)) return false;
@@ -476,9 +568,15 @@ async function persistProviderResult(resultUrl, key, out, job) {
 }
 
 async function runJob(job) {
-  const out = mediaForKind(job.kind);
   const startedAt = Date.now();
   try {
+    // Calculé DANS le try, et pas au-dessus : tout ce qui précède le try est du
+    // code dont un jet ne rendrait jamais sa voie — `active` garderait le job
+    // pour toujours et la file perdrait une place à chaque fois. Rien ici ne
+    // jette aujourd'hui ; la garantie « une voie prise est une voie rendue » ne
+    // doit pas dépendre de cette lecture-là.
+    const out = mediaForKind(job.kind);
+
     // media est réaffirmé ici, et pas seulement à l'insertion : la file est la
     // seule à connaître la table des médias, le client saura donc toujours ce
     // qu'il reçoit même si la route appelante ne l'a pas renseigné.
@@ -504,7 +602,8 @@ async function runJob(job) {
       if (st.status === 'completed' && st.resultUrl) { resultUrl = st.resultUrl; break; }
     }
 
-    // 3. Téléchargement + filigrane éventuel + R2 — l'URL provider ne sort jamais d'ici
+    // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
+    //    l'URL du fournisseur ne sort jamais d'ici, ni vers la base ni vers le client
     const r2Key = `essai/${job.id}.${out.ext}`;
     if (out.media === 'audio') warnUnexpectedAudioFormat(job.id, resultUrl);
     await persistProviderResult(resultUrl, r2Key, out, job);
@@ -564,7 +663,16 @@ function pump() {
     if (idx < 0) break;
     const job = queue.splice(idx, 1)[0];
     active.add(job);
-    runJob(job);
+    // La promesse de runJob n'est pas attendue — c'est tout l'intérêt de la
+    // file — mais un rejet non rattrapé tue le processus sous Node 20, dont le
+    // mode par défaut est `--unhandled-rejections=throw`. runJob rattrape déjà
+    // tout ce qu'il sait nommer ; ce filet couvre le reste, par exemple une
+    // base injoignable au moment même où l'on écrit l'échec. Le job a de toute
+    // façon rendu sa voie dans son `finally` : il ne reste ici qu'à ne pas
+    // emporter les autres visiteurs avec lui.
+    runJob(job).catch((e) => {
+      console.error('[ESSAI] file: rejet non rattrape —', (e?.message || 'unknown').slice(0, 200));
+    });
   }
 }
 
@@ -576,9 +684,9 @@ function pump() {
  *        | 'video' | 'tts' | 'sfx'.
  *
  * Les paramètres propres à une opération portent EXACTEMENT le nom qu'ils ont
- * dans les routes d'un compte (POST /api/generate/video, /api/tools/tts,
- * /api/tools/sfx, /api/tools/image-upscale) : la route anonyme n'a rien à
- * traduire, et les deux surfaces dérivent moins facilement.
+ * dans les routes d'un compte (POST /api/video, /api/tools/tts, /api/tools/sfx,
+ * /api/tools/image-upscale) : la route anonyme n'a rien à traduire, et les deux
+ * surfaces dérivent moins facilement.
  *   - vidéo        : videoModel, duration, resolution, mode, sound,
  *                    aspectRatio, generateAudio, variant, creativeDirection
  *   - voix         : text, voice, stability, similarity_boost, style, speed

@@ -131,7 +131,13 @@ router.post('/image-upscale', requireAuth, async (req, res) => {
   try {
     const { imageUrl, upscaleFactor, projectId, campaignId, idempotencyKey } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
-    const factor = ['4', '8'].includes(String(upscaleFactor)) ? String(upscaleFactor) : '4';
+    // Topaz ne connait que 1, 2 et 4 : accepter '8' revenait a facturer un
+    // agrandissement que le fournisseur ne rend pas. Voir src/lib/providers/kie.js.
+    const demandeFacteur = String(upscaleFactor ?? '4');
+    if (!['1', '2', '4'].includes(demandeFacteur)) {
+      return res.status(400).json({ error: 'Upscale factor must be 2 or 4 — the provider does not do more' });
+    }
+    const factor = demandeFacteur;
 
     if (await applyIdempotency(req, res, { idempotencyKey, type: 'img-upscale' })) return;
 

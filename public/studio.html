@@ -963,6 +963,29 @@ function initStudio() {
 const jobs = [];
 let format = '1:1';
 let variantCount = 1;
+
+  /* Une clé par CLIC, pas par opération.
+   *
+   * L'idempotence n'était posée que sur la génération d'image — une route sur
+   * neuf. La vidéo, l'agrandissement et la retouche partaient sans clé, dont
+   * Veo Quality à 1,25 $ : le geste le plus cher du catalogue, et le seul que le
+   * studio relance tout seul après une erreur 500. Un aller-retour perdu se
+   * payait donc deux fois, sur la clé du visiteur.
+   *
+   * La clé identifie UNE demande, pas une combinaison de réglages : deux clics
+   * délibérés sur « Video » doivent produire deux vidéos. Elle est tirée à
+   * chaque clic et retenue le temps de l'opération, de sorte qu'une relance
+   * interne réutilise la même et qu'un nouveau clic en fabrique une neuve. */
+  const _clesDeClic = new Map();
+  function cleDeClic(jobId, operation) {
+    const k = jobId + ':' + operation;
+    if (!_clesDeClic.has(k)) _clesDeClic.set(k, k + ':' + crypto.randomUUID().slice(0, 8));
+    return _clesDeClic.get(k);
+  }
+  /** L'opération est finie : le prochain clic aura sa propre clé. */
+  function libererCleDeClic(jobId, operation) {
+    _clesDeClic.delete(jobId + ':' + operation);
+  }
 let isProcessing = false;
 // Plafond réellement constaté au dernier lot, et son motif. Le bouton promettait
 // « Generate (1 × 5 = 5) » alors que le serveur n'en avait accepté que 3 : le
@@ -1953,7 +1976,8 @@ window.videoJob = async (id) => {
     // visiteur avait choisi 9:16 pour ses visuels. `aspectRatio` est le nom
     // qu'attendent les deux routes ; `format` est le repli lu par la file
     // anonyme (essai-queue : `job.aspectRatio || job.format`).
-    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format, format: job.format || format };
+    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format,
+                     format: job.format || format, idempotencyKey: cleDeClic(job.id, 'video') };
     const projectId = getProjectId();
     if (projectId) body.projectId = projectId;
     const campaignId = getCampaignId();
@@ -1979,6 +2003,9 @@ window.videoJob = async (id) => {
     job.status = 'done';
     log(`${job.name}: video failed — ${e.message}`, 'error');
   }
+  // L'opération est finie : le prochain clic délibéré aura sa propre clé,
+  // sinon une seconde demande identique serait prise pour un doublon.
+  libererCleDeClic(job.id, 'video');
   updateCard(job);
 };
 
@@ -1992,7 +2019,8 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration, vari
   try {
     // Même raison que dans videoJob : le format choisi dans le studio part avec
     // la requête, sinon la file anonyme rend tout en 1:1.
-    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format, format: job.format || format };
+    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format,
+                     format: job.format || format, idempotencyKey: cleDeClic(job.id, 'video') };
     const projectId = getProjectId();
     if (projectId) body.projectId = projectId;
     const campaignId = getCampaignId();
@@ -2026,6 +2054,9 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration, vari
     job.status = 'done';
     log(`${job.name}: video failed — ${e.message}`, 'error');
   }
+  // L'opération est finie : le prochain clic délibéré aura sa propre clé,
+  // sinon une seconde demande identique serait prise pour un doublon.
+  libererCleDeClic(job.id, 'video');
   updateCard(job);
 };
 
@@ -2062,6 +2093,9 @@ window.upscaleJob = async (id) => {
     job.status = 'done';
     log(`${job.name}: upscale failed — ${e.message}`, 'error');
   }
+  // L'opération est finie : le prochain clic délibéré aura sa propre clé,
+  // sinon une seconde demande identique serait prise pour un doublon.
+  libererCleDeClic(job.id, 'upscale');
   updateCard(job);
 };
 
@@ -2078,7 +2112,8 @@ window.upscaleImageJob = async (id) => {
   try {
     const res = await Auth.authFetch('/api/upscale', {
       method: 'POST',
-      body: JSON.stringify({ imageUrl: job.resultUrl, upscaleFactor: '4' }),
+      body: JSON.stringify({ imageUrl: job.resultUrl, upscaleFactor: '4',
+          idempotencyKey: cleDeClic(job.id, 'upscale') }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -2090,6 +2125,9 @@ window.upscaleImageJob = async (id) => {
     job.status = 'done';
     log(`${job.name}: upscale failed — ${e.message}`, 'error');
   }
+  // L'opération est finie : le prochain clic délibéré aura sa propre clé,
+  // sinon une seconde demande identique serait prise pour un doublon.
+  libererCleDeClic(job.id, 'upscale');
   updateCard(job);
 };
 

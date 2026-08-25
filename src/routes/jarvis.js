@@ -184,7 +184,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         imageUrl: { type: 'string', description: 'URL of the image to upscale' },
-        upscaleFactor: { type: 'string', enum: ['4', '8'], description: 'Upscale factor. Default: 4' },
+        upscaleFactor: { type: 'string', enum: ['2', '4'], description: 'Upscale factor. Default: 4 (the provider does not go beyond)' },
         projectId: { type: 'number' },
         campaignId: { type: 'number' },
       },

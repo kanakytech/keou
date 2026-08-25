@@ -54,6 +54,28 @@ const AnonMode = (() => {
     }));
   }
 
+  /* La clé d'idempotence du studio doit SUIVRE la requête.
+   *
+   * public/studio.html pose `idempotencyKey: job.id` sur chaque génération :
+   * c'est ce qui permet au serveur de reconnaître deux envois du même travail
+   * et de n'en facturer qu'un. L'adaptateur, lui, ne recopiait que le
+   * consentement, la source, le format et la direction artistique — la clé
+   * tombait ici, en silence. Un double-clic, ou le réessai automatique que
+   * studio.html fait après un 500, lançait donc DEUX générations facturées sur
+   * la clé KIE.AI du VISITEUR, qui paie de sa poche.
+   *
+   * Simple passage de champ : rien, côté client, ne dépend de ce que le serveur
+   * en fait. Tant que la route anonyme l'ignore, la requête part exactement
+   * comme avant ; le jour où elle la lit, la protection joue sans qu'une ligne
+   * bouge ici.
+   *
+   * On ne recopie qu'une chaîne courte et non vide : un objet, ou une clé
+   * kilométrique, n'identifie rien et n'a rien à faire dans la charge utile. */
+  function reprendreIdempotence(out, body) {
+    const cle = body && body.idempotencyKey;
+    if (typeof cle === 'string' && cle && cle.length <= 200) out.idempotencyKey = cle;
+  }
+
   // La route de service anonyme s'appelle /api/essai/image/ quel que soit le
   // média rendu : c'est elle qui sert aussi les MP4 et les MP3. On y lit donc
   // l'identifiant d'une création précédente pour l'enchaîner (le serveur
@@ -109,6 +131,7 @@ const AnonMode = (() => {
       let body = {};
       try { body = JSON.parse(options.body || '{}'); } catch {}
       const out = { consent: true };
+      reprendreIdempotence(out, body);
       const src = String(body.imgUrl || body.imageUrl || '');
       const chained = src.match(ESSAI_IMG_RE);
       if (chained) out.sourceId = chained[1]; // previous anonymous result → resolved server-side
@@ -143,6 +166,7 @@ const AnonMode = (() => {
       let body = {};
       try { body = JSON.parse(options.body || '{}'); } catch {}
       const out = { consent: true };
+      reprendreIdempotence(out, body);
 
       // Source : videoUrl couvre les chemins de compte qui agrandissent une
       // vidéo — ici c'est le rendu précédent du visiteur, donc une image.
@@ -297,8 +321,21 @@ const AnonMode = (() => {
     if (!document.querySelector('.app-content')) {
       const content = document.createElement('div');
       content.className = 'app-content';
+      /* Les surfaces FIXES restent hors du wrap.
+       *
+       * .app-content porte une animation d'entrée (`pageIn`, qui translate) et,
+       * au clic sur un lien, un `transform: translateY(-4px)` posé par
+       * html[data-leaving="1"] — les deux dans shared/styles.css. Or un ancêtre
+       * transformé devient le bloc conteneur de ses descendants
+       * `position:fixed`. Rangée là par mégarde, la barre du bas cessait d'être
+       * calée sur le bas de l'ÉCRAN pour se caler sur le bas du CONTENU : hors
+       * de vue sur une page longue, et précisément pendant les 180 ms qui
+       * suivent le doigt du visiteur. Le voile de consentement, lui, se
+       * recentrait sur toute la hauteur du document. Les deux restent donc
+       * enfants directs de <body>. */
       const children = [...document.body.children].filter(
-        (el) => el !== sidebar && el.tagName !== 'SCRIPT',
+        (el) => el !== sidebar && el !== barreBasse
+          && el.id !== 'anon-consent-backdrop' && el.tagName !== 'SCRIPT',
       );
       children.forEach((el) => content.appendChild(el));
       document.body.appendChild(content);

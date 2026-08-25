@@ -116,18 +116,47 @@ export function clientIp(req) {
 }
 
 /**
+ * Numéro d'instance — ce qui rend VRAIMENT un seau unique.
+ *
+ * Le préfixe était `rl_<max>_<fenêtre>_`, censé « éviter les collisions de
+ * clé ». Il ne les évitait pas : deux limiteurs réglés sur les mêmes chiffres
+ * écrivaient dans le même compteur. Deux groupes le faisaient, relevés en
+ * recensant tous les appels à rateLimit() du dépôt :
+ *
+ *   · `rl_30_60000_` — `/api/jarvis`, `/api/platform` (server.js) et
+ *     `GET /share/:token`. Ouvrir trente pages de partage fermait l'assistant
+ *     pour la minute.
+ *   · `rl_5_3600000_` — `registerLimiter` (src/routes/auth.js) et
+ *     `resetPasswordLimiter` (src/routes/team.js). Cinq réinitialisations de
+ *     mot de passe dans l'équipe fermaient la création de compte pour une
+ *     heure, et réciproquement. Deux surfaces sans rapport, un seul compteur.
+ *
+ * Et dans les deux cas le 429 nommait le seau de l'instance qui avait répondu,
+ * pas celui qui avait été rempli : le message envoyait chercher la panne au
+ * mauvais endroit.
+ *
+ * Un numéro qui s'incrémente à chaque appel de rateLimit() sépare les seaux
+ * quels que soient leurs réglages, aujourd'hui et le jour où deux limites
+ * finissent par tomber sur le même chiffre. Les limiteurs déclarés hors de
+ * server.js (auth.js, team.js) en bénéficient sans avoir à être touchés.
+ */
+let _instances = 0;
+
+/**
  * @param {number} maxRequests  requêtes autorisées dans la fenêtre
  * @param {number} windowMs     durée de la fenêtre
  * @param {string} [nom]        nom du seau, renvoyé au client quand il bloque —
  *                              sans lui, un 429 ne dit pas QUELLE limite a joué,
  *                              et le diagnostic prend une heure au lieu d'une
- *                              minute.
+ *                              minute. En anglais : c'est du texte d'interface,
+ *                              public/studio.html l'affiche tel quel.
  */
 export function rateLimit(maxRequests = 10, windowMs = 15 * 60 * 1000, nom = null) {
   ensureCleanup();
 
-  // Préfixe unique par instance de limiteur, pour éviter les collisions de clé.
-  const prefix = `rl_${maxRequests}_${windowMs}_`;
+  // Les réglages restent dans le préfixe : ils rendent une clé lisible dans un
+  // dump. C'est le numéro d'instance qui garantit l'unicité.
+  const prefix = `rl${++_instances}_${maxRequests}x${windowMs}_`;
 
   return (req, res, next) => {
     const key = prefix + clientIp(req);
@@ -147,11 +176,32 @@ export function rateLimit(maxRequests = 10, windowMs = 15 * 60 * 1000, nom = nul
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.setHeader('Retry-After', retryAfter);
+      /* Le refus dit désormais SUR QUOI porte la limite, et il ne le dit pas
+       * par politesse.
+       *
+       * Le compteur est indexé sur l'adresse réseau, jamais sur une personne :
+       * il n'y a ni compte ni session dans le studio anonyme. Derrière un NAT —
+       * la situation ordinaire en Nouvelle-Calédonie, où une grande part du
+       * pays sort par un petit nombre d'adresses — le voisin, le collègue ou
+       * l'hôtel entier partagent ce compteur. « Trop de requêtes » se lisait
+       * alors comme un reproche adressé à quelqu'un qui venait de cliquer une
+       * fois : le message accusait un innocent, et l'envoyait chercher chez lui
+       * une cause qui n'y était pas.
+       *
+       * On nomme donc trois choses : le seau qui a bloqué, le fait que la
+       * limite porte sur la connexion et pas sur la personne, et le délai.
+       * Texte en anglais — c'est la langue source de l'interface ; la
+       * traduction française vit dans i18n/fr-patterns.json (motif à trous,
+       * puisque le délai change à chaque fois). */
+      const surLaConnexion =
+        'the limit applies to the connection, not to you personally';
       return res.status(429).json({
         error: nom
-          ? `Trop de requêtes (${nom}) — réessayez dans ${retryAfter} s.`
-          : `Trop de requêtes — réessayez dans ${retryAfter} s.`,
+          ? `Too many requests from this network address (${nom}) — ${surLaConnexion}. Try again in ${retryAfter} s.`
+          : `Too many requests from this network address — ${surLaConnexion}. Try again in ${retryAfter} s.`,
         retryAfter,
+        // Clé `limite` conservée telle quelle : public/studio.html la lit sous
+        // ce nom (readRefusal). La renommer casserait l'affichage du motif.
         ...(nom ? { limite: nom } : {}),
       });
     }
