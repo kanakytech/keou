@@ -270,36 +270,60 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
 
 /** Identifiant de voix donné en exemple par la documentation KIE (26/08/2026). */
 const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';   // « James » dans leur catalogue
-const MODELE_VOIX = 'elevenlabs/text-to-speech-multilingual-v2';
+/* Moteur de voix par défaut. ElevenLabs est en panne chez KIE au 26/08 : on
+ * passe par Gemini, au même catalogue. KIE_TTS_MODEL permet de revenir. */
+const MODELE_VOIX_DEFAUT = 'google/gemini-3-1-flash-tts';
+const VOIX_GEMINI_DEFAUT = 'Puck';
 
 export async function tts(apiKey, { text, voice, stability, similarity_boost, style, speed }) {
-  /* On n'impose plus « Rachel » — le fournisseur a changé de convention.
+  /* Deux moteurs, et Gemini d'abord — parce qu'ElevenLabs est en panne chez KIE.
    *
-   * Ce défaut a trois mois. Le code forçait `voice: 'Rachel'`, un NOM de voix de
-   * l'ancienne API ElevenLabs. La documentation KIE du 26/08 ne parle plus que
-   * d'identifiants (« EkK5I93UQWFDigLMpZcX » et une soixantaine d'autres), et
-   * toute génération de voix échouait avec une erreur interne — sans motif, la
-   * clé du visiteur débitée, sur une clé qui produisait des images sans broncher.
+   * Le 26/08, les DEUX modèles ElevenLabs du catalogue KIE (turbo-2-5 et
+   * multilingual-v2) rendent « Internal Error, Please try again later. », y
+   * compris avec un identifiant de voix tiré de leur propre documentation, sur
+   * une clé dont les modèles image et Topaz fonctionnent le même jour. Le
+   * modèle de bruitage, lui, a purement disparu du catalogue.
    *
-   * Le champ est FACULTATIF et le fournisseur a son propre défaut : on ne le
-   * transmet donc que si l'appelant en a choisi un, plutôt que d'imposer une
-   * valeur qui peut redevenir invalide au prochain changement de leur côté. */
-  /* Le champ est obligatoire, quoi qu'en dise la documentation.
+   * `google/gemini-3-1-flash-tts` est au même catalogue, chez un fournisseur
+   * différent. Son schéma est dialogué : une liste de locuteurs et une liste de
+   * tours de parole. Une voix off, c'est un locuteur et un tour.
    *
-   * Elle l'annonce facultatif avec un défaut côté fournisseur. À l'essai, KIE
-   * répond « 422: voiceId cannot be empty » — il faut donc toujours en envoyer
-   * un. Et ce doit être un IDENTIFIANT : l'ancien code passait « Rachel », un
-   * nom de l'ancienne API ElevenLabs, qui ne se résolvait en rien — d'où
-   * l'échec de toute génération de voix depuis trois mois.
+   * KIE_TTS_MODEL permet de revenir à ElevenLabs le jour où ils réparent, sans
+   * toucher au code. */
+  const modele = process.env.KIE_TTS_MODEL || MODELE_VOIX_DEFAUT;
+
+  if (modele.startsWith('google/')) {
+    const input = {
+      speakers: [{
+        speaker_id: 'Speaker 1',
+        voice_name: (typeof voice === 'string' && voice.trim()) ? voice.trim() : VOIX_GEMINI_DEFAUT,
+        audio_profile: 'A clear, warm narrator',
+        pace: 'Natural',
+      }],
+      dialogue_turns: [{ speaker_id: 'Speaker 1', text }],
+    };
+    // La température de Gemini joue le rôle de la « stabilité » d'ElevenLabs,
+    // à l'envers : plus elle est haute, moins la lecture est régulière.
+    const stab = nombreBorne(stability, 0, 1);
+    if (stab !== undefined) input.temperature = Number((2 - stab * 2).toFixed(2));
+
+    const r = await fetchWithTimeout(`${KIE}/createTask`, {
+      method: 'POST',
+      headers: kieHeaders(apiKey),
+      body: JSON.stringify({ model: modele, input }),
+    });
+    const data = await safeJson(r);
+    if (!data.data?.taskId) throw new Error('TTS task failed');
+    return { taskId: data.data.taskId, recordId: data.data.recordId || null };
+  }
+
+  /* Chemin ElevenLabs — conservé pour le jour où il remarche.
    *
-   * VOIX_PAR_DEFAUT est l'identifiant que leur propre documentation donne en
-   * exemple. À changer si le catalogue bouge : c'est le seul endroit. */
+   * `voice` est REQUIS malgré une documentation qui l'annonce facultatif : sans
+   * lui, KIE répond « 422: voiceId cannot be empty ». Et ce doit être un
+   * identifiant : « Rachel », un nom de l'ancienne API, ne se résolvait en rien
+   * — c'est ce qui faisait échouer la voix depuis trois mois. */
   const input = { text, voice: (typeof voice === 'string' && voice.trim()) ? voice.trim() : VOIX_PAR_DEFAUT };
-  /* Bornes du schéma ElevenLabs chez KIE : stability, similarity_boost et style
-   * dans [0,1], speed dans [0.7,1.2]. Les curseurs de l'interface les
-   * respectent déjà ; ce filet ne sert qu'aux appels API directs, où une valeur
-   * hors plage — ou un NaN, qui part en JSON comme `null` — faisait échouer la
-   * tâche une fois le visiteur débité. */
   const stab = nombreBorne(stability, 0, 1);
   if (stab !== undefined) input.stability = stab;
   const similarite = nombreBorne(similarity_boost, 0, 1);
@@ -312,14 +336,7 @@ export async function tts(apiKey, { text, voice, stability, similarity_boost, st
   const r = await fetchWithTimeout(`${KIE}/createTask`, {
     method: 'POST',
     headers: kieHeaders(apiKey),
-    /* Multilingue, pas « turbo ».
-     *
-     * `turbo-2-5` est optimisé pour l'anglais et rendait « Internal Error » chez
-     * KIE le 26/08, même avec un identifiant de voix valide tiré de leur propre
-     * documentation. `multilingual-v2` est listé au même catalogue et convient
-     * bien mieux à un studio francophone — c'est le modèle que ce produit aurait
-     * dû appeler dès le départ. */
-    body: JSON.stringify({ model: MODELE_VOIX, input }),
+    body: JSON.stringify({ model: modele, input }),
   });
   const data = await safeJson(r);
   if (!data.data?.taskId) throw new Error('TTS task failed');
