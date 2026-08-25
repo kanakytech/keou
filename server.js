@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { config } from './src/config.js';
@@ -188,7 +189,28 @@ app.get('/api/demo-video', async (req, res) => {
  * paresseux, et ne rend qu'un booléen : on veut ici la version, et on la veut
  * avant la première vidéo plutôt qu'après.)
  */
-const mediaCaps = { ffmpeg: null, sharp: null };
+const mediaCaps = { ffmpeg: null, sharp: null, police: null };
+
+/* La police du filigrane est-elle réellement sur le disque ?
+ *
+ * Debian minimal n'embarque AUCUNE police. Le filigrane vidéo sortait donc en
+ * production comme dix-sept rectangles vides — le glyphe de remplacement — là
+ * où il devait lire studio.kanaky.xyz. Vu à l'image sur une vraie génération du
+ * 26/08 : la seule protection du travail publié était un rang de carrés, et
+ * rien ne le signalait. Le Dockerfile installe maintenant DejaVu ; cette sonde
+ * rend l'oubli impossible à commettre en silence une seconde fois.
+ */
+const CHEMINS_POLICE = [
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  '/System/Library/Fonts/Helvetica.ttc',            // poste de développement macOS
+];
+function sondePolice() {
+  for (const c of CHEMINS_POLICE) {
+    try { if (existsSync(c)) return c.split('/').pop(); } catch { /* ignore */ }
+  }
+  return null;
+}
 
 /** Version de ffmpeg, ou null s'il est absent / muet / trop lent. */
 function probeFfmpeg() {
@@ -228,6 +250,7 @@ async function probeSharp() {
 const mediaProbe = (async () => {
   mediaCaps.ffmpeg = await probeFfmpeg();
   mediaCaps.sharp = await probeSharp();
+  mediaCaps.police = sondePolice();
   if (!mediaCaps.ffmpeg) {
     console.warn('  [MEDIA] ffmpeg ABSENT — la video du studio anonyme sortira SANS filigrane');
   }
@@ -241,8 +264,11 @@ function mediaHealth() {
   return {
     ffmpeg: mediaCaps.ffmpeg,               // version, ou null si absent
     sharp: mediaCaps.sharp,
-    videoWatermark: mediaCaps.ffmpeg !== null,
-    imageWatermark: mediaCaps.sharp !== null,
+    police: mediaCaps.police,               // le filigrane écrit des carrés sans elle
+    // Un filigrane n'est « vrai » que si l'outil ET la police sont là : sans
+    // police, sharp et ffmpeg composent parfaitement… des rectangles vides.
+    videoWatermark: mediaCaps.ffmpeg !== null && mediaCaps.police !== null,
+    imageWatermark: mediaCaps.sharp !== null && mediaCaps.police !== null,
   };
 }
 

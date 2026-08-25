@@ -189,7 +189,7 @@ export async function watermarkImage(buffer) {
   const svg = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">` +
     `<text x="${svgW - pad}" y="${svgH - pad}" text-anchor="end" ` +
-    `font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="600" ` +
+    `font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="600" ` +
     `fill="#ffffff" fill-opacity="0.5" stroke="#000000" stroke-opacity="0.28" stroke-width="1.2" ` +
     `paint-order="stroke">${text}</text></svg>`
   );

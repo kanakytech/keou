@@ -13,7 +13,7 @@ FROM node:20-slim AS runtime
 # the way sharp already does for images — without it the anonymous studio still
 # works, it just serves video unwatermarked and says so in the log. Drop ffmpeg
 # here if you do not run the public studio and want a smaller image.
-RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r keou && useradd -r -g keou -d /app keou
