@@ -269,7 +269,8 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
 // ─── TTS (ElevenLabs) ───
 
 /** Identifiant de voix donné en exemple par la documentation KIE (26/08/2026). */
-const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';
+const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';   // « James » dans leur catalogue
+const MODELE_VOIX = 'elevenlabs/text-to-speech-multilingual-v2';
 
 export async function tts(apiKey, { text, voice, stability, similarity_boost, style, speed }) {
   /* On n'impose plus « Rachel » — le fournisseur a changé de convention.
@@ -311,7 +312,14 @@ export async function tts(apiKey, { text, voice, stability, similarity_boost, st
   const r = await fetchWithTimeout(`${KIE}/createTask`, {
     method: 'POST',
     headers: kieHeaders(apiKey),
-    body: JSON.stringify({ model: 'elevenlabs/text-to-speech-turbo-2-5', input }),
+    /* Multilingue, pas « turbo ».
+     *
+     * `turbo-2-5` est optimisé pour l'anglais et rendait « Internal Error » chez
+     * KIE le 26/08, même avec un identifiant de voix valide tiré de leur propre
+     * documentation. `multilingual-v2` est listé au même catalogue et convient
+     * bien mieux à un studio francophone — c'est le modèle que ce produit aurait
+     * dû appeler dès le départ. */
+    body: JSON.stringify({ model: MODELE_VOIX, input }),
   });
   const data = await safeJson(r);
   if (!data.data?.taskId) throw new Error('TTS task failed');
