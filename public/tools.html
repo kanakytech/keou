@@ -419,14 +419,14 @@
     {
       id: 'image-upscale',
       name: 'Image Upscale',
-      desc: 'Enhance resolution up to 8x',
+      desc: 'Sharper detail, up to 8x the pixels',
       cost: '$0.10 (4K) / $0.20 (8K)',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`,
     },
     {
       id: 'video-upscale',
       name: 'Video Upscale',
-      desc: 'Upscale video to 4K',
+      desc: 'Bring video up to 4K',
       cost: '~$0.07 / second',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>`,
     },
@@ -449,8 +449,8 @@
   toolsGrid.innerHTML = VISIBLE_TOOLS.map(t => `
     <div class="tool-card" data-tool="${t.id}" onclick="selectTool('${t.id}')">
       <div class="tool-card-icon">${t.icon}</div>
-      <div class="tool-card-name">${t.name}</div>
-      <div class="tool-card-desc">${t.desc}</div>
+      <div class="tool-card-name">${I18N.t(t.name)}</div>
+      <div class="tool-card-desc">${I18N.t(t.desc)}</div>
       <!-- En anonyme, Keou ne facture rien : la clé du visiteur est débitée
            directement par le fournisseur. Afficher NOS tarifs sur cette page
            laissait croire le contraire, alors que studio.html disait déjà la
