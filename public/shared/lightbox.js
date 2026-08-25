@@ -904,7 +904,16 @@ const Lightbox = (() => {
        * bouton sur un agrandissement d'IMAGE (Topaz ×4) : la promesse
        * affichée annonçait une définition que le rendu n'avait pas. Le 4K
        * n'existe que sur la branche vidéo, réservée aux comptes. */
-      const upLabel = _currentType === 'video' ? 'Upscale 4K' : 'Upscale 4x';
+      /* Les deux libellés sont déclarés sous une clé `label` pour que
+       * scripts/i18n-extract.mjs les voie : il lit les littéraux de clé
+       * `label` dans le JS partagé, pas les variables d'un gabarit. Écrits
+       * en ligne dans le bouton, ils étaient invisibles pour lui et ce
+       * bouton restait le seul en anglais sur un site français. */
+      const UPSCALE = {
+        video: { label: 'Upscale 4K' },
+        image: { label: 'Upscale 4x' },
+      };
+      const upLabel = (UPSCALE[_currentType] || UPSCALE.image).label;
       actions.push(`<button class="lb-action-btn" id="lb-btn-upscale" title="${esc(upLabel)} (U)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         ${esc(upLabel)}</button>`);
