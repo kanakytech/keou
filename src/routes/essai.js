@@ -32,6 +32,7 @@ import multer from 'multer';
 import { config } from '../config.js';
 import { query, queryOne, queryAll } from '../db.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { clientIp } from '../middleware/rateLimit.js';
 import { getRequestProviderKey } from '../utils/requestContext.js';
 import { checkPrompt } from '../lib/prompt-filter.js';
 import { enqueue, positionOf, queueStats } from '../lib/essai-queue.js';
@@ -84,7 +85,7 @@ router.post('/generer', async (req, res) => {
       [id, cleanPrompt, cleanFormat]
     );
 
-    const q = enqueue({ id, prompt: cleanPrompt, format: cleanFormat, apiKey, ip: req.ip || 'unknown' });
+    const q = enqueue({ id, prompt: cleanPrompt, format: cleanFormat, apiKey, ip: clientIp(req) });
     if (!q.ok) {
       await query(`DELETE FROM essai_generations WHERE id = $1`, [id]).catch(() => {});
       return res.status(q.code).json({ error: q.error });
@@ -291,7 +292,7 @@ async function launchStudioJob(req, res, { kind, galleryPrompt, userText, format
     [id, galleryPrompt, cleanFormat, kind]
   );
 
-  const q = enqueue({ id, prompt: galleryPrompt, format: cleanFormat, apiKey, ip: req.ip || 'unknown', kind, imageUrl, creativeDirection });
+  const q = enqueue({ id, prompt: galleryPrompt, format: cleanFormat, apiKey, ip: clientIp(req), kind, imageUrl, creativeDirection });
   if (!q.ok) {
     await query(`DELETE FROM essai_generations WHERE id = $1`, [id]).catch(() => {});
     return res.status(q.code).json({ error: q.error });

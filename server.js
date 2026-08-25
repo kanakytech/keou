@@ -38,9 +38,15 @@ const __dirname = dirname(__filename);
 
 const app = express();
 
-// Railway terminates TLS at a single proxy layer. Without this, req.ip is the
-// proxy's IP for every client — all users share one rate-limit bucket and the
-// brute-force protection is inert. Also required for `secure` cookie detection.
+// Railway termine le TLS derrière ses propres proxys. `trust proxy` reste posé
+// pour la détection des cookies `secure` — mais on ne s'y FIE PLUS pour
+// identifier un visiteur : la valeur 1 suppose une seule couche, la topologie
+// réelle en compte davantage, et req.ip rendait alors une adresse interne
+// IDENTIQUE pour tout le monde. Résultat observé le 25/08/2026 : un lot de cinq
+// variantes rendait « Too many requests », parce que le budget avait été
+// consommé par d'autres visiteurs. Les limiteurs et la file d'essai utilisent
+// désormais clientIp() (src/middleware/rateLimit.js), qui lit la première
+// entrée de X-Forwarded-For.
 app.set('trust proxy', 1);
 
 // Provenance: quiet origin signature on every response.
@@ -183,24 +189,33 @@ app.get('/health', async (req, res) => {
 app.use('/api', requestContext);
 
 // ─── Rate limiting per route category ───
-app.use('/api/auth', rateLimit(15, 60 * 1000));        // auth: strict
-app.use('/api/upload', rateLimit(200, 60 * 1000));      // uploads: supports batch studio (30+ images)
-app.use('/api/jarvis', rateLimit(30, 60 * 1000));       // chat: moderate
-app.use('/api/share', rateLimit(20, 60 * 1000));        // share create / list / delete (auth)
-app.use('/api/platform', rateLimit(30, 60 * 1000));     // operator endpoints: strict
+app.use('/api/auth', rateLimit(15, 60 * 1000, 'connexion'));
+app.use('/api/upload', rateLimit(200, 60 * 1000, 'import'));   // lots du studio : 30+ images
+app.use('/api/jarvis', rateLimit(30, 60 * 1000, 'assistant'));
+app.use('/api/share', rateLimit(20, 60 * 1000, 'partage'));
+app.use('/api/platform', rateLimit(30, 60 * 1000, 'exploitant'));
 // Essai communautaire (anonyme) — generer très strict par IP, signaler modéré ;
 // statut/galerie/image retombent sur le bucket générique /api ci-dessous.
-app.use('/api/essai/generer', rateLimit(5, 10 * 60 * 1000));
-app.use('/api/essai/signaler', rateLimit(10, 60 * 1000));
+app.use('/api/essai/generer', rateLimit(5, 10 * 60 * 1000, 'essai express'));
+app.use('/api/essai/signaler', rateLimit(10, 60 * 1000, 'signalement'));
 // Studio anonyme — uploads sources et lancements d'opérations (POST) limités
 // par IP ; le polling GET /studio/status retombe sur le bucket générique /api.
 // La file essai (ESSAI_MAX_PER_IP) reste le garde-fou dur de concurrence.
-app.use('/api/essai/upload', rateLimit(20, 10 * 60 * 1000));
-const essaiStudioLimit = rateLimit(30, 10 * 60 * 1000);
+app.use('/api/essai/upload', rateLimit(20, 10 * 60 * 1000, 'import anonyme'));
+/*
+ * Le studio anonyme travaille par LOTS : une image × huit variantes fait huit
+ * requêtes, et le studio relance automatiquement celles qui échouent — seize au
+ * total pour une seule action de l'utilisateur. À trente, deux lots suffisaient
+ * à fermer la porte, et l'utilisateur lisait « trop de requêtes » alors qu'il
+ * n'avait cliqué que deux fois. Soixante laisse passer trois à quatre lots par
+ * dix minutes, ce qui correspond à un usage réel, et la file (jobs simultanés
+ * et taille totale) reste le vrai garde-fou de charge.
+ */
+const essaiStudioLimit = rateLimit(60, 10 * 60 * 1000, 'studio anonyme');
 app.use('/api/essai/studio', (req, res, next) => (req.method === 'POST' ? essaiStudioLimit(req, res, next) : next()));
 // Public share consumption — separate strict bucket to prevent token enum + view_count spam
-app.get('/share/:token', rateLimit(30, 60 * 1000));
-app.use('/api', rateLimit(600, 60 * 1000));              // everything else: batch polling-safe (30 jobs × 8s polls)
+app.get('/share/:token', rateLimit(30, 60 * 1000, 'page de partage'));
+app.use('/api', rateLimit(600, 60 * 1000, 'général'));   // le reste : compatible avec le sondage des lots (30 tâches × 8 s)
 
 // ─── Database (with retry) ───
 async function bootDatabase(retries = 3) {
