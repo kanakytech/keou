@@ -269,11 +269,19 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
 // ─── TTS (ElevenLabs) ───
 
 export async function tts(apiKey, { text, voice, stability, similarity_boost, style, speed }) {
-  /* Le champ s'appelle bien `voice` et accepte AUSSI BIEN un nom de préréglage
-   * (« Rachel », « Adam ») qu'un identifiant de voix — c'est ce que l'interface
-   * envoie selon le groupe choisi. À ne pas « corriger » en `voice_id` :
-   * docs/fal-integration.md l'annonce ainsi, à tort. */
-  const input = { text, voice: voice || 'Rachel' };
+  /* On n'impose plus « Rachel » — le fournisseur a changé de convention.
+   *
+   * Ce défaut a trois mois. Le code forçait `voice: 'Rachel'`, un NOM de voix de
+   * l'ancienne API ElevenLabs. La documentation KIE du 26/08 ne parle plus que
+   * d'identifiants (« EkK5I93UQWFDigLMpZcX » et une soixantaine d'autres), et
+   * toute génération de voix échouait avec une erreur interne — sans motif, la
+   * clé du visiteur débitée, sur une clé qui produisait des images sans broncher.
+   *
+   * Le champ est FACULTATIF et le fournisseur a son propre défaut : on ne le
+   * transmet donc que si l'appelant en a choisi un, plutôt que d'imposer une
+   * valeur qui peut redevenir invalide au prochain changement de leur côté. */
+  const input = { text };
+  if (typeof voice === 'string' && voice.trim()) input.voice = voice.trim();
   /* Bornes du schéma ElevenLabs chez KIE : stability, similarity_boost et style
    * dans [0,1], speed dans [0.7,1.2]. Les curseurs de l'interface les
    * respectent déjà ; ce filet ne sert qu'aux appels API directs, où une valeur
@@ -311,7 +319,7 @@ export async function sfx(apiKey, { text, duration_seconds }) {
   // seul si on la tait). Avant, tout ce qui était « vrai » partait tel quel :
   // un 60, ou une chaîne non numérique, faisait échouer la tâche APRÈS coup.
   // Un 0 restait ignoré, et c'est toujours le cas — ce n'est pas une durée.
-  const secondes = nombreBorne(duration_seconds, 0.5, 22);
+  const secondes = nombreBorne(duration_seconds, 0.5, 30);
   if (secondes !== undefined) input.duration_seconds = secondes;
 
   const r = await fetchWithTimeout(`${KIE}/createTask`, {

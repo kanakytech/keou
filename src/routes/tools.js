@@ -84,7 +84,9 @@ router.post('/tts', requireAuth, async (req, res) => {
 
     const result = await executeTts(req.user.id, {
       text: text.trim(),
-      voice: voice || 'Rachel',
+      // Pas de defaut impose : « Rachel » est un NOM de l'ancienne API
+      // ElevenLabs, que KIE ne reconnait plus. Le fournisseur a le sien.
+      voice: typeof voice === 'string' && voice.trim() ? voice.trim() : undefined,
       stability: stability != null ? Number(stability) : undefined,
       similarity_boost: similarity_boost != null ? Number(similarity_boost) : undefined,
       style: style != null ? Number(style) : undefined,

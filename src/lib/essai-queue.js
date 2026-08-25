@@ -387,7 +387,12 @@ async function createProviderTask(job) {
         upscaleFactor: job.upscaleFactor === '8' ? '8' : '4',
       });
     case 'tts': {
-      const input = { text: job.text, voice: job.voice || 'Rachel' };
+      /* Pas de voix imposée : le fournisseur a la sienne, et « Rachel » est un
+       * NOM de l'ancienne API ElevenLabs. Depuis, KIE ne parle plus que
+       * d'identifiants — d'où l'échec de TOUTE génération de voix, sans motif
+       * et la clé du visiteur débitée. Voir src/lib/providers/kie.js. */
+      const input = { text: job.text };
+      if (typeof job.voice === 'string' && job.voice.trim()) input.voice = job.voice.trim();
       // kie.tts recopie tout réglage « défini » : un null partirait tel quel
       // chez le fournisseur. On ne transmet donc que ceux réellement fournis.
       for (const k of ['stability', 'similarity_boost', 'style', 'speed']) {

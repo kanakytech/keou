@@ -529,7 +529,7 @@ router.post('/tts', requireAuth, async (req, res) => {
   const ttsText = text.length > 500 ? text.slice(0, 500) : text;
 
   try {
-    const result = await executeTts(userId, { text: ttsText, voice: voice || 'Rachel' });
+    const result = await executeTts(userId, { text: ttsText, voice: typeof voice === 'string' && voice.trim() ? voice.trim() : undefined });
 
     // Check if result is immediate (Fal sync) — already completed in DB
     const gen = await queryOne('SELECT status, result_url FROM generations WHERE id = $1', [result.generationId]);
