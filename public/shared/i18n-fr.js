@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1242 entrées. */
+   1243 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -1147,6 +1147,7 @@ window.KEOU_FR = {
   "Not set": "Non configuré",
   "Restore": "Restaurer",
   "Enlarge": "Agrandir",
+  "Gallery": "Galerie",
   "Format": "Ratio",
   "before": "avant",
   "Deploy": "Déployer",
@@ -1160,7 +1161,7 @@ window.KEOU_FR = {
   "failed": "échec",
   "browse": "parcourir",
   "Cancel": "Annuler",
-  "Custom": "Personnalisé",
+  "Custom": "Sur mesure",
   "Beauty": "Beauté",
   "Videos": "Vidéos",
   "Filter": "Filtrer",
