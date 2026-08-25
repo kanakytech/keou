@@ -705,7 +705,7 @@ router.post('/studio/upscale', async (req, res) => {
 
     await launchStudioJob(req, res, {
       kind: 'upscale',
-      galleryPrompt: `Agrandissement x${factor} — studio anonyme`,
+      galleryPrompt: `Définition ×${factor} — studio anonyme`,
       userText: null,
       format: null,
       imageUrl: source.url,
