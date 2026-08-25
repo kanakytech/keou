@@ -246,6 +246,23 @@ function safeErrorMessage(err) {
   if (msg.includes('429') || msg.includes('rate limit')) {
     return 'Provider rate limit reached — wait a minute and try again';
   }
+  /* Le message du fournisseur, quand on peut le montrer sans rien trahir.
+   *
+   * Tout ce qui n'entrait pas dans les cas ci-dessus devenait « la génération a
+   * échoué, réessayez » — une phrase qui ne dit rien et n'aide personne. Un
+   * bruitage refusé pour un modèle inconnu, une image refusée par la modération
+   * du fournisseur et une panne réseau rendaient exactement le même texte. Le
+   * visiteur ne pouvait ni comprendre ni corriger, et nous non plus.
+   *
+   * On rend donc ce que le fournisseur a dit, à trois conditions : rien qui
+   * ressemble à une clé ou à un jeton, aucune URL (les liens signés portent des
+   * secrets), et une longueur bornée. Faute de quoi on retombe sur le message
+   * générique — un diagnostic ne vaut jamais une fuite. */
+  const propre = raw.trim();
+  const suspect = /https?:\/\/|[A-Za-z0-9_-]{28,}|bearer|token|secret/i.test(propre);
+  if (propre && propre.length <= 160 && !suspect) {
+    return `Provider refused the request: ${propre}`;
+  }
   return 'Generation failed — please try again in a moment';
 }
 

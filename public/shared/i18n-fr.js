@@ -1327,5 +1327,6 @@ window.KEOU_FR_PATTERNS = {
   "Trial queue full ({} waiting) — try again in about {} min": "File d’essai saturée ({} en attente) — réessayez dans environ {} min",
   "You already have {} generations queued or running (limit {}) — try again in about {} min": "Vous avez déjà {} générations en file ou en cours (limite {}) — réessayez dans environ {} min",
   "Too many requests from this network address ({}) — the limit applies to the connection, not to you personally. Try again in {} s.": "Trop de requêtes venant de cette adresse réseau ({}) — la limite porte sur la connexion, pas sur vous personnellement. Réessayez dans {} s.",
-  "Too many requests from this network address — the limit applies to the connection, not to you personally. Try again in {} s.": "Trop de requêtes venant de cette adresse réseau — la limite porte sur la connexion, pas sur vous personnellement. Réessayez dans {} s."
+  "Too many requests from this network address — the limit applies to the connection, not to you personally. Try again in {} s.": "Trop de requêtes venant de cette adresse réseau — la limite porte sur la connexion, pas sur vous personnellement. Réessayez dans {} s.",
+  "Provider refused the request: {}": "Le fournisseur a refusé la demande : {}"
 };
