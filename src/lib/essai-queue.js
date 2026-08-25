@@ -542,13 +542,37 @@ const MPEG_EXT_RE = /^\.(mp3|mpeg|mpga)$/i;
  * route le navigateur refuserait tout net de le lire. On le crie donc dans les
  * logs au premier écart, plutôt que de l'apprendre par un visiteur.
  */
-function warnUnexpectedAudioFormat(id, url) {
-  let ext = '';
-  try { ext = (new URL(String(url)).pathname.match(/\.[a-z0-9]{2,5}$/i) || [''])[0]; }
-  catch { return; }
-  if (!ext || MPEG_EXT_RE.test(ext)) return;
-  // Jamais l'URL du fournisseur dans un log — seulement son extension.
-  console.warn(`[ESSAI] job ${id}: le fournisseur rend du "${ext}", la file le stocke et le sert en MP3`);
+/* Le son est servi dans le format que le fournisseur a REELLEMENT rendu.
+ *
+ * La table des médias figeait mp3 / audio/mpeg. Or Gemini rend du WAV (PCM
+ * 24 kHz mono, constaté le 26/08) : le fichier était déposé en « .mp3 » et servi
+ * en « audio/mpeg », c'est-à-dire annoncé sous un type qu'il n'a pas. Avec le
+ * nosniff que la route pose, un navigateur qui prend l'en-tête au mot refuse de
+ * lire — la voix aurait été produite, facturée, et muette.
+ *
+ * On lit donc l'extension du rendu et on sert ce qui correspond. Inconnue ou
+ * absente : on garde le défaut de la table plutôt que d'inventer.
+ */
+const FORMATS_AUDIO = Object.freeze({
+  '.mp3':  { ext: 'mp3',  mime: 'audio/mpeg' },
+  '.mpeg': { ext: 'mp3',  mime: 'audio/mpeg' },
+  '.mpga': { ext: 'mp3',  mime: 'audio/mpeg' },
+  '.wav':  { ext: 'wav',  mime: 'audio/wav' },
+  '.ogg':  { ext: 'ogg',  mime: 'audio/ogg' },
+  '.opus': { ext: 'opus', mime: 'audio/ogg' },
+  '.flac': { ext: 'flac', mime: 'audio/flac' },
+  '.m4a':  { ext: 'm4a',  mime: 'audio/mp4' },
+  '.aac':  { ext: 'aac',  mime: 'audio/aac' },
+});
+
+/** Le format réellement rendu, ou null si l'URL ne le dit pas. */
+function formatAudioRendu(url) {
+  try {
+    const ext = (new URL(String(url)).pathname.match(/\.[a-z0-9]{2,5}$/i) || [''])[0].toLowerCase();
+    return FORMATS_AUDIO[ext] || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -597,7 +621,7 @@ async function runJob(job) {
     // pour toujours et la file perdrait une place à chaque fois. Rien ici ne
     // jette aujourd'hui ; la garantie « une voie prise est une voie rendue » ne
     // doit pas dépendre de cette lecture-là.
-    const out = mediaForKind(job.kind);
+    let out = mediaForKind(job.kind);
 
     // media est réaffirmé ici, et pas seulement à l'insertion : la file est la
     // seule à connaître la table des médias, le client saura donc toujours ce
@@ -626,8 +650,15 @@ async function runJob(job) {
 
     // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
     //    l'URL du fournisseur ne sort jamais d'ici, ni vers la base ni vers le client
+    // Le son prend le format réellement rendu — voir formatAudioRendu.
+    if (out.media === 'audio') {
+      const reel = formatAudioRendu(resultUrl);
+      if (reel && reel.ext !== out.ext) {
+        console.warn(`[ESSAI] job ${job.id}: le fournisseur rend du "${reel.ext}", servi comme tel`);
+        out = Object.freeze({ ...out, ext: reel.ext, mime: reel.mime });
+      }
+    }
     const r2Key = `essai/${job.id}.${out.ext}`;
-    if (out.media === 'audio') warnUnexpectedAudioFormat(job.id, resultUrl);
     await persistProviderResult(resultUrl, r2Key, out, job);
 
     await query(

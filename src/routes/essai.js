@@ -577,7 +577,7 @@ router.get('/image/:id', async (req, res) => {
     // décidé sous quelle forme la file a déposé l'objet sur R2. Avec nosniff
     // plus bas, un MP4 annoncé en image/png ne se lirait nulle part : le
     // navigateur s'interdit de rattraper une déclaration fausse.
-    const out = mediaForKind(row.kind);
+    let out = mediaForKind(row.kind);
     // Cette route lisait le média par le SEUL kind, alors que /statut, /galerie
     // et /studio/status lisent d'abord la colonne. Une ligne dont le kind ne
     // serait pas (ou plus) dans la table retombe sur 'text', donc sur 'image' :
@@ -585,6 +585,24 @@ router.get('/image/:id', async (req, res) => {
     // partout ailleurs ; le mime et l'extension, eux, n'existent que dans la
     // table des kinds, d'où les deux lectures.
     const media = row.media || out.media;
+
+    /* Le type servi suit le FICHIER, pas la table.
+     *
+     * La table des kinds fige mp3 / audio/mpeg pour le son. Or le moteur de voix
+     * rend du WAV : le fichier était donc annoncé sous un type qu'il n'avait pas,
+     * et avec le nosniff posé plus bas, un navigateur qui prend l'en-tête au mot
+     * refuse de lire. La voix aurait été produite, facturée, et muette.
+     * La clé R2 porte la vraie extension — c'est elle qui décide. */
+    const extReelle = (String(row.r2_key).match(/\.([a-z0-9]{2,5})$/i) || [])[1];
+    const mimeParExtension = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+      mp4: 'video/mp4', webm: 'video/webm',
+      mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', opus: 'audio/ogg',
+      flac: 'audio/flac', m4a: 'audio/mp4', aac: 'audio/aac',
+    };
+    if (extReelle && mimeParExtension[extReelle.toLowerCase()]) {
+      out = { ...out, ext: extReelle.toLowerCase(), mime: mimeParExtension[extReelle.toLowerCase()] };
+    }
 
     if (req.query.v === '1' && media === 'image') {
       const wantsWebp = /image\/webp/i.test(req.headers.accept || '');

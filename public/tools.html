@@ -409,13 +409,16 @@
       cost: '~$0.03 / 1K chars',
       icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
     },
-    {
-      id: 'sfx',
-      name: 'Sound Effects',
-      desc: 'AI sound effect generation',
-      cost: '~$0.001 / second',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
-    },
+      /* Le bruitage est retiré : plus aucun modèle ne le fait chez KIE.
+       *
+       * `elevenlabs/sound-effect-v2` a disparu de leur catalogue — vérifié le
+       * 26/08 sur les 174 modèles listés dans leur documentation, aucun ne
+       * génère de son à partir d'un texte. Les appels partaient donc et
+       * revenaient en « Internal Error », la clé du visiteur débitée.
+       *
+       * Un bouton qui ne peut qu'échouer vaut moins que pas de bouton. La route
+       * serveur et l'adaptateur restent en place : il suffira de rétablir cette
+       * entrée le jour où un modèle réapparaît. */
     {
       id: 'image-upscale',
       name: 'Image Upscale',
