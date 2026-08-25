@@ -189,7 +189,50 @@ app.get('/api/demo-video', async (req, res) => {
  * paresseux, et ne rend qu'un booléen : on veut ici la version, et on la veut
  * avant la première vidéo plutôt qu'après.)
  */
-const mediaCaps = { ffmpeg: null, sharp: null, police: null };
+const mediaCaps = { ffmpeg: null, sharp: null, police: null, filigraneVideoReel: false };
+
+/* Le filigrane vidéo fonctionne-t-il VRAIMENT ?
+ *
+ * Vérifier que ffmpeg répond et qu'une police existe ne prouve rien : le
+ * 26/08, les deux étaient vrais et la vidéo sortait pourtant nue. Le module de
+ * filigrane rend la vidéo d'origine dès qu'il échoue — c'est voulu, une vidéo
+ * nue vaut mieux qu'une génération perdue — mais cette prudence rend la panne
+ * MUETTE. La sonde a donc annoncé « videoWatermark: true » pendant qu'aucune
+ * vidéo n'était marquée.
+ *
+ * On fait donc le vrai geste, une fois au démarrage : une vidéo minuscule
+ * fabriquée sur place, passée dans le MÊME chemin que la production, et on
+ * regarde si les octets ont changé. Trois cents millisecondes payées une fois
+ * pour ne plus jamais annoncer une protection qui n'existe pas.
+ */
+async function sondeFiligraneVideo() {
+  if (mediaCaps.ffmpeg === null) return false;
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joindre } = await import('node:path');
+  let dossier;
+  try {
+    dossier = await mkdtemp(joindre(tmpdir(), 'keou-sonde-'));
+    const temoin = joindre(dossier, 't.mp4');
+    await new Promise((resolve, reject) => {
+      const c = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi',
+        '-i', 'color=c=gray:s=320x180:d=1:r=8', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', temoin],
+        { stdio: 'ignore' });
+      const t = setTimeout(() => { c.kill('SIGKILL'); reject(new Error('timeout')); }, 10000);
+      c.on('error', (e) => { clearTimeout(t); reject(e); });
+      c.on('close', (code) => { clearTimeout(t); code === 0 ? resolve() : reject(new Error('ffmpeg ' + code)); });
+    });
+    const avant = await readFile(temoin);
+    const { watermarkVideo } = await import('./src/lib/watermark-video.js');
+    const apres = await watermarkVideo(avant);
+    return Buffer.isBuffer(apres) && !apres.equals(avant);
+  } catch (e) {
+    console.warn('[SONDE filigrane vidéo]', (e?.message || 'inconnu').slice(0, 120));
+    return false;
+  } finally {
+    if (dossier) await rm(dossier, { recursive: true, force: true }).catch(() => {});
+  }
+}
 
 /* La police du filigrane est-elle réellement sur le disque ?
  *
@@ -251,6 +294,7 @@ const mediaProbe = (async () => {
   mediaCaps.ffmpeg = await probeFfmpeg();
   mediaCaps.sharp = await probeSharp();
   mediaCaps.police = sondePolice();
+  mediaCaps.filigraneVideoReel = await sondeFiligraneVideo();
   if (!mediaCaps.ffmpeg) {
     console.warn('  [MEDIA] ffmpeg ABSENT — la video du studio anonyme sortira SANS filigrane');
   }
@@ -267,7 +311,8 @@ function mediaHealth() {
     police: mediaCaps.police,               // le filigrane écrit des carrés sans elle
     // Un filigrane n'est « vrai » que si l'outil ET la police sont là : sans
     // police, sharp et ffmpeg composent parfaitement… des rectangles vides.
-    videoWatermark: mediaCaps.ffmpeg !== null && mediaCaps.police !== null,
+    // Prouvé au démarrage sur une vidéo témoin, pas déduit de la présence des outils.
+    videoWatermark: mediaCaps.filigraneVideoReel,
     imageWatermark: mediaCaps.sharp !== null && mediaCaps.police !== null,
   };
 }
