@@ -2000,8 +2000,14 @@ window.videoJob = async (id) => {
     openModal(id, 'video');
   
   } catch (e) {
+    /* Un échec DOIT se voir. La carte reste « terminée » — l'image de départ
+     * est toujours valable et la retirer serait pire — mais l'opération, elle,
+     * a échoué. Jusqu'ici la seule trace était une ligne dans un journal que
+     * personne n'ouvre : on lisait « fini », l'image n'avait pas bougé, et rien
+     * ne disait pourquoi. Signalé en production le 26/08 sur un agrandissement. */
     job.status = 'done';
     log(`${job.name}: video failed — ${e.message}`, 'error');
+    toast(`Video failed — ${e.message}`, true);
   }
   // L'opération est finie : le prochain clic délibéré aura sa propre clé,
   // sinon une seconde demande identique serait prise pour un doublon.
@@ -2051,8 +2057,14 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration, vari
     openModal(id, 'video');
   
   } catch (e) {
+    /* Un échec DOIT se voir. La carte reste « terminée » — l'image de départ
+     * est toujours valable et la retirer serait pire — mais l'opération, elle,
+     * a échoué. Jusqu'ici la seule trace était une ligne dans un journal que
+     * personne n'ouvre : on lisait « fini », l'image n'avait pas bougé, et rien
+     * ne disait pourquoi. Signalé en production le 26/08 sur un agrandissement. */
     job.status = 'done';
     log(`${job.name}: video failed — ${e.message}`, 'error');
+    toast(`Video failed — ${e.message}`, true);
   }
   // L'opération est finie : le prochain clic délibéré aura sa propre clé,
   // sinon une seconde demande identique serait prise pour un doublon.
@@ -2090,8 +2102,14 @@ window.upscaleJob = async (id) => {
     openModal(id, 'video');
 
   } catch (e) {
+    /* Un échec DOIT se voir. La carte reste « terminée » — l'image de départ
+     * est toujours valable et la retirer serait pire — mais l'opération, elle,
+     * a échoué. Jusqu'ici la seule trace était une ligne dans un journal que
+     * personne n'ouvre : on lisait « fini », l'image n'avait pas bougé, et rien
+     * ne disait pourquoi. Signalé en production le 26/08 sur un agrandissement. */
     job.status = 'done';
     log(`${job.name}: upscale failed — ${e.message}`, 'error');
+    toast(`Upscale failed — ${e.message}`, true);
   }
   // L'opération est finie : le prochain clic délibéré aura sa propre clé,
   // sinon une seconde demande identique serait prise pour un doublon.
@@ -2122,8 +2140,14 @@ window.upscaleImageJob = async (id) => {
     log(`${job.name}: upscale ready`, 'success'); toast('Upscale complete');
 
   } catch (e) {
+    /* Un échec DOIT se voir. La carte reste « terminée » — l'image de départ
+     * est toujours valable et la retirer serait pire — mais l'opération, elle,
+     * a échoué. Jusqu'ici la seule trace était une ligne dans un journal que
+     * personne n'ouvre : on lisait « fini », l'image n'avait pas bougé, et rien
+     * ne disait pourquoi. Signalé en production le 26/08 sur un agrandissement. */
     job.status = 'done';
     log(`${job.name}: upscale failed — ${e.message}`, 'error');
+    toast(`Upscale failed — ${e.message}`, true);
   }
   // L'opération est finie : le prochain clic délibéré aura sa propre clé,
   // sinon une seconde demande identique serait prise pour un doublon.

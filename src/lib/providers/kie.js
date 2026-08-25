@@ -88,8 +88,19 @@ function ratioSeedance(ratio) {
  * cesser d'annoncer un 8x (signalé hors de ce fichier). */
 const FACTEURS_TOPAZ = new Set(['1', '2', '4']);
 function facteurTopaz(facteur) {
-  const v = String(facteur ?? '');
-  return FACTEURS_TOPAZ.has(v) ? v : '4';
+  /* Topaz attend un NOMBRE, pas une chaîne.
+   *
+   * Ce paramètre a été ajouté le 26/08 en le croyant obligatoire — sous forme
+   * de chaîne. Résultat immédiat : la tâche part, KIE annonce un succès, et
+   * aucun fichier n'est produit, ni chez nous ni dans les journaux de KIE. Or
+   * la veille, SANS ce paramètre du tout, l'agrandissement fonctionnait — vérifié
+   * au pixel près : une source de 64 px rendait 256, une de 96 rendait 384.
+   * Le seul changement entre les deux était ce champ.
+   *
+   * On envoie donc un nombre. Le paramètre reste transmis, car il est le seul
+   * moyen de demander un facteur 2 plutôt que le défaut. */
+  const v = Number(facteur);
+  return FACTEURS_TOPAZ.has(String(v)) ? v : 4;
 }
 
 /* Un réglage numérique hors bornes fait échouer la tâche, et un NaN part en
