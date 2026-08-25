@@ -62,7 +62,22 @@ async function bandeau(largeurVideo) {
     `fill="#ffffff" fill-opacity="0.5" stroke="#000000" stroke-opacity="0.28" stroke-width="1.2" ` +
     `paint-order="stroke">${TEXTE}</text></svg>`
   );
-  return sharp(svg).png().toBuffer();
+  /* On COMPOSE le texte sur un fond transparent, on n'ouvre pas le SVG seul.
+   *
+   * `sharp(svg)` — ouvrir le SVG comme image source — rendait un bandeau VIDE
+   * dans le conteneur de production : la vidéo repassait bien par ffmpeg (l'index
+   * en tête du fichier le prouve) mais l'incrustation n'ajoutait rien. Le même
+   * appel marche pourtant en local, et le filigrane des IMAGES, lui, sort
+   * parfaitement — or celui-ci compose le SVG sur un raster au lieu de l'ouvrir.
+   *
+   * On emprunte donc exactement le chemin qui fonctionne, plutôt que de chercher
+   * pourquoi l'autre diverge selon la machine. */
+  return sharp({
+    create: { width: w, height: h, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: svg, gravity: 'southeast' }])
+    .png()
+    .toBuffer();
 }
 
 function lancer(args) {
