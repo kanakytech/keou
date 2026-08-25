@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1257 entrées. */
+   1262 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -540,6 +540,7 @@ window.KEOU_FR = {
   "Client name is required": "Le nom du client est obligatoire",
   "Please enter an API key": "Saisissez une clé API",
   "Failed to load campaign": "Échec du chargement de la campagne",
+  "$0.10 (4K) / $0.20 (8K)": "0,10 USD (4K) / 0,20 USD (8K)",
   "Read the documentation": "Lire la documentation",
   "Copy the guided prompt": "Copier le prompt guidé",
   "funds the project too.": "finance aussi le projet.",
@@ -728,6 +729,7 @@ window.KEOU_FR = {
   "Campaign restored": "Campagne restaurée",
   "Campaign archived": "Campagne archivée",
   "Queued — position": "En file d'attente — position",
+  "~$0.03 / 1K chars": "≈ 0,03 USD / 1 000 caractères",
   "Copy the command": "Copier la commande",
   "Confirm Password": "Confirmer le mot de passe",
   "Common questions": "Questions courantes",
@@ -781,6 +783,7 @@ window.KEOU_FR = {
   "Campaign updated": "Campagne mise à jour",
   "Failed to update": "Échec de la mise à jour",
   "Polish complete!": "Retouche terminée",
+  "~$0.001 / second": "≈ 0,001 USD / seconde",
   "Open the studio": "Ouvrir le studio",
   "Book 30 minutes": "Réserver 30 minutes",
   "Troubleshooting": "Dépannage",
@@ -815,6 +818,7 @@ window.KEOU_FR = {
   "Video generated": "Vidéo générée",
   "Creating ZIP...": "Création du ZIP…",
   "Video Generator": "Générateur de vidéo",
+  "~$0.07 / second": "≈ 0,07 USD / seconde",
   "you@agency.com": "vous@agence.com",
   "you@studio.com": "vous@studio.com",
   "Create account": "Créer un compte",
@@ -1059,6 +1063,7 @@ window.KEOU_FR = {
   "Bitcoin QR": "QR Bitcoin",
   "Upscale 4x": "Définition ×4",
   "Upscale 4K": "Passer en 4K",
+  "From $0.15": "À partir de 0,15 USD",
   "Your name": "Votre nom",
   "Upscaling": "Amélioration de la définition",
   "Mechanism": "Mécanisme",
