@@ -23,7 +23,31 @@ const Lightbox = (() => {
   let _cdWrap = null;
   let _built = false;
   let _currentUrl = '';
+  let _currentType = 'image';
   let _currentMeta = null;
+
+  /* Extensions admises par média.
+   *
+   * Le premier de chaque liste sert de repli : c'est ce que la file de l'essai
+   * dépose réellement sur R2 (png, mp4, mp3 — voir MEDIA_BY_KIND côté serveur).
+   * Le reste n'est là que pour reconnaître une extension déjà présente dans
+   * l'URL et la conserver telle quelle plutôt que de la réécrire. */
+  const _EXT_PAR_MEDIA = {
+    image: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'],
+    video: ['mp4', 'webm', 'mov', 'm4v'],
+    audio: ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'],
+  };
+
+  /* Content-Type → extension. C'est la source la plus sûre des trois, puisque
+   * c'est le serveur qui sert vraiment l'octet qui la déclare. */
+  const _EXT_PAR_MIME = {
+    'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp',
+    'image/gif': 'gif', 'image/avif': 'avif',
+    'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+    'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav',
+    'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
+    'audio/ogg': 'ogg', 'audio/flac': 'flac',
+  };
   let _previousFocus = null; // a11y: focus to restore on close
   let _vtBusy = false; // re-entrance guard for the thumbnail→lightbox morph
   // API cache (60s TTL) — avoid refetching on every lightbox open
@@ -615,6 +639,16 @@ const Lightbox = (() => {
     }
   }
 
+  /* Corrige l'extension d'un nom de fichier avec le Content-Type de la
+   * réponse. Un en-tête absent, générique (application/octet-stream) ou
+   * inconnu laisse le nom tel quel : mieux vaut l'extension déduite du média
+   * ouvert qu'un « .bin » que le système n'associe à aucune application. */
+  function _extensionDuMime(fname, contentType) {
+    const mime = String(contentType || '').split(';')[0].trim().toLowerCase();
+    const ext = _EXT_PAR_MIME[mime];
+    return ext ? fname.replace(/\.[^.]+$/, '.' + ext) : fname;
+  }
+
   async function _download() {
     if (!_currentUrl) return;
     const dlBtn = _el.querySelector('.lb-dl');
@@ -625,15 +659,41 @@ const Lightbox = (() => {
     dlBtn.style.pointerEvents = 'none';
     window.toast?.('Preparing download...');
 
-    const ext = _currentUrl.split('/').pop().split('?')[0].split('.').pop() || 'png';
-    const isVideo = _body?.querySelector('video');
-    const isAudio = _body?.querySelector('.lightbox-audio');
-    const mediaType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
-    const fname = `keou-${mediaType}-${Date.now()}.${ext}`;
+    const dernier = _currentUrl.split('/').pop().split('?')[0];
+    /* L'extension se déduit du média ouvert, et non du chemin.
+     *
+     * Le studio anonyme sert ses TROIS médias sous `/api/essai/image/<uuid>` :
+     * pas de point dans le dernier segment, donc pas d'extension à lire, et
+     * l'ancien repli « png » s'appliquait aussi bien à un MP4 qu'à un MP3. Le
+     * visiteur repartait avec un « keou-video-….png » qu'aucun lecteur
+     * n'ouvrait. Le type réellement ouvert, lui, ne se trompe jamais ; l'URL
+     * ne sert plus que de confirmation quand elle porte déjà une extension
+     * cohérente avec ce type. Le Content-Type de la réponse, quand il arrive,
+     * tranche en dernier (voir _extensionDuMime plus bas). */
+    const mediaType = _EXT_PAR_MEDIA[_currentType] ? _currentType : 'image';
+    const extUrl = dernier.includes('.') ? dernier.split('.').pop().toLowerCase() : '';
+    const ext = _EXT_PAR_MEDIA[mediaType].includes(extUrl) ? extUrl : _EXT_PAR_MEDIA[mediaType][0];
+    let fname = `keou-${mediaType}-${Date.now()}.${ext}`;
     try {
-      const proxyUrl = `/api/download?url=${encodeURIComponent(_currentUrl)}&name=${encodeURIComponent(fname)}`;
-      const res = await (window.Auth?.authFetch || fetch)(proxyUrl);
+      /* Une URL relative est déjà chez nous.
+       *
+       * Le studio anonyme ne sert JAMAIS d'URL absolue : la galerie et les
+       * rendus passent tous par `/api/essai/image/<id>`, un proxy maison. Les
+       * envoyer au proxy de téléchargement était une impasse — il exige un
+       * compte, et sa liste d'hôtes autorisés ne sait pas lire un chemin sans
+       * domaine. Résultat : un 401 inutile avant chaque enregistrement, et un
+       * bouton qui semblait cassé le temps de l'aller-retour.
+       *
+       * Même origine ⇒ on récupère directement. Pas de proxy, pas de compte,
+       * et `a.download` est honoré puisqu'il n'y a pas de saut d'origine. */
+      const memeOrigine = _currentUrl.startsWith('/') && !_currentUrl.startsWith('//');
+      const res = memeOrigine
+        ? await fetch(_currentUrl)
+        : await (window.Auth?.authFetch || fetch)(
+            `/api/download?url=${encodeURIComponent(_currentUrl)}&name=${encodeURIComponent(fname)}`
+          );
       if (!res.ok) throw new Error('Download failed');
+      fname = _extensionDuMime(fname, res.headers.get('Content-Type'));
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -649,6 +709,7 @@ const Lightbox = (() => {
       try {
         const directRes = await fetch(_currentUrl);
         if (!directRes.ok) throw new Error('Direct fetch failed');
+        fname = _extensionDuMime(fname, directRes.headers.get('Content-Type'));
         const blob = await directRes.blob();
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -679,7 +740,9 @@ const Lightbox = (() => {
   /**
    * Open lightbox.
    * @param {string} url
-   * @param {'image'|'video'} type
+   * @param {'image'|'video'|'audio'} type - décide du rendu, du nom du fichier
+   *   enregistré et du libellé d'agrandissement. Une valeur inconnue retombe
+   *   sur 'image'.
    * @param {Object} [meta] - Optional metadata & callbacks
    * @param {string} [meta.genType] - 'image'|'video'|'polish'
    * @param {string} [meta.date] - formatted date
@@ -692,7 +755,8 @@ const Lightbox = (() => {
    * @param {Function} [meta.onRemix] - callback for Remix action (receives remixPrompt)
    * @param {Function} [meta.onPolish] - callback for Polish action
    * @param {Function} [meta.onVideo] - callback for Video action (receives creativeDirection string)
-   * @param {Function} [meta.onUpscale] - callback for Upscale 4K action (video only)
+   * @param {Function} [meta.onUpscale] - callback for the Upscale action —
+   *   labelled "Upscale 4K" on a video, "Upscale 4x" on an image
    * @param {Function} [meta.onPack] - callback for Export Pack action (K)
    */
   function open(url, type = 'image', meta = null) {
@@ -725,6 +789,11 @@ const Lightbox = (() => {
     _build();
     _currentUrl = url;
     _currentMeta = meta;
+    /* Le type ouvert est retenu : c'est lui qui nomme le fichier enregistré et
+     * qui décide du libellé d'agrandissement. Le déduire du DOM au moment du
+     * clic marchait, mais laissait passer un `type` inconnu — on normalise
+     * ici, une fois, et le reste du module n'a plus à s'en soucier. */
+    _currentType = type === 'video' || type === 'audio' ? type : 'image';
     // Render media
     if (type === 'audio') {
       const isT = meta?.genType === 'tts';
@@ -732,13 +801,20 @@ const Lightbox = (() => {
         ? '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="la-icon"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'
         : '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="la-icon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
       const title = isT ? 'Text to Speech' : 'Sound Effect';
+      /* Les trois branches échappent l'URL de la même façon.
+       *
+       * Elle vient aujourd'hui du serveur, donc rien ne casse — mais l'image
+       * échappait et le son comme la vidéo interpolaient tel quel. Une
+       * incohérence pareille devient une injection le jour où quelqu'un
+       * branche une source qu'il n'a pas écrite lui-même, et personne ne
+       * relit trois lignes qui ont l'air identiques. */
       _body.innerHTML = `<div class="lightbox-audio">
         ${iconSvg}
         <span class="la-title">${title}</span>
-        <audio controls autoplay src="${url}" style="width:100%"></audio>
+        <audio controls autoplay src="${esc(url)}" style="width:100%"></audio>
       </div>`;
     } else if (type === 'video') {
-      _body.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:min(90vw,1200px);max-height:72vh;border-radius:12px;box-shadow:0 32px 80px rgba(0,0,0,.35)"></video>`;
+      _body.innerHTML = `<video src="${esc(url)}" controls autoplay playsinline style="max-width:min(90vw,1200px);max-height:72vh;border-radius:12px;box-shadow:0 32px 80px rgba(0,0,0,.35)"></video>`;
     } else {
       _body.innerHTML = `<img src="${esc(url)}" alt="Preview" draggable="false">`;
     }
@@ -822,9 +898,16 @@ const Lightbox = (() => {
         Video</button>`);
     }
     if (meta?.onUpscale) {
-      actions.push(`<button class="lb-action-btn" id="lb-btn-upscale" title="Upscale 4K (U)">
+      /* Le libellé suit le média ouvert.
+       *
+       * « Upscale 4K » était figé, alors que le studio anonyme branche ce même
+       * bouton sur un agrandissement d'IMAGE (Topaz ×4) : la promesse
+       * affichée annonçait une définition que le rendu n'avait pas. Le 4K
+       * n'existe que sur la branche vidéo, réservée aux comptes. */
+      const upLabel = _currentType === 'video' ? 'Upscale 4K' : 'Upscale 4x';
+      actions.push(`<button class="lb-action-btn" id="lb-btn-upscale" title="${esc(upLabel)} (U)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        Upscale 4K</button>`);
+        ${esc(upLabel)}</button>`);
     }
     if (meta?.onPack) {
       actions.push(`<button class="lb-action-btn" id="lb-btn-pack" title="Export Pack (K)">
@@ -915,6 +998,7 @@ const Lightbox = (() => {
       _previousFocus = null;
     }
     _currentUrl = '';
+    _currentType = 'image';
     _currentMeta = null;
     _cdWrap.classList.remove('visible');
     const rp = _el?.querySelector('#lb-remix');

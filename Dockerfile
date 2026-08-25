@@ -9,8 +9,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 FROM node:20-slim AS runtime
 
-# curl for the container healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# curl serves the healthcheck. ffmpeg stamps the watermark into generated video,
+# the way sharp already does for images — without it the anonymous studio still
+# works, it just serves video unwatermarked and says so in the log. Drop ffmpeg
+# here if you do not run the public studio and want a smaller image.
+RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r keou && useradd -r -g keou -d /app keou

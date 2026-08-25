@@ -284,21 +284,55 @@
 <script src="/shared/i18n-fr.js"></script>
 <script src="/shared/i18n.js"></script>
 <script src="/shared/auth.js"></script>
+<script src="/shared/anon.js"></script>
 <script src="/shared/nav.js"></script>
 <script src="/shared/select.js"></script>
 <script src="/shared/icons.js"></script>
 <script src="/shared/toast.js"></script>
 <script>
 (async () => {
-  const ok = await Auth.guard();
-  if (!ok) return;
-  Nav.render({ active: 'tools' });
+  // Community edition : « Launch Keou » doit ouvrir les OUTILS autant que le
+  // studio. La voix, le bruitage et le générateur de vidéo n'existent que sur
+  // cette page — studio.html n'a pas une ligne de tts ni de sfx. Tant qu'elle
+  // n'appelait que Auth.guard(), un visiteur sans compte était renvoyé au login
+  // et ne les voyait jamais.
+  // L'amorçage est copié de studio.html à l'identique, sciemment : deux
+  // amorçages différents divergeraient au premier changement.
+  let anon = false;
+  const hasSession = await Auth.init();
+  if (!hasSession && window.AnonMode) anon = await AnonMode.tryInstall();
+  if (!anon) {
+    const ok = await Auth.guard();
+    if (!ok) return;
+  }
+  window.IS_ANON = anon;
+  if (anon) document.body.classList.add('keou-anon');
+
+  if (anon) AnonMode.renderNav();
+  else Nav.render({ active: 'tools' });
+
+  if (anon) {
+    // La clé du visiteur ne vit que dans son navigateur. Sans cette barre, qui
+    // arrive directement sur /tools.html n'a nulle part où la coller et chaque
+    // bouton répond « API key required » sans dire où poser la clé.
+    AnonMode.renderByokBar(document.getElementById('app'));
+    // Le sous-titre « pour votre équipe » parle à une agence connectée. Le
+    // visiteur anonyme a besoin de la règle, pas du slogan.
+    const sub = document.querySelector('.tools-header p');
+    if (sub) sub.textContent = 'No account needed. Everything you create here is public in the community gallery.';
+  }
   document.getElementById('app').style.display = '';
 
   // ─── State ───
   let currentTool = null;
   let pollingTimer = null;
   let uploadedUrl = null;
+
+  // La file anonyme publie le texte de la voix dans la galerie et le borne donc
+  // à l'extrait qu'elle y affiche (MAX_TTS_CHARS = 500 dans src/routes/essai.js).
+  // Annoncer 5 000 caractères laissait le visiteur écrire une page entière pour
+  // se faire refuser au clic, sans jamais savoir pourquoi.
+  const ttsMax = anon ? 500 : 5000;
 
   // ─── DOM ───
   const toolsGrid = document.getElementById('tools-grid');
@@ -406,7 +440,13 @@
   ];
 
   // ─── Render Tool Cards ───
-  toolsGrid.innerHTML = TOOLS.map(t => `
+  // « Video Upscale » part d'un FICHIER vidéo : l'upload anonyme n'accepte que
+  // des images (/api/essai/upload) et la file anonyme n'agrandit que des
+  // images. Laisser la carte visible aurait promis un outil qui échoue au
+  // premier clic — une page à moitié ouverte est pire qu'une porte fermée.
+  const VISIBLE_TOOLS = anon ? TOOLS.filter(t => t.id !== 'video-upscale') : TOOLS;
+
+  toolsGrid.innerHTML = VISIBLE_TOOLS.map(t => `
     <div class="tool-card" data-tool="${t.id}" onclick="selectTool('${t.id}')">
       <div class="tool-card-icon">${t.icon}</div>
       <div class="tool-card-name">${t.name}</div>
@@ -465,6 +505,38 @@
     const tool = TOOLS.find(t => t.id === id);
     const closeBtn = `<button class="ws-close" onclick="selectTool('${id}')" title="Close">${SVG_X}</button>`;
 
+    // En anonyme, /api/essai/studio/sfx ne lit que le texte et la durée : le
+    // format de sortie, l'influence du prompt et la boucle ne lui sont pas
+    // transmis. Un réglage qui ne change rien ment autant qu'une phrase
+    // fausse — on ne le montre donc pas tant qu'il n'y a pas de compte.
+    const sfxFormatField = anon ? '' : `
+              <div class="form-group">
+                <label class="form-label">Format</label>
+                <select class="form-input" id="sfx-format">
+                  <option value="mp3_44100_128">MP3 128kbps</option>
+                  <option value="mp3_44100_192">MP3 192kbps</option>
+                  <option value="mp3_44100_96">MP3 96kbps</option>
+                  <option value="pcm_44100">WAV 44.1kHz</option>
+                  <option value="pcm_48000">WAV 48kHz</option>
+                </select>
+              </div>`;
+    const sfxAdvanced = anon ? '' : `
+            <button class="adv-toggle" id="sfx-adv-toggle" onclick="toggleSfxAdvanced()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              Advanced Settings
+            </button>
+            <div class="adv-panel" id="sfx-adv-panel">
+              <div class="slider-row">
+                <label>Prompt Influence</label>
+                <input type="range" id="sfx-influence" min="0" max="1" step="0.05" value="0.3" oninput="updateSliderVal(this)">
+                <span class="slider-val">0.30</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <label style="font-size:12px;color:var(--ink-soft)">Loop</label>
+                <button class="factor-btn" id="sfx-loop-btn" style="padding:6px 16px;flex:0" onclick="this.classList.toggle('active');this.textContent=window.I18N?I18N.t(this.classList.contains('active')?'On':'Off'):(this.classList.contains('active')?'On':'Off')">Off</button>
+              </div>
+            </div>`;
+
     switch (id) {
       case 'tts':
         workspace.innerHTML = `
@@ -472,12 +544,12 @@
             <div class="ws-header"><h3>${tool.name}</h3>${closeBtn}</div>
             <div class="tool-hint">
               ${SVG_INFO}
-              <span>Convert text to natural-sounding speech. Max 5,000 characters.</span>
+              <span>Convert text to natural-sounding speech. Max ${ttsMax.toLocaleString('en-US')} characters.</span>
             </div>
             <div class="form-group">
               <label class="form-label">Text</label>
-              <textarea class="form-input tts-text" id="tts-text" placeholder="Enter text to convert to speech..." rows="5" maxlength="5000"></textarea>
-              <div class="tts-char-count" id="tts-char-count">0 / 5,000</div>
+              <textarea class="form-input tts-text" id="tts-text" placeholder="Enter text to convert to speech..." rows="5" maxlength="${ttsMax}"></textarea>
+              <div class="tts-char-count" id="tts-char-count">0 / ${ttsMax.toLocaleString('en-US')}</div>
             </div>
             <div class="form-group">
               <label class="form-label">Voice</label>
@@ -518,8 +590,8 @@
           if (ta && cc) {
             ta.addEventListener('input', () => {
               const len = ta.value.length;
-              cc.textContent = len.toLocaleString() + ' / 5,000';
-              cc.classList.toggle('warn', len > 4500);
+              cc.textContent = len.toLocaleString() + ' / ' + ttsMax.toLocaleString('en-US');
+              cc.classList.toggle('warn', len > ttsMax * 0.9);
             });
           }
         }, 30);
@@ -538,33 +610,8 @@
               <div class="form-group">
                 <label class="form-label">Duration (seconds)</label>
                 <input type="number" class="form-input" id="sfx-duration" placeholder="Auto" min="0.5" max="22" step="0.5">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Format</label>
-                <select class="form-input" id="sfx-format">
-                  <option value="mp3_44100_128">MP3 128kbps</option>
-                  <option value="mp3_44100_192">MP3 192kbps</option>
-                  <option value="mp3_44100_96">MP3 96kbps</option>
-                  <option value="pcm_44100">WAV 44.1kHz</option>
-                  <option value="pcm_48000">WAV 48kHz</option>
-                </select>
-              </div>
-            </div>
-            <button class="adv-toggle" id="sfx-adv-toggle" onclick="toggleSfxAdvanced()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              Advanced Settings
-            </button>
-            <div class="adv-panel" id="sfx-adv-panel">
-              <div class="slider-row">
-                <label>Prompt Influence</label>
-                <input type="range" id="sfx-influence" min="0" max="1" step="0.05" value="0.3" oninput="updateSliderVal(this)">
-                <span class="slider-val">0.30</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-                <label style="font-size:12px;color:var(--ink-soft)">Loop</label>
-                <button class="factor-btn" id="sfx-loop-btn" style="padding:6px 16px;flex:0" onclick="this.classList.toggle('active');this.textContent=window.I18N?I18N.t(this.classList.contains('active')?'On':'Off'):(this.classList.contains('active')?'On':'Off')">Off</button>
-              </div>
-            </div>
+              </div>${sfxFormatField}
+            </div>${sfxAdvanced}
             <button class="btn-primary full" id="btn-sfx" onclick="submitSfx()">Generate Sound Effect</button>
           </div>`;
         // Char counter
@@ -856,7 +903,9 @@
     const btn = document.getElementById('btn-tts');
     const text = document.getElementById('tts-text').value.trim();
     if (!text) { toast('Please enter some text'); return; }
-    if (text.length > 5000) { toast('Text exceeds 5,000 character limit'); return; }
+    // Le gabarit rend mot pour mot la phrase déjà traduite pour 5 000 : seule la
+    // borne anonyme (500) est une clé neuve à ajouter au dictionnaire.
+    if (text.length > ttsMax) { toast(`Text exceeds ${ttsMax.toLocaleString('en-US')} character limit`); return; }
 
     const voice = document.getElementById('tts-voice').value;
 
@@ -891,10 +940,15 @@
     if (text.length > 450) { toast('Text exceeds 450 character limit'); return; }
 
     const duration = document.getElementById('sfx-duration').value;
-    const format = document.getElementById('sfx-format').value;
 
-    const body = { text, output_format: format };
+    const body = { text };
     if (duration) body.duration_seconds = parseFloat(duration);
+
+    // Le sélecteur de format et le panneau avancé n'existent pas en anonyme
+    // (la file anonyme ne les lit pas) : on lit donc l'élément avant de s'en
+    // servir, sinon la génération plantait sur un `null.value`.
+    const fmt = document.getElementById('sfx-format');
+    if (fmt) body.output_format = fmt.value;
 
     // Advanced settings
     const panel = document.getElementById('sfx-adv-panel');
@@ -1010,8 +1064,14 @@
   function showResult(type, url) {
     resultArea.style.display = '';
 
-    const downloadBtn = `
-      <a class="btn-secondary btn-sm" href="#" onclick="downloadResult(event, ${jsArg(url)})">
+    // /api/download suppose un compte : en anonyme il répond 403 et le bouton
+    // « Download » n'affichait qu'une erreur. Ce que le visiteur possède
+    // vraiment, c'est sa création publiée dans la galerie — on l'y envoie.
+    const resultActions = anon
+      ? `<a class="btn-secondary btn-sm" href="/essai.html" target="_blank" rel="noopener">
+        ${SVG_INFO} View in the community gallery
+      </a>`
+      : `<a class="btn-secondary btn-sm" href="#" onclick="downloadResult(event, ${jsArg(url)})">
         ${SVG_DOWNLOAD} Download
       </a>`;
 
@@ -1019,17 +1079,17 @@
       resultArea.innerHTML = `
         <div class="section-label">Result</div>
         <audio controls src="${url}" style="width:100%;margin:12px 0 16px"></audio>
-        <div class="result-actions">${downloadBtn}</div>`;
+        <div class="result-actions">${resultActions}</div>`;
     } else if (type === 'vid-upscale' || type === 'video') {
       resultArea.innerHTML = `
         <div class="section-label">Result</div>
         <video controls src="${url}" style="max-width:100%;max-height:400px;border-radius:12px;margin:12px auto 16px;display:block"></video>
-        <div class="result-actions">${downloadBtn}</div>`;
+        <div class="result-actions">${resultActions}</div>`;
     } else {
       resultArea.innerHTML = `
         <div class="section-label">Result</div>
         <img src="${escapeHtml(url)}" style="max-width:100%;max-height:400px;border-radius:12px;margin:12px auto 16px;display:block" alt="Result">
-        <div class="result-actions">${downloadBtn}</div>`;
+        <div class="result-actions">${resultActions}</div>`;
     }
 
     resultArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

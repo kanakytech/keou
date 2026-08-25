@@ -331,9 +331,14 @@ const MIGRATIONS = [
   `CREATE INDEX IF NOT EXISTS idx_essai_gallery ON essai_generations(created_at DESC) WHERE status = 'completed' AND hidden = FALSE`,
   `CREATE INDEX IF NOT EXISTS idx_essai_status ON essai_generations(status)`,
   // Studio anonyme (BYOK, sans compte) — même table, même contrat de sortie
-  // (filigrane + galerie publique). kind distingue l'opération : text (essai
-  // simple), image (visuel produit), polish, remix, adapt.
+  // (galerie publique). kind distingue l'opération : text (essai simple),
+  // image (visuel produit), polish, remix, adapt, upscale, video, tts, sfx.
   `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'text'`,
+  // media dit ce que la ligne contient vraiment : image | video | audio.
+  // Sans lui, le client ne peut pas savoir s'il doit afficher une <img>, une
+  // <video> ou un <audio> — le kind ne suffit pas, plusieurs kinds partagent
+  // un même média. Défaut 'image' : toutes les lignes existantes sont des PNG.
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS media TEXT NOT NULL DEFAULT 'image'`,
 ];
 /* Schéma de facturation.
  *

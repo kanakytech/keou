@@ -260,6 +260,11 @@
 }
 .batch-bar .batch-info{flex:1;font-size:13px;color:var(--ink-muted);font-weight:500}
 .batch-bar .batch-info strong{color:var(--ink);font-weight:700}
+/* Le manque à livrer reste écrit dans la barre, pas seulement dans une
+   notification qui s'efface : un lot rogné par le serveur était constaté des
+   heures plus tard, l'utilisateur n'ayant plus rien sous les yeux. */
+.batch-bar .batch-shortfall{display:block;margin-top:4px;font-size:12px;font-weight:500;color:#fbbf24}
+.batch-bar .batch-shortfall.hidden{display:none}
 
 /* ── Activity Log ── */
 .log-section{margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
@@ -642,7 +647,7 @@
 
   <!-- Batch Actions -->
   <div id="batch-bar" class="batch-bar hidden">
-    <span class="batch-info"><strong id="done-count">0</strong> visuals ready</span>
+    <span class="batch-info"><strong id="done-count">0</strong> <span id="batch-total-label">visuals ready</span><span id="batch-shortfall" class="batch-shortfall hidden"></span></span>
     <button class="btn-secondary btn-sm hidden" id="retry-failed-btn">Retry failed</button>
     <button class="btn-secondary btn-sm" id="download-all-btn">Save All</button>
   </div>
@@ -959,6 +964,12 @@ const jobs = [];
 let format = '1:1';
 let variantCount = 1;
 let isProcessing = false;
+// Plafond réellement constaté au dernier lot, et son motif. Le bouton promettait
+// « Generate (1 × 5 = 5) » alors que le serveur n'en avait accepté que 3 : le
+// chiffre affiché doit se souvenir du refus, sinon on re-promet le même 5 au
+// clic suivant. Remis à null dès qu'un lot passe entier.
+let queueCap = null;
+let queueCapReason = '';
 const SUBMIT_CONCURRENCY = 3;  // parallel submission — conservative to keep KIE/Fal createTask stable on 30+ batches
 const POLL_CONCURRENCY = 10;    // parallel polling (KIE allows 100+ concurrent)
 const SUBMIT_JITTER_MS = 400;   // random spacing to desynchronize worker bursts against provider rate limits
@@ -1014,6 +1025,7 @@ function addFiles(fileList) {
       upscaledUrl: null,
       generationId: null,
       error: null,
+      refusal: null, // motif d'un refus serveur, repris dans le compte-rendu du lot
     });
     added++;
   }
@@ -1075,9 +1087,16 @@ function updateGenerateBtn() {
   const total = queued * variantCount;
   const presetInfo = activePreset !== 'custom' && PLATFORM_PRESETS[activePreset]
     ? ` for ${PLATFORM_PRESETS[activePreset].label}` : '';
+  // Un plafond déjà constaté rend le total affiché mensonger : on annonce le
+  // nombre que le serveur a réellement laissé passer, et le motif en infobulle.
+  const capped = queueCap !== null && total > queueCap;
+  $('#generate-btn').title = capped ? queueCapReason : '';
   if (total === 0) {
     $('#generate-btn').textContent = 'Generate Creatives';
     $('#generate-btn').disabled = true;
+  } else if (capped) {
+    $('#generate-btn').textContent = `Generate${presetInfo} (${queueCap} of ${total} — server limit)`;
+    $('#generate-btn').disabled = false;
   } else if (variantCount > 1) {
     $('#generate-btn').textContent = `Generate${presetInfo} (${queued} \u00d7 ${variantCount} = ${total})`;
     $('#generate-btn').disabled = false;
@@ -1088,12 +1107,17 @@ function updateGenerateBtn() {
   // ── Estimator ──
   const est = $('#estimator');
   if (total > 0) {
-    $('#estimator-count').textContent = total === 1 ? '1 creative' : `${total} creatives`;
+    $('#estimator-count').textContent = capped
+      ? `${queueCap} of ${total} creatives`
+      : (total === 1 ? '1 creative' : `${total} creatives`);
     const rounds = Math.ceil(total / 60);
     const mins = Math.round(rounds * 2.5);
     $('#estimator-time').textContent = `~${mins} min`;
+    // Même raison que la pastille de coût de la lightbox : en anonyme, Keou ne
+    // facture rien et le tarif par visuel n'est pas le nôtre — c'est la clé du
+    // visiteur qui est débitée, à une résolution différente. On ne chiffre pas.
     const cost = (total * COST_PER_CREATIVE).toFixed(2);
-    $('#estimator-cost').textContent = `$${cost}`;
+    $('#estimator-cost').textContent = window.IS_ANON ? 'Your own API key' : `$${cost}`;
     est.style.display = '';
   } else {
     est.style.display = 'none';
@@ -1239,6 +1263,38 @@ $('#generate-btn').addEventListener('click', () => {
   processAll(pending);
 });
 
+// Pictogrammes de la bannière de lot — sortis en constantes parce qu'ils
+// servent maintenant à plusieurs messages (envoi, lot complet, lot rogné).
+const NOTICE_WARN_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+const NOTICE_OK_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+/**
+ * Lit un refus serveur SANS en perdre le détail. Un 429 ne dit pas seulement
+ * « non » : `limite` nomme le seau qui a bloqué et `retryAfter` (corps ou
+ * en-tête Retry-After) dit dans combien de temps réessayer. Le code ne lisait
+ * que `error`, si bien qu'un lot rogné ne pouvait rien expliquer à personne.
+ */
+function readRefusal(res, data) {
+  const d = data || {};
+  const headerRetry = (() => {
+    try { return Number(res.headers.get('Retry-After')) || 0; } catch { return 0; }
+  })();
+  return {
+    status: res.status,
+    message: d.message || d.error || 'Refused by the server',
+    limite: d.limite || null,
+    retryAfter: Number(d.retryAfter) || headerRetry || 0,
+  };
+}
+
+/** Phrase affichable d'un refus, sans répéter ce que le message dit déjà. */
+function refusalLabel(r) {
+  const bits = [r.message];
+  if (r.limite && !r.message.includes(r.limite)) bits.push(`limit: ${r.limite}`);
+  if (r.retryAfter && !/\d+\s*s/.test(r.message)) bits.push(`retry in ${r.retryAfter}s`);
+  return bits.join(' — ');
+}
+
 async function processAll(pending) {
   isProcessing = true;
   $('#generate-btn').disabled = true;
@@ -1246,7 +1302,10 @@ async function processAll(pending) {
   dropZone.style.pointerEvents = 'none';
   dropZone.style.opacity = '.4';
 
-  // Expand variants: duplicate each job based on variantCount
+  // Expand variants: duplicate each job based on variantCount.
+  // Chaque clone est une requête à part : c'est ici que « 5 variantes » devient
+  // 5 soumissions, et donc ici que le serveur peut n'en accepter que 3. Le
+  // compte de ce qui part est repris plus bas, à la fin de la phase 1.
   const allJobs = [];
   const uploadCache = new Map(); // file → uploadUrl (avoid re-uploading same image)
   for (const job of pending) {
@@ -1267,6 +1326,7 @@ async function processAll(pending) {
         taskId: null,
         recordId: null,
         error: null,
+        refusal: null, // motif d'un refus serveur, repris dans le compte-rendu du lot
       };
       jobs.push(clone);
       allJobs.push(clone);
@@ -1298,7 +1358,7 @@ async function processAll(pending) {
   // If the user leaves mid-batch, resumePendingGenerations() picks them up.
   const notice = $('#batch-notice');
   notice.className = 'batch-notice warn';
-  notice.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Uploading your images — please don\'t close this window';
+  notice.innerHTML = `${NOTICE_WARN_SVG} Uploading your images — please don't close this window`;
   notice.style.display = '';
   let submitted = 0;
 
@@ -1336,6 +1396,14 @@ async function processAll(pending) {
       // Replace Promise with string URL once resolved (first success)
       if (typeof cached !== 'string') uploadCache.set(job.file, job.uploadUrl);
 
+      /* Le job retient le format avec lequel il a ete genere.
+       *
+       * La video se fabrique A PARTIR de l'image du job. Lui envoyer le format
+       * couramment selectionne dans le studio donnait une video 16:9 tiree d'une
+       * image carree des que le visiteur touchait les boutons entre-temps — le
+       * fournisseur recadrait ou ajoutait des bandes. Le format voyage donc avec
+       * le job, pas avec l'ecran. */
+      job.format = format;
       job.status = 'generating';
       updateCard(job);
 
@@ -1363,10 +1431,20 @@ async function processAll(pending) {
           clearTimeout(tmo);
           genData = await genRes.json();
           if (genRes.status === 402) throw new Error(genData.message || genData.error || 'API error — check your API key');
+          // Un 429 est un refus ASSUMÉ par le serveur, pas un incident : il dit
+          // quelle limite a joué et dans combien de temps réessayer. Le réessayer
+          // sur-le-champ consommait le quota qu'on venait de se voir refuser
+          // (six requêtes en douze secondes pour une variante), et le motif se
+          // perdait ensuite dans un message générique. On le garde entier.
+          if (genRes.status === 429) {
+            job.refusal = readRefusal(genRes, genData);
+            throw new Error(job.refusal.message);
+          }
           if (genRes.status === 500 && attempt < 2) { lastErr = genData.error || 'Server error'; continue; }
           if (genData.error) throw new Error(genData.error);
           break; // success
         } catch (e) {
+          if (job.refusal) throw e; // refus motivé : on n'insiste pas
           lastErr = e.name === 'AbortError' ? 'Request timed out after 60s' : e.message;
           if (e.message?.includes('API error') || e.message?.includes('check your API key')) throw e; // don't retry auth errors
           if (attempt === 2) throw new Error(lastErr);
@@ -1380,8 +1458,12 @@ async function processAll(pending) {
 
     } catch (e) {
       job.status = 'error';
-      job.error = e.message;
-      log(`${job.name}: ${e.message}`, 'error');
+      job.error = job.refusal ? refusalLabel(job.refusal) : e.message;
+      log(`${job.name}: ${job.error}`, 'error');
+      // Le repeint manquait ici : une soumission refusée laissait la carte sur
+      // son dernier état rendu, c'est-à-dire un rond qui tourne indéfiniment.
+      // C'est ce silence-là qui a fait passer un lot de 5 ramené à 3.
+      updateCard(job);
 
       if (job.generationId) {
         Auth.authFetch('/api/report-failure', {
@@ -1396,8 +1478,10 @@ async function processAll(pending) {
 
   await runPool(allJobs, submitJob, SUBMIT_CONCURRENCY);
 
-  // Auto-retry failed submissions once (pause 3s first to let any transient issues settle)
-  const firstRoundFailed = allJobs.filter(j => !j.taskId && j.status === 'error');
+  // Auto-retry failed submissions once (pause 3s first to let any transient issues settle).
+  // Les refus motivés en sont EXCLUS : réessayer un plafond trois secondes plus
+  // tard ne fait que le renforcer, et brouille le motif qu'on veut afficher.
+  const firstRoundFailed = allJobs.filter(j => !j.taskId && j.status === 'error' && !j.refusal);
   if (firstRoundFailed.length > 0) {
     log(`Retrying ${firstRoundFailed.length} failed submission(s)...`, 'processing');
     await new Promise(r => setTimeout(r, 3000));
@@ -1408,15 +1492,43 @@ async function processAll(pending) {
 
   const submittedJobs = allJobs.filter(j => j.taskId);
   const failedSubmit = allJobs.length - submittedJobs.length;
-  if (failedSubmit > 0) {
-    log(`${failedSubmit} failed to submit (after retry)`, 'error');
+
+  // ── Compte-rendu du lot ──
+  // Demandé / parti / pourquoi le reste ne part pas. Sans ce bloc, cinq variantes
+  // ramenées à trois par le serveur ne laissaient aucune trace lisible : la
+  // bannière annonçait quand même « All images submitted », le compteur de
+  // progression repartait à 3/3 = 100 %, et le motif ne vivait que dans une
+  // notification passagère au bas de la page.
+  const refusalTexts = [...new Set(allJobs.filter(j => j.refusal).map(j => refusalLabel(j.refusal)))];
+  // Entre parenthèses, et pas après un tiret : les messages du serveur en
+  // contiennent déjà, et la phrase devenait illisible d'un seul tenant.
+  const whySuffix = refusalTexts.length ? ` (${refusalTexts.join(' · ')})` : '';
+  if (failedSubmit > 0 && submittedJobs.length > 0) {
+    // Le plafond constaté est mémorisé : le bouton cessera de promettre le total.
+    queueCap = submittedJobs.length;
+    queueCapReason = refusalTexts.join(' · ') || 'The server refused part of the last batch';
+  } else if (failedSubmit === 0) {
+    queueCap = null;
+    queueCapReason = '';
   }
-  if (submittedJobs.length > 0) {
+  // Pas de repeint du bouton ici : il affiche « Generating... » tant que le lot
+  // tourne. Il est recalculé à la toute fin de processAll().
+
+  if (failedSubmit > 0) {
+    log(`${submittedJobs.length} of ${allJobs.length} sent — ${failedSubmit} refused${whySuffix}`, 'error');
+  }
+  if (failedSubmit === 0 && submittedJobs.length > 0) {
     log(`All ${submittedJobs.length} tasks submitted — generating...`, 'processing');
     notice.className = 'batch-notice safe';
-    notice.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> All images submitted — you can leave this page, your creatives will be ready when you come back';
+    notice.innerHTML = `${NOTICE_OK_SVG} All images submitted — you can leave this page, your creatives will be ready when you come back`;
+  } else if (submittedJobs.length > 0) {
+    // Un lot partiellement accepté n'est pas un échec : on informe, on n'annule pas.
+    log(`${submittedJobs.length} task(s) submitted — generating...`, 'processing');
+    notice.className = 'batch-notice warn';
+    notice.innerHTML = `${NOTICE_WARN_SVG} Only ${submittedJobs.length} of ${allJobs.length} were accepted — ${failedSubmit} refused${escapeHtml(whySuffix)}. The ${submittedJobs.length} accepted keep going.`;
   } else {
-    notice.style.display = 'none';
+    notice.className = 'batch-notice warn';
+    notice.innerHTML = `${NOTICE_WARN_SVG} None of the ${allJobs.length} requested were accepted${escapeHtml(whySuffix)}.`;
   }
 
   // ═══ PHASE 2: Poll ALL submitted jobs in parallel ═══
@@ -1445,13 +1557,20 @@ async function processAll(pending) {
       }
     }
     completed++;
-    updateProgress(completed, submittedJobs.length, 'Generating');
+    // Le dénominateur reste celui des tâches ACCEPTÉES — sinon la barre ne peut
+    // plus atteindre 100 % — mais le manque est rappelé à côté, faute de quoi un
+    // « 3 / 3 — 100 % » laissait croire que les cinq demandées étaient passées.
+    updateProgress(completed, submittedJobs.length, 'Generating',
+      failedSubmit > 0 ? ` (${failedSubmit} of ${allJobs.length} refused)` : '');
     updateCard(job);
   };
 
   await runPool(submittedJobs, pollJob, POLL_CONCURRENCY);
 
-  notice.style.display = 'none';
+  // La bannière ne s'efface que si le lot est passé entier. Un lot rogné doit
+  // rester lisible à l'écran une fois la génération finie : c'est le seul
+  // endroit qui porte le motif renvoyé par le serveur.
+  if (failedSubmit === 0) notice.style.display = 'none';
   stopTimer();
   isProcessing = false;
   dropZone.style.pointerEvents = '';
@@ -1461,6 +1580,15 @@ async function processAll(pending) {
   const failedCount = allJobs.length - doneCount;
   show('batch-bar');
   $('#done-count').textContent = doneCount;
+  $('#batch-total-label').textContent = `of ${allJobs.length} visuals ready`;
+  const shortfall = $('#batch-shortfall');
+  if (failedSubmit > 0) {
+    shortfall.classList.remove('hidden');
+    shortfall.textContent = `${failedSubmit} never started${whySuffix}`;
+  } else {
+    shortfall.classList.add('hidden');
+    shortfall.textContent = '';
+  }
   const retryBtn = $('#retry-failed-btn');
   if (failedCount > 0) {
     retryBtn.classList.remove('hidden');
@@ -1468,11 +1596,19 @@ async function processAll(pending) {
   } else {
     retryBtn.classList.add('hidden');
   }
-  toast(`${doneCount}/${allJobs.length} visuals generated`);
+  // Le motif n'est pas répété ici : il est écrit juste en dessous, dans la
+  // barre de lot et dans la bannière, et il y reste. Une notification de plus
+  // ne ferait qu'ajouter au bruit — il y en a déjà une par carte refusée.
+  toast(failedSubmit > 0
+    ? `${doneCount}/${allJobs.length} visuals generated — ${failedSubmit} never started`
+    : `${doneCount}/${allJobs.length} visuals generated`, failedSubmit > 0);
   log(`Batch complete: ${doneCount}/${allJobs.length}`, 'success');
 
-  $('#generate-btn').disabled = false;
-  $('#generate-btn').textContent = 'Generate Creatives';
+  // Le bouton repasse par son propre calcul : s'il reste un plafond constaté,
+  // il doit l'annoncer au lieu de re-promettre le total. (Il gère aussi son
+  // état désactivé quand la file d'attente est vide — l'ancien code le laissait
+  // cliquable pour rien.)
+  updateGenerateBtn();
 
 }
 
@@ -1491,7 +1627,19 @@ async function runPool(items, fn, limit) {
 // ─── Polling (with auth + robust error handling) ───
 function poll(url, interval = 8000, timeout = 360000) {
   return new Promise((resolve, reject) => {
-    const start = Date.now();
+    /* Le délai ne court que pendant le TRAVAIL, jamais pendant l'attente.
+     *
+     * Le compteur démarrait à la soumission. Sur un lot de vingt, la file
+     * anonyme n'en traite que trois à la fois : les dernières cartes
+     * atteignaient les six minutes alors que rien n'avait encore commencé pour
+     * elles. Le serveur produisait bien les vingt images — la clé du visiteur
+     * était débitée — mais l'écran affichait « Timed out » et le travail était
+     * perdu pour lui.
+     *
+     * Tant que le serveur répond « queued », on repousse l'origine du décompte :
+     * le budget s'applique à la génération, pas à la place dans la queue. */
+    let start = Date.now();
+    let derniereMesure = Date.now();
     let attempts = 0;
     let networkErrors = 0;
     const MAX_NETWORK_ERRORS = 30;
@@ -1526,8 +1674,15 @@ function poll(url, interval = 8000, timeout = 360000) {
           console.warn(`[poll] task failed: ${data.error}`);
           return reject(new Error(data.error || 'Generation failed on provider'));
         }
+        // En file d'attente : on rend au job le temps qu'il vient de passer à
+        // ne rien faire, sinon son budget s'épuise avant même son tour.
+        const maintenant = Date.now();
+        if (data.state === 'queued') start += maintenant - derniereMesure;
+        derniereMesure = maintenant;
+
         if (attempts <= 3 || attempts % 5 === 0) {
-          console.log(`[poll] attempt ${attempts}: state=${data.state || 'unknown'} ready=${data.ready}`);
+          const rang = data.position ? ` position=${data.position}` : '';
+          console.log(`[poll] attempt ${attempts}: state=${data.state || 'unknown'} ready=${data.ready}${rang}`);
         }
       } catch (err) {
         networkErrors++;
@@ -1547,11 +1702,11 @@ function poll(url, interval = 8000, timeout = 360000) {
 }
 
 // ─── Progress ───
-function updateProgress(done, total, label = '') {
+function updateProgress(done, total, label = '', suffix = '') {
   const pct = Math.round((done / total) * 100);
   $('#progress-fill').style.transform = 'scaleX(' + (pct / 100) + ')';
   const prefix = label ? `${label}: ` : '';
-  $('#progress-text').textContent = `${prefix}${done} / ${total} — ${pct}%`;
+  $('#progress-text').textContent = `${prefix}${done} / ${total} — ${pct}%${suffix}`;
 }
 
 // ─── Result Cards ───
@@ -1633,7 +1788,7 @@ function cardHTML(job) {
       ${isDone ? `
       <div class="result-actions">
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
-        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
         ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}
       </div>` : ''}
@@ -1738,7 +1893,7 @@ function updateCard(job) {
       div.className = 'result-actions';
       div.innerHTML = `
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
-        ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>`}
+        <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
         ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}`;
       el.appendChild(div);
@@ -1792,7 +1947,13 @@ window.videoJob = async (id) => {
   job.status = 'rendering'; updateCard(job);
   log(`${job.name}: rendering video...`);
   try {
-    const body = { imageUrl: job.resultUrl };
+    // Le format choisi dans le studio (variable `format`, posée par les boutons
+    // .format-btn) doit suivre la vidéo. Sans lui, la file retombait sur son
+    // propre défaut : toute vidéo anonyme sortait en 1:1, y compris quand le
+    // visiteur avait choisi 9:16 pour ses visuels. `aspectRatio` est le nom
+    // qu'attendent les deux routes ; `format` est le repli lu par la file
+    // anonyme (essai-queue : `job.aspectRatio || job.format`).
+    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format, format: job.format || format };
     const projectId = getProjectId();
     if (projectId) body.projectId = projectId;
     const campaignId = getCampaignId();
@@ -1829,7 +1990,9 @@ window.videoJobWithCD = async (id, creativeDirection, videoModel, duration) => {
   job.status = 'rendering'; updateCard(job);
   log(`${job.name}: rendering video (${modelLabel}, ${duration || 10}s)${creativeDirection ? ' + creative direction' : ''}...`);
   try {
-    const body = { imageUrl: job.resultUrl };
+    // Même raison que dans videoJob : le format choisi dans le studio part avec
+    // la requête, sinon la file anonyme rend tout en 1:1.
+    const body = { imageUrl: job.resultUrl, aspectRatio: job.format || format, format: job.format || format };
     const projectId = getProjectId();
     if (projectId) body.projectId = projectId;
     const campaignId = getCampaignId();
@@ -1898,10 +2061,40 @@ window.upscaleJob = async (id) => {
   updateCard(job);
 };
 
+// ─── Agrandissement de l'image (studio anonyme) ───
+// Un compte agrandit sa VIDÉO en 4K ; la file publique, elle, ne sait
+// agrandir qu'une image. C'est donc le rendu du visiteur qu'on agrandit, et le
+// résultat remplace ce rendu dans la carte — comme le fait déjà le polish.
+window.upscaleImageJob = async (id) => {
+  const job = jobs.find(j => j.id === id);
+  if (!job || !job.resultUrl) return;
+  job.status = 'rendering'; updateCard(job);
+  log(`${job.name}: upscaling image...`);
+  toast('Upscaling — this may take a minute');
+  try {
+    const res = await Auth.authFetch('/api/upscale', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl: job.resultUrl, upscaleFactor: '4' }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const url = await poll(`/api/status/upscale/${data.taskId}`, 8000, 360000);
+    job.resultUrl = url; job.status = 'done';
+    log(`${job.name}: upscale ready`, 'success'); toast('Upscale complete');
+
+  } catch (e) {
+    job.status = 'done';
+    log(`${job.name}: upscale failed — ${e.message}`, 'error');
+  }
+  updateCard(job);
+};
+
 window.retryJob = async (id) => {
   const job = jobs.find(j => j.id === id);
   if (!job) return;
-  job.status = 'queued'; job.error = null; job.generationId = null;
+  // Le refus précédent est effacé : sans ça un job une fois refusé traînait sa
+  // raison d'être refusé, et le prochain compte-rendu de lot la reprenait.
+  job.status = 'queued'; job.error = null; job.generationId = null; job.refusal = null;
   updateCard(job);
   const projectId = getProjectId();
   await runPool([job], async (j) => {
@@ -1925,6 +2118,9 @@ window.retryJob = async (id) => {
       });
       const d2 = await r2.json();
       if (r2.status === 402) throw new Error(d2.message || d2.error || 'API error — check your API key');
+      // Réessayer pendant que la limite court est le cas le plus fréquent ici :
+      // le motif et le délai doivent arriver jusqu'à la carte, pas « retry failed ».
+      if (r2.status === 429) { j.refusal = readRefusal(r2, d2); throw new Error(refusalLabel(j.refusal)); }
       if (d2.error) throw new Error(d2.error);
       j.generationId = d2.generationId;
       const rParams = new URLSearchParams();
@@ -1937,7 +2133,9 @@ window.retryJob = async (id) => {
     
     } catch (e) {
       j.status = 'error'; j.error = e.message;
-      log(`${j.name}: retry failed`, 'error');
+      // Le message exact remonte : « retry failed » seul ne disait ni quelle
+      // limite avait joué, ni dans combien de temps réessayer.
+      log(`${j.name}: retry failed — ${e.message}`, 'error');
     }
     updateCard(j);
   }, 1);
@@ -1960,19 +2158,30 @@ window.openModal = (id, type) => {
     model: modelLabel,
     format: format,
     date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-    cost: (Auth.isCreditsMode && Auth.isCreditsMode())
-      ? (type === 'video' ? `${(window._keouPricing?.actions?.video?.[job.videoModel] ?? 10)} credits` : '1 credit')
-      : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
+    // En anonyme, ces montants sont faux deux fois : rien n'est facturé par
+    // Keou (la clé du visiteur est débitée directement par le fournisseur), et
+    // le tarif image affiché est celui d'un rendu 2K alors que la file publique
+    // rend en 1K. On dit ce qui est vrai plutôt qu'un chiffre inventé.
+    cost: window.IS_ANON
+      ? 'Billed to your own API key'
+      : (Auth.isCreditsMode && Auth.isCreditsMode())
+        ? (type === 'video' ? `${(window._keouPricing?.actions?.video?.[job.videoModel] ?? 10)} credits` : '1 credit')
+        : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
     creativeDirection: cd || null,
     inputUrl: job.uploadUrl,
     onPolish: () => polishJob(id),
-    // Anonymous mode: video output can't carry the server watermark (no
-    // ffmpeg) — masked until an account is used.
-    onVideo: window.IS_ANON ? undefined : ((cd, model, duration) => videoJobWithCD(id, cd, model, duration)),
+    onVideo: (cd, model, duration) => videoJobWithCD(id, cd, model, duration),
     onAdapt: () => adaptAllFormats(id),
     onRemix: (remixPrompt) => remixJob(id, remixPrompt),
     onPack: window.IS_ANON ? undefined : () => openExportPack(id, job.generationId || ''),
-    generationId: job.generationId || null,
+    // La lightbox pose « Move to Campaign » dès qu'un generationId existe. Les
+    // routes anonymes en renvoient un (elles rendent generationId = id), si bien
+    // qu'un visiteur sans compte se voyait proposer de ranger son rendu dans une
+    // campagne qu'il ne peut pas avoir : le panneau ne pouvait qu'annoncer « No
+    // campaigns found ». On ne pose donc l'identifiant qu'avec un compte —
+    // condition portée ici plutôt que dans la lightbox, qui sert aussi la
+    // galerie publique et n'a pas à connaître le mode anonyme.
+    generationId: window.IS_ANON ? null : (job.generationId || null),
   };
   if (type === 'video' && job.videoUrl) {
     meta.genType = 'video';
@@ -1980,9 +2189,13 @@ window.openModal = (id, type) => {
     delete meta.onRemix;
     delete meta.onPolish;
     delete meta.onPack;
+    // Le 4K d'un compte passe par Topaz vidéo. La file publique n'agrandit que
+    // des images : lui tendre un MP4 échouerait chez le fournisseur, donc pas
+    // de bouton ici — l'agrandissement anonyme est offert sur l'image.
     if (!window.IS_ANON) meta.onUpscale = () => upscaleJob(id);
     Lightbox.open(job.videoUrl, 'video', meta);
   } else if (job.resultUrl) {
+    if (window.IS_ANON) meta.onUpscale = () => upscaleImageJob(id);
     Lightbox.open(job.resultUrl, 'image', meta);
   }
 };
@@ -2005,6 +2218,10 @@ window.adaptAllFormats = async (id) => {
       if (cId) body.campaignId = cId;
       const res = await Auth.authFetch('/api/adapt', { method: 'POST', body: JSON.stringify(body) });
       const data = await res.json();
+      // Trois adaptations partent d'un coup : sur une file limitée par visiteur,
+      // certaines sont refusées d'office. Le motif était jeté avec le reste et
+      // l'utilisateur ne lisait que « 3 format(s) failed ».
+      if (res.status === 429) throw new Error(refusalLabel(readRefusal(res, data)));
       if (data.error) throw new Error(data.error);
       return { format: fmt, ok: true };
     } catch (e) { return { format: fmt, ok: false, error: e.message }; }
@@ -2015,7 +2232,11 @@ window.adaptAllFormats = async (id) => {
     log(`${ok} format(s) submitted`, 'success');
     toast(window.IS_ANON ? `${ok} format(s) adapting — they will appear in the community gallery` : `${ok} format(s) adapting — check Library`);
   }
-  if (ok < formats.length) toast(`${formats.length - ok} format(s) failed`, true);
+  if (ok < formats.length) {
+    const reasons = [...new Set(results.filter(r => !r.ok).map(r => r.error).filter(Boolean))];
+    const why = reasons.length ? ` — ${reasons.join(' · ')}` : '';
+    log(`${ok} of ${formats.length} formats accepted — ${formats.length - ok} refused${why}`, 'error');
+  }
 };
 
 // ─── Remix Image ───

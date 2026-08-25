@@ -338,12 +338,29 @@
 <script src="/shared/i18n.js"></script>
 <script src="/shared/auth.js"></script>
 <script src="/shared/toast.js"></script>
+<script src="/shared/anon.js"></script>
 <script src="/shared/nav.js"></script>
 <script>
 (async () => {
-  const ok = await Auth.guard();
-  if (!ok) return;
-  Nav.render();
+  /* L'aide doit s'ouvrir SANS compte.
+   *
+   * Elle appelait Auth.guard() seule et renvoyait au login — alors que la barre
+   * latérale anonyme pointe dessus, et qu'elle vise exactement le visiteur qui
+   * n'a pas encore de clé et cherche où la prendre. Même amorçage que
+   * studio.html et tools.html, volontairement identique : trois variantes
+   * divergeraient au premier changement. */
+  let anon = false;
+  const hasSession = await Auth.init();
+  if (!hasSession && window.AnonMode) anon = await AnonMode.tryInstall();
+  if (!anon) {
+    const ok = await Auth.guard();
+    if (!ok) return;
+  }
+  window.IS_ANON = anon;
+  if (anon) document.body.classList.add('keou-anon');
+
+  if (anon) AnonMode.renderNav();
+  else Nav.render();
   // Managed deployments come pre-configured: hide key/provider guidance.
   if (Auth.isCreditsMode && Auth.isCreditsMode()) {
     document.getElementById('providers')?.remove();

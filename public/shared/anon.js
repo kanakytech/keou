@@ -2,16 +2,25 @@
    KEOU STUDIO — Anonymous mode (community edition)
    « Launch Keou » : the FULL studio, no account, BYOK.
 
-   How it works: when studio.html finds no session and the deployment is the
-   community edition, AnonMode installs itself. It overrides Auth.authFetch
-   with a mapper that routes the studio's normal API calls to the anonymous
-   endpoints (/api/essai/upload, /api/essai/studio/*). No JWT ever exists in
-   this mode — the browser's only capabilities are those endpoints.
+   How it works: when studio.html or tools.html finds no session and the
+   deployment is the community edition, AnonMode installs itself. It overrides
+   Auth.authFetch with a mapper that routes the normal API calls to the
+   anonymous endpoints (/api/essai/upload, /api/essai/studio/*). No JWT ever
+   exists in this mode — the browser's only capabilities are those endpoints.
 
    Founder's rules, enforced by the essai pipeline server-side:
-   - every anonymous creation is PUBLIC in the community gallery
-   - watermarked studio.kanaky.xyz, served through a protected proxy route
-   - no download buttons in anonymous mode
+   - every anonymous creation is PUBLIC in the community gallery — image,
+     video and sound alike
+   - images AND video are watermarked studio.kanaky.xyz — sharp stamps the
+     image, ffmpeg stamps the video (src/lib/watermark-video.js, installed by
+     the Dockerfile). Sound carries none: nothing can be written into an audio
+     track without ruining the very thing the visitor came for.
+   - the anonymous surfaces offer no download button of their own. That is NOT
+     a protection, and this file no longer claims it is — it used to call it
+     « the only line left between the anonymous studio and an account ». The
+     community viewer carries its own save button, so anything published there
+     can be kept by any visitor. What protects the work is the watermark in the
+     pixels, not a hidden button. The consent text below says exactly that.
    - visitor prompts pass the moderation filter
    - the KIE.AI key lives in this browser only (localStorage), rides each
      request as X-Provider-Key, and is never stored server-side.
@@ -45,7 +54,30 @@ const AnonMode = (() => {
     }));
   }
 
+  // La route de service anonyme s'appelle /api/essai/image/ quel que soit le
+  // média rendu : c'est elle qui sert aussi les MP4 et les MP3. On y lit donc
+  // l'identifiant d'une création précédente pour l'enchaîner (le serveur
+  // retrouve la source lui-même, aucune URL de fournisseur ne circule).
   const ESSAI_IMG_RE = /\/api\/essai\/image\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+  // Opérations non-image du studio : le chemin qu'appelle studio.html (ou
+  // tools.html) → l'opération anonyme correspondante. Deux chemins de compte
+  // tombent sur le même « upscale » parce que la file anonyme n'agrandit que
+  // des images : Topaz vidéo rendrait un MP4 que la chaîne aval n'attend pas
+  // à cet endroit.
+  // Conséquence assumée : /api/tools/video-upscale part d'un FICHIER vidéo,
+  // que l'upload anonyme n'accepte pas (/api/essai/upload ne prend que des
+  // images) et que resolveStudioSource refuserait de toute façon. tools.html
+  // masque donc cette carte en anonyme ; l'entrée reste ici pour qu'un appel
+  // égaré parte quand même vers la file plutôt que vers un 403 muet.
+  const MEDIA_ROUTES = {
+    '/api/video': 'video',
+    '/api/upscale': 'upscale',
+    '/api/tools/tts': 'tts',
+    '/api/tools/sfx': 'sfx',
+    '/api/tools/image-upscale': 'upscale',
+    '/api/tools/video-upscale': 'upscale',
+  };
 
   // ── The mapper: studio route → anonymous route ──
   async function anonAuthFetch(url, options = {}) {
@@ -57,8 +89,16 @@ const AnonMode = (() => {
       return anonFetch('/api/essai/upload', options);
     }
 
-    // Status polling — taskId in anonymous mode IS the essai uuid
-    const st = u.match(/^\/api\/status\/(?:image|polish)\/([0-9a-f-]{36})/i);
+    // Sondage de statut — en anonyme le taskId EST l'uuid essai. Le type de
+    // tâche cité par le studio (image, video, upscale…) ne sert qu'à choisir
+    // sa route de compte : côté anonyme un seul statut les rend tous, et il
+    // annonce lui-même le média obtenu.
+    // Le type est donc lu comme un mot quelconque, plus comme une liste fermée :
+    // tools.html sonde /api/status/img-upscale/… et /api/status/vid-upscale/…,
+    // deux noms que l'énumération ne contenait pas. Ils tombaient dans le 403
+    // final, la boucle de sondage avalait l'erreur, et l'agrandissement tournait
+    // indéfiniment sur son spinner alors que l'image était prête.
+    const st = u.match(/^\/api\/status\/[a-z-]+\/([0-9a-f-]{36})/i);
     if (st) return anonFetch(`/api/essai/studio/status/${st[1]}`);
 
     // Generation operations → essai studio pipeline (public gallery output)
@@ -91,6 +131,58 @@ const AnonMode = (() => {
       });
     }
 
+    // Vidéo, agrandissement, voix, bruitage → même pipeline, même galerie.
+    // Les paramètres gardent EXACTEMENT le nom qu'ils ont dans les routes d'un
+    // compte : la file les reçoit tels quels, et les deux surfaces ne dérivent
+    // pas l'une de l'autre au premier réglage ajouté.
+    const mediaTarget = method === 'POST' ? MEDIA_ROUTES[u] : undefined;
+    if (mediaTarget) {
+      if (!hasConsent()) {
+        return stub({ error: 'Consent required — everything created anonymously is public.' }, 412);
+      }
+      let body = {};
+      try { body = JSON.parse(options.body || '{}'); } catch {}
+      const out = { consent: true };
+
+      // Source : videoUrl couvre les chemins de compte qui agrandissent une
+      // vidéo — ici c'est le rendu précédent du visiteur, donc une image.
+      const src = String(body.imageUrl || body.videoUrl || body.imgUrl || '');
+      if (src) {
+        const chained = src.match(ESSAI_IMG_RE);
+        if (chained) out.sourceId = chained[1];
+        else out.imageUrl = src;
+      }
+
+      if (mediaTarget === 'video') {
+        for (const k of ['videoModel', 'duration', 'resolution', 'mode', 'sound',
+                         'aspectRatio', 'generateAudio', 'variant', 'creativeDirection', 'format']) {
+          if (body[k] !== undefined && body[k] !== null) out[k] = body[k];
+        }
+      } else if (mediaTarget === 'upscale') {
+        if (body.upscaleFactor) out.upscaleFactor = String(body.upscaleFactor);
+      } else {
+        // Voix et bruitage : le texte du visiteur est le prompt, il passera le
+        // filtre de modération côté serveur comme n'importe quel autre.
+        out.text = typeof body.text === 'string' ? body.text : '';
+        if (mediaTarget === 'tts') {
+          if (body.voice) out.voice = body.voice;
+          // Réglages fins seulement s'ils sont réellement réglés : un NaN ou un
+          // null partirait tel quel chez le fournisseur.
+          for (const k of ['stability', 'similarity_boost', 'style', 'speed']) {
+            if (Number.isFinite(body[k])) out[k] = body[k];
+          }
+        } else if (Number.isFinite(body.duration_seconds)) {
+          out.duration_seconds = body.duration_seconds;
+        }
+      }
+
+      return anonFetch(`/api/essai/studio/${mediaTarget}`, {
+        method: 'POST',
+        body: JSON.stringify(out),
+        signal: options.signal,
+      });
+    }
+
     // Harmless stubs so the studio UI renders without account features
     if (u.startsWith('/api/projects') && method === 'GET') return stub({ projects: [] });
     if (u.startsWith('/api/campaigns')) return stub({ campaigns: [] });
@@ -112,7 +204,7 @@ const AnonMode = (() => {
       <div class="anon-consent-card" role="dialog" aria-modal="true" aria-labelledby="anon-consent-title">
         <h3 id="anon-consent-title">Welcome to the anonymous studio</h3>
         <p>The full Keou studio, free, no account. Paste your own KIE.AI key — it stays in your browser and rides each request, never stored on our servers.</p>
-        <p class="anon-consent-rules"><b>Everything you create here is public.</b> Each visual appears in the <a href="/essai.html" target="_blank" rel="noopener">community gallery</a> with its prompt, visible to everyone. Creations carry a studio.kanaky.xyz watermark and stay on the platform (no downloads). Forbidden content (sexual, minors, violence, hate, real people, ID documents) is refused and reportable.</p>
+        <p class="anon-consent-rules"><b>Everything you create here is public.</b> Every image, video and sound appears in the <a href="/essai.html" target="_blank" rel="noopener">community gallery</a> with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none — nothing can be written into an audio track without ruining it. The gallery viewer has a save button, so any visitor can keep what you make here. Forbidden content (sexual, minors, violence, hate, real people, ID documents) is refused and reportable.</p>
         <p class="anon-consent-alt">Need private client work, your library and downloads? <a href="/login.html">Create a free account</a> instead.</p>
         <div class="anon-consent-actions">
           <button type="button" id="anon-consent-accept">I understand — my creations will be public</button>
@@ -133,9 +225,36 @@ const AnonMode = (() => {
       studio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
       gallery: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="9" height="12" rx="2"/><rect x="13" y="5" width="9" height="14" rx="2"/></svg>',
       help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      // Même pictogramme que l'entrée « Creative Tools » de la nav connectée
+      // (shared/nav.js) : deux étincelles différentes pour la même page
+      // donneraient l'impression de deux produits.
+      tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
       pro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
       login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>',
     };
+
+    // La voix, le bruitage et le générateur de vidéo n'existent QUE sur
+    // /tools.html : sans cette entrée, le visiteur sans compte ne pouvait pas
+    // les atteindre — il n'y avait aucun bouton pour y aller. L'ordre reprend
+    // celui de la nav connectée (studio, …, outils, aide, sur-mesure).
+    const items = [
+      { id: 'studio', href: '/studio.html', label: 'Production Engine', icon: icons.studio },
+      { id: 'gallery', href: '/essai.html', label: 'Community gallery', icon: icons.gallery },
+      { id: 'tools', href: '/tools.html', label: 'Creative Tools', icon: icons.tools },
+      { id: 'help', href: '/help.html', label: 'Help', icon: icons.help },
+      { id: 'custom', href: '/custom.html', label: 'Custom build — tailored to your workflow', icon: icons.pro },
+    ];
+
+    // Même règle que shared/nav.js : l'entrée active se déduit du chemin. Elle
+    // était écrite en dur sur le studio, si bien que la barre montrait le
+    // studio actif alors qu'on était ailleurs.
+    const path = window.location.pathname;
+    const active = path.includes('tools') ? 'tools'
+      : path.includes('essai') ? 'gallery'
+      : path.includes('help') ? 'help'
+      : path.includes('custom') ? 'custom'
+      : 'studio';
+
     const sidebar = document.createElement('div');
     sidebar.className = 'app-sidebar';
     sidebar.innerHTML = `
@@ -143,10 +262,7 @@ const AnonMode = (() => {
         <img src="/logo-keou.png" alt="Keou Studio">
       </a>
       <nav class="app-sidebar-nav">
-        <a class="app-sidebar-item active" href="/studio.html" data-tooltip="Production Engine">${icons.studio}</a>
-        <a class="app-sidebar-item" href="/essai.html" data-tooltip="Community gallery">${icons.gallery}</a>
-        <a class="app-sidebar-item" href="/help.html" data-tooltip="Help">${icons.help}</a>
-        <a class="app-sidebar-item" href="/custom.html" data-tooltip="Custom build — tailored to your workflow">${icons.pro}</a>
+        ${items.map((it) => `<a class="app-sidebar-item${active === it.id ? ' active' : ''}" href="${it.href}" data-tooltip="${it.label}">${it.icon}</a>`).join('')}
       </nav>
       <div class="app-sidebar-nav" style="margin-top:auto;padding-bottom:12px">
         <a class="app-sidebar-item" href="/login.html" data-tooltip="Sign in / create account">${icons.login}</a>
@@ -166,6 +282,50 @@ const AnonMode = (() => {
       children.forEach((el) => content.appendChild(el));
       document.body.appendChild(content);
     }
+  }
+
+  /** Barre de clé BYOK pour les pages anonymes AUTRES que le studio.
+   *
+   *  studio.html rend la sienne. tools.html n'en avait aucune : un visiteur
+   *  qui arrivait directement sur /tools.html n'avait aucun endroit où coller
+   *  sa clé KIE.AI, et chaque bouton répondait « API key required » sans lui
+   *  dire où la poser. La clé ne quitte jamais ce navigateur — elle part en
+   *  en-tête X-Provider-Key à chaque requête, jamais en base.
+   */
+  function renderByokBar(anchor) {
+    const main = anchor || document.querySelector('main') || document.getElementById('app');
+    if (!main || !main.parentNode || document.getElementById('byok-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'byok-bar';
+    bar.innerHTML = `
+      <div class="byok-inner">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <span class="byok-label">API key</span>
+        <input type="password" id="byok-input" placeholder="Paste your KIE.AI API key" autocomplete="off" spellcheck="false">
+        <button type="button" id="byok-save">Save</button>
+        <span id="byok-status"></span>
+        <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
+        <a href="/help.html" class="byok-get">Help &amp; docs</a>
+      </div>`;
+    main.parentNode.insertBefore(bar, main);
+
+    const input = bar.querySelector('#byok-input');
+    const status = bar.querySelector('#byok-status');
+    const refresh = () => {
+      const k = Auth.getProviderKey();
+      status.textContent = k ? 'Key saved in this browser' : 'No key set';
+      status.className = k ? 'ok' : '';
+      if (k) input.placeholder = '••••••••••••  (saved)';
+    };
+    bar.querySelector('#byok-save').addEventListener('click', () => {
+      const v = input.value.trim();
+      if (!v) { refresh(); return; } // un Save à vide ne doit pas effacer la clé déjà posée
+      Auth.setProviderKey(v);
+      input.value = '';
+      refresh();
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') bar.querySelector('#byok-save').click(); });
+    refresh();
   }
 
   // ── Anonymous-mode CSS (hide account-only affordances) ──
@@ -188,6 +348,21 @@ const AnonMode = (() => {
       #anon-consent-accept{padding:11px 16px;border-radius:10px;border:none;cursor:pointer;
         background:#e5e5e5;color:#0a0a0a;font-weight:600;font-size:13px}
       #anon-consent-leave{text-align:center;font-size:12px;color:#a3a3a3!important}
+      /* Barre de clé : mêmes règles que celle écrite dans studio.html, pour
+         qu'une page anonyme sans style propre (tools.html) la rende à
+         l'identique et pas en champ nu. */
+      #byok-bar{max-width:1200px;margin:12px auto 0;padding:0 24px}
+      #byok-bar .byok-inner{display:flex;align-items:center;gap:10px;padding:10px 14px;
+        border:1px solid var(--line,rgba(255,255,255,.1));border-radius:12px;
+        background:rgba(255,255,255,.03);font-size:12px;color:var(--ink-muted,#9a9a9a);flex-wrap:wrap}
+      #byok-bar .byok-label{font-weight:600;color:var(--ink,#eee);letter-spacing:.3px}
+      #byok-bar input{flex:1;min-width:180px;background:rgba(0,0,0,.25);
+        border:1px solid var(--line,rgba(255,255,255,.12));border-radius:8px;
+        padding:7px 10px;color:var(--ink,#eee);font-size:12px;outline:none}
+      #byok-bar button{background:var(--accent,#c8f060);color:#050505;border:0;border-radius:8px;
+        padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+      #byok-bar #byok-status.ok{color:#6fcf97}
+      #byok-bar .byok-get{color:var(--ink-muted,#9a9a9a);text-decoration:none;border-bottom:1px dotted currentColor}
     `;
     document.head.appendChild(css);
   }
@@ -227,7 +402,7 @@ const AnonMode = (() => {
     return true;
   }
 
-  return { tryInstall, renderNav, isActive: () => _active };
+  return { tryInstall, renderNav, renderByokBar, isActive: () => _active };
 })();
 
 window.AnonMode = AnonMode;

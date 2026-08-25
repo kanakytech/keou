@@ -88,6 +88,17 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .protected{position:relative;display:inline-block;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
 .protected img{display:block;max-width:100%;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:none}
 .protected::after{content:'';position:absolute;inset:0}
+/* La case est cliquable au clavier depuis qu'elle agrandit : sans ce contour,
+   .g-card{overflow:hidden} rognait l'anneau de focus du navigateur et le
+   visiteur au clavier ne voyait plus où il se trouvait. On le dessine à
+   l'intérieur, il ne peut donc plus être coupé. */
+.protected:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* Vidéo et son partagent la case de l'image : même cadrage, même carré. */
+.protected video{display:block;max-width:100%;user-select:none;-webkit-user-select:none}
+.g-audio{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1/1;background:var(--surface-2)}
+/* Pastille de type, au-dessus du voile anti-copie (::after, z-index auto). */
+.g-badge{position:absolute;top:9px;left:9px;z-index:1;padding:3px 9px;border-radius:100px;background:rgba(0,0,0,.62);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;pointer-events:none}
+.g-audio .g-badge{position:static;background:var(--accent-soft);color:var(--accent)}
 
 /* ── Confiance BYOK ── */
 .trust{margin:44px 0 0}
@@ -116,6 +127,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .g-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);overflow:hidden;display:flex;flex-direction:column}
 .g-card .protected{border:none;border-radius:0;width:100%}
 .g-card .protected img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.g-card .protected video{width:100%;aspect-ratio:1/1;object-fit:cover}
 .g-meta{padding:12px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
 .g-prompt{font-size:12.5px;color:var(--ink-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;flex:1}
 .g-actions{display:flex;gap:8px;align-items:center}
@@ -131,6 +143,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .lp-footer{border-top:1px solid var(--border);padding:30px 32px;text-align:center;color:var(--ink-faint);font-size:12.5px}
 .lp-footer a{color:var(--ink-muted)}
 </style>
+<script src="/shared/lightbox.js"></script>
 <script src="/shared/i18n-fr.js"></script>
 <script src="/shared/i18n.js"></script>
 <link rel="alternate" hreflang="en" href="https://studio.kanaky.xyz/essai.html">
@@ -291,6 +304,12 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
     isAdmin: () => false,
     authFetch: async () => { throw new Error('auth indisponible'); },
   };
+  /* Même filet que pour Auth : shared/i18n.js peut ne pas charger (cache
+     froid, coupure réseau au milieu du <head>). Sans ce repli, le premier
+     I18N.t() de la galerie jetait une TypeError et la grille restait vide —
+     une page entière perdue pour une traduction manquante. L'anglais de la
+     source est déjà la bonne réponse dans ce cas. */
+  const I18N = window.I18N || { t: (s) => s };
   const escapeHtml = window.escapeHtml || ((s) => String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
@@ -311,7 +330,10 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   $('toggle-key').addEventListener('click', () => {
     const show = keyInput.type === 'password';
     keyInput.type = show ? 'text' : 'password';
-    $('toggle-key').textContent = show ? 'Masquer' : 'Afficher';
+    // Le bouton part de « Reveal » dans le HTML : écrire son second état en
+    // français rendait « Masquer » à un visiteur anglophone, sur la page qui
+    // sert de vitrine. La source reste anglaise, i18n fait la bascule.
+    $('toggle-key').textContent = show ? I18N.t('Hide') : I18N.t('Reveal');
   });
 
   // « Oublier ma clé » : efface le champ ET le localStorage — il ne reste rien.
@@ -334,16 +356,120 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   document.addEventListener('contextmenu', (e) => { if (e.target.closest('.protected')) e.preventDefault(); });
   document.addEventListener('dragstart', (e) => { if (e.target.closest('.protected')) e.preventDefault(); });
 
-  function protectedImg(url, alt) {
+  /**
+   * Une création de la galerie, cliquable.
+   *
+   * @param {string} url       le média entier
+   * @param {string} alt       le prompt, pour les lecteurs d'écran
+   * @param {object} meta      passé tel quel à la visionneuse
+   * @param {string} vignette  version allégée pour la grille (images seules)
+   * @param {string} media     'image' | 'video' | 'audio'
+   */
+  function protectedMedia(url, alt, meta, vignette, media) {
+    const type = media === 'video' || media === 'audio' ? media : 'image';
     const box = document.createElement('span');
     box.className = 'protected';
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = alt || I18N.t('Keou creation (community gallery)');
-    img.loading = 'lazy';
-    img.draggable = false;
-    box.appendChild(img);
+    const legende = alt || I18N.t('Keou creation (community gallery)');
+
+    if (type === 'video') {
+      /* Un MP4 n'entre pas dans une balise <img>.
+       *
+       * Le studio public produit désormais de la vidéo et du son : la grille
+       * qui ne connaissait que l'image affichait une vignette cassée. On lit
+       * le type que la galerie annonce, et on ne charge que les métadonnées —
+       * une grille qui téléchargerait quatre vidéos entières serait pire que
+       * le problème qu'on vient de corriger. */
+      const v = document.createElement('video');
+      v.src = url;
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.preload = 'metadata';
+      v.setAttribute('aria-label', legende);
+      /* Une vidéo qui ne charge pas laissait un carré noir muet.
+       *
+       * Un MP4 retiré, un R2 qui répond 404, un réseau qui lâche en cours de
+       * route : la case restait vide et la carte avait l'air cassée, alors que
+       * le prompt en dessous, lui, s'affichait très bien. On rend alors le même
+       * carré neutre que le son — la pastille « Video » posée sur la boîte dit
+       * déjà de quoi il s'agissait. */
+      v.addEventListener('error', () => {
+        // Vider la grille coupe les sources : l'erreur qui suit ne concerne
+        // plus une carte visible, il n'y a rien à remplacer.
+        if (!v.isConnected) return;
+        const vide = document.createElement('span');
+        vide.className = 'g-audio';
+        v.replaceWith(vide);
+      });
+      // Aperçu au survol, sur les pointeurs qui existent vraiment.
+      if (window.matchMedia('(hover: hover)').matches) {
+        box.addEventListener('mouseenter', () => { v.play().catch(() => {}); });
+        box.addEventListener('mouseleave', () => { v.pause(); v.currentTime = 0; });
+      }
+      box.appendChild(v);
+      box.appendChild(marqueurMedia('video'));
+    } else if (type === 'audio') {
+      // Un son n'a pas d'image : on montre le prompt, pas une case vide.
+      const c = document.createElement('span');
+      c.className = 'g-audio';
+      c.setAttribute('aria-label', legende);
+      c.appendChild(marqueurMedia('audio'));
+      box.appendChild(c);
+    } else {
+      const img = document.createElement('img');
+      /* La grille demande une vignette, l'agrandissement sert le fichier entier.
+       *
+       * Le poids mesuré : chaque création dépasse deux mégaoctets, donc quatre
+       * cases de la grille faisaient télécharger 8,75 Mo pour remplir des
+       * carrés de trois cents pixels — une différence de définition que
+       * personne ne voit sur un téléphone, sur la connexion mobile où elle
+       * coûte le plus cher.
+       *
+       * Ce que cette page fait, exactement : elle appelle la même URL avec
+       * `?v=1`. Rien de plus. La réduction elle-même vit côté serveur, et un
+       * serveur qui ignore ce paramètre renvoie l'original — la galerie reste
+       * juste, seulement aussi lourde qu'avant. `vignette` peut donc être nul
+       * (résultat frais du polling) : on retombe alors sur l'URL entière. */
+      img.src = vignette || url;
+      img.alt = legende;
+      img.loading = 'lazy';
+      img.draggable = false;
+      box.appendChild(img);
+    }
+
+    /* Cliquer agrandit.
+     *
+     * La galerie n'offrait aucun moyen de voir une création en grand : sur un
+     * téléphone, une vignette ne montre rien du travail. La visionneuse porte
+     * déjà son propre bouton d'enregistrement ; le média reste filigrané pour
+     * l'image, et c'est le filigrane, pas l'absence de bouton, qui protège. */
+    box.style.cursor = 'zoom-in';
+    box.tabIndex = 0;
+    box.setAttribute('role', 'button');
+    /* Le nom accessible porte le prompt, pas seulement « Agrandir ».
+     *
+     * Un role="button" avec aria-label remplace le contenu : le alt de l'image
+     * n'était plus annoncé, et un lecteur d'écran énonçait « Agrandir » pour
+     * les douze cases de la grille, sans le moindre moyen de les distinguer.
+     * Les deux morceaux sont déjà traduits séparément — aucune clé nouvelle. */
+    box.setAttribute('aria-label', I18N.t('Enlarge') + ' — ' + legende);
+    const ouvrir = () => {
+      if (window.Lightbox) window.Lightbox.open(url, type, meta || null);
+    };
+    box.addEventListener('click', ouvrir);
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(); }
+    });
+
     return box;
+  }
+
+  /** Pastille discrète indiquant qu'une case porte autre chose qu'une image. */
+  function marqueurMedia(type) {
+    const p = document.createElement('span');
+    p.className = 'g-badge';
+    p.textContent = type === 'video' ? I18N.t('Video') : I18N.t('Audio');
+    return p;
   }
 
   function setStatus(html, isError) {
@@ -358,7 +484,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
     Auth.setProviderKey(apiKey);
     genBtn.disabled = true;
     resultWrap.innerHTML = '';
-    setStatus('<span class="spinner"></span> Envoi de la demande…');
+    setStatus('<span class="spinner"></span> ' + escapeHtml(I18N.t('Sending the request…')));
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
 
     try {
@@ -388,14 +514,16 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
         if (!res.ok) { setStatus(escapeHtml(I18N.t(data.error || 'Status unavailable')), true); refreshButton(); return; }
 
         if (data.status === 'queued') {
-          const pos = data.position || 1;
-          setStatus('<span class="spinner"></span> En file d\'attente — position <span class="queue-pos">' + pos + '</span>');
+          // Number() et pas la valeur brute : elle part dans un innerHTML, et
+          // une réponse d'API n'est jamais un gabarit de confiance.
+          const pos = Number(data.position) || 1;
+          setStatus('<span class="spinner"></span> ' + escapeHtml(I18N.t('Queued — position')) + ' <span class="queue-pos">' + pos + '</span>');
         } else if (data.status === 'processing') {
           setStatus('<span class="spinner"></span> ' + I18N.t('Generating… (30 to 90 seconds)'));
         } else if (data.status === 'completed') {
           setStatus(I18N.t('Done — your creation is public in the gallery below.'));
           resultWrap.innerHTML = '';
-          resultWrap.appendChild(protectedImg(data.imageUrl, promptInput.value.trim()));
+          resultWrap.appendChild(protectedMedia(data.imageUrl, promptInput.value.trim(), { creativeDirection: promptInput.value.trim() }, null, data.media));
           refreshButton();
           reloadGallery();
           return;
@@ -416,7 +544,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   function galleryCard(item) {
     const card = document.createElement('div');
     card.className = 'g-card';
-    card.appendChild(protectedImg(item.imageUrl, item.prompt));
+    card.appendChild(protectedMedia(item.imageUrl, item.prompt, { creativeDirection: item.prompt }, item.imageUrl + '?v=1', item.media));
 
     const meta = document.createElement('div');
     meta.className = 'g-meta';
@@ -431,7 +559,9 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 
     const report = document.createElement('button');
     report.className = 'btn-report';
-    report.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Signaler';
+    // Libellés en anglais dans la source, traduits par I18N — les deux boutons
+    // de la carte étaient écrits en français et le restaient en mode anglais.
+    report.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> ' + escapeHtml(I18N.t('Report'));
     report.addEventListener('click', async () => {
       report.disabled = true;
       try {
@@ -446,7 +576,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
     if (isAdmin) {
       const del = document.createElement('button');
       del.className = 'btn-delete';
-      del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer';
+      del.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> ' + escapeHtml(I18N.t('Delete'));
       del.addEventListener('click', async () => {
         del.disabled = true;
         try {
@@ -467,7 +597,21 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
       const res = await fetch('/api/essai/galerie?page=' + pageNum);
       if (!res.ok) return;
       const data = await res.json();
-      if (replace) gallery.innerHTML = '';
+      if (replace) {
+        /* Couper les aperçus avant de vider la grille.
+         *
+         * « mouseleave » n'arrive jamais sur un nœud déjà détaché : une
+         * génération qui se termine pendant que le pointeur survole une carte
+         * laissait le MP4 se lire — et se télécharger — dans le vide, hors de
+         * la page. Retirer la source puis rappeler load() est la seule façon
+         * d'annuler une requête média déjà partie. */
+        gallery.querySelectorAll('video').forEach((v) => {
+          v.pause();
+          v.removeAttribute('src');
+          v.load();
+        });
+        gallery.innerHTML = '';
+      }
       (data.items || []).forEach((item) => gallery.appendChild(galleryCard(item)));
       galleryEmpty.style.display = gallery.children.length === 0 ? 'block' : 'none';
       moreWrap.style.display = data.hasMore ? 'block' : 'none';

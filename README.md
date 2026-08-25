@@ -77,6 +77,7 @@ credit top-ups behind it. Nothing in the studio reads them.
 | **PostgreSQL** | any recent version |
 | **A provider key** | [KIE.AI](https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793) or [Fal.ai](https://fal.ai) — each user pastes their own |
 | **Object storage** | A Cloudflare R2 bucket (free tier is enough). **Required to upload anything** — `POST /api/upload` returns 503 without it, and uploading a photo is the product's first move. It also keeps results alive past the ~14 days a provider URL lasts. |
+| **ffmpeg** | Optional — only for the public anonymous studio. It stamps `studio.kanaky.xyz` into generated video the way sharp already does for images. Without it, video is served unwatermarked and a line is written to the log; nothing else breaks. The bundled `Dockerfile` installs it for you. |
 
 ### Run it
 

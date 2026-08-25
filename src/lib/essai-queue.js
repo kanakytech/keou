@@ -1,41 +1,142 @@
 /**
- * Essai Queue — FIFO in-memory pour les générations anonymes (BYOK)
+ * Essai Queue — file en mémoire, équitable, pour les générations anonymes (BYOK)
  *
  * Sert deux surfaces anonymes, avec le MÊME contrat de sortie :
  *   - l'essai simple (/api/essai/generer, texte → image), kind 'text'
  *   - le studio anonyme (/api/essai/studio/*), kinds 'image' (img→img avec
- *     brief produit), 'polish', 'remix', 'adapt'
+ *     brief produit), 'polish', 'remix', 'adapt', 'upscale', 'video', 'tts',
+ *     'sfx'
  *
  * Contrat de sécurité (non négociable) :
  *   - La clé API du visiteur vit UNIQUEMENT dans l'objet job en RAM, le temps
  *     du job. Jamais en DB, jamais dans un log, jamais dans un message
  *     d'erreur. Elle est effacée (job.apiKey = null) dès l'état terminal.
  *   - L'URL temporaire du provider n'est JAMAIS stockée : le résultat est
- *     téléchargé, filigrané côté serveur, poussé sur R2 (essai/<uuid>.png),
- *     et seule la clé R2 est écrite en DB.
+ *     téléchargé, filigrané quand c'est possible, poussé sur R2
+ *     (essai/<uuid>.<ext>), et seule la clé R2 est écrite en DB.
  *   - Les erreurs provider sont mappées vers des messages sûrs — jamais de
  *     texte brut du provider en DB ni vers le client.
  *
- * Concurrence : ESSAI_CONCURRENCY (1 par défaut, 2 max) — file FIFO stricte,
- * position exposée pour l'UI. ESSAI_MAX_PER_IP règle le nombre de jobs en
- * file par visiteur (défaut 2 — à monter sur Railway si le studio anonyme
- * doit absorber des batchs plus larges).
+ * Ordonnancement : la file n'est plus servie en FIFO strict mais au tour par
+ * tour entre adresses IP. Le FIFO strict avait un défaut de fond : le lot
+ * entier d'un visiteur passait avant la première demande du suivant, et la
+ * seule protection contre cela était un plafond par IP qui REFUSAIT au lieu de
+ * faire attendre. Un visiteur qui demandait cinq variantes n'en voyait partir
+ * que trois, sans qu'aucun message ne le lui dise. On sert donc, parmi les
+ * jobs en attente, celui dont l'IP a le moins de jobs déjà en cours ; à
+ * égalité, le plus ancien. Deux visiteurs de dix variantes se servent en
+ * alternance, personne n'attend derrière le lot entier de l'autre.
+ *
+ * Concurrence : ESSAI_CONCURRENCY (3 par défaut, 8 max). Un job est presque
+ * entièrement de l'attente réseau chez le fournisseur — le seul vrai travail
+ * processeur est le filigrane. ESSAI_MAX_PER_IP (défaut 20) vaut la taille du
+ * plus grand lot que propose l'interface (public/studio.html, data-variants) :
+ * un lot que le studio offre ne doit jamais être tronqué en silence.
  */
 
 import sharp from 'sharp';
 import { query } from '../db.js';
-import { uploadToR2 } from './r2.js';
+import { uploadToR2, persistFromUrl } from './r2.js';
+import { assertSafeUrl } from '../utils/safeUrl.js';
 import * as kie from './providers/kie.js';
-import { buildImagePrompt, POLISH_PROMPT, ADAPT_PROMPT } from './studio-prompts.js';
+import { buildImagePrompt, POLISH_PROMPT, ADAPT_PROMPT, VIDEO_PROMPT } from './studio-prompts.js';
+import { watermarkVideo } from './watermark-video.js';
 
-const CONCURRENCY = Math.min(2, Math.max(1, parseInt(process.env.ESSAI_CONCURRENCY) || 1));
-const MAX_QUEUE = 20;               // au-delà, on refuse (429)
-const MAX_PER_IP = Math.max(1, parseInt(process.env.ESSAI_MAX_PER_IP) || 2); // jobs simultanés en file par IP
+const CONCURRENCY = Math.min(8, Math.max(1, parseInt(process.env.ESSAI_CONCURRENCY) || 3));
+const MAX_QUEUE = 60;               // trois lots de 20 : le troisième visiteur n'est plus refusé
+// Le plus grand lot que propose l'interface. À 2, aucun préréglage social (5 ou
+// 10 variantes) ne partait entier. Le plafond ne peut pas dépasser la file
+// globale — au-dessus, il ne voudrait plus rien dire.
+const MAX_PER_IP = Math.min(MAX_QUEUE, Math.max(1, parseInt(process.env.ESSAI_MAX_PER_IP) || 20));
 const POLL_INTERVAL_MS = 5_000;
-const POLL_TIMEOUT_MS = 4 * 60_000; // 4 min puis échec
+const POLL_TIMEOUT_MS = 4 * 60_000; // images et sons : 4 min puis échec
+// Une vidéo rend rarement sous 4 minutes (veo3 dépasse couramment 5) : garder
+// le délai des images ici reviendrait à abandonner des jobs qui allaient
+// aboutir, en facturant quand même les crédits du visiteur.
+const POLL_TIMEOUT_VIDEO_MS = 10 * 60_000;
 
-const queue = [];                   // jobs en attente (FIFO)
-let running = 0;
+const queue = [];                   // jobs en attente, dans l'ordre d'arrivée
+
+// Les jobs en cours, et pas seulement leur nombre : l'ordonnancement équitable
+// a besoin de savoir À QUI ils appartiennent. Un simple compteur `running`
+// faisait aussi mentir le plafond par IP, qui ne comptait que la file — le job
+// que pump() venait d'en sortir n'était compté nulle part, et un lot de cinq
+// partait à trois.
+const active = new Set();
+
+/** Jobs de cette IP, en file ET en cours — le plafond compte les deux. */
+function countForIp(ip) {
+  let n = 0;
+  for (const j of queue) if (j.ip === ip) n++;
+  for (const j of active) if (j.ip === ip) n++;
+  return n;
+}
+
+/**
+ * Durée moyenne observée d'un job, en millisecondes.
+ *
+ * Un refus doit annoncer une attente, et une constante écrite en dur mentirait
+ * dès que le catalogue bouge : une vidéo veo3 ne coûte pas le temps d'une
+ * image 1K. On tient donc une moyenne glissante des jobs réellement terminés,
+ * amorcée à 90 s — l'ordre de grandeur d'une image, le cas le plus fréquent.
+ */
+let avgJobMs = 90_000;
+
+function recordJobDuration(ms) {
+  // Un échec instantané (clé invalide, refus du fournisseur) n'a occupé aucune
+  // voie : le compter ferait chuter la moyenne et promettrait quelques
+  // secondes d'attente à des visiteurs qui en attendront deux minutes.
+  if (!Number.isFinite(ms) || ms < POLL_INTERVAL_MS) return;
+  avgJobMs = Math.round(avgJobMs * 0.8 + ms * 0.2);
+}
+
+/** Attente estimée, en minutes, pour que `jobsAhead` jobs soient passés. */
+function waitMinutes(jobsAhead) {
+  const cycles = Math.ceil(Math.max(1, jobsAhead) / CONCURRENCY);
+  return Math.max(1, Math.round((cycles * avgJobMs) / 60_000));
+}
+
+// ─── Table des médias : ce que chaque opération produit ───
+
+/**
+ * Une seule table décrit la sortie de chaque kind : le média (ce que le client
+ * devra afficher), l'extension et le type MIME du fichier poussé sur R2, et
+ * s'il faut y poser un filigrane. runJob() n'a plus alors aucune connaissance
+ * du format — ajouter une opération, c'est ajouter une ligne ici.
+ *
+ * Pourquoi la vidéo et l'audio ne sont PAS filigranés : le seul outil média
+ * embarqué côté serveur est sharp, qui ne sait ouvrir que des images. Le
+ * conteneur n'installe pas ffmpeg (Dockerfile : curl et rien d'autre), et
+ * marquer un MP4 ou un MP3 imposerait un ré-encodage complet. Nous préférons
+ * l'annoncer — le texte de consentement du studio anonyme le dit tel quel —
+ * plutôt que laisser croire à une protection qui n'existe pas.
+ *
+ * `watermark` dit ce que MÉRITE un kind en général ; c'est shouldWatermark()
+ * qui tranche pour un job donné. La table ignore en effet d'où vient la
+ * source, et un agrandissement anonyme part d'une image qui en porte déjà un.
+ */
+export const MEDIA_BY_KIND = Object.freeze({
+  text:    Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  image:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  polish:  Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  remix:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  adapt:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  upscale: Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  video:   Object.freeze({ media: 'video', ext: 'mp4', mime: 'video/mp4',  watermark: true }),
+  tts:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
+  sfx:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
+});
+
+/**
+ * Sortie attendue pour un kind. Un kind inconnu retombe sur l'image : c'est le
+ * cas des lignes écrites avant l'arrivée de la colonne media, et le seul repli
+ * qui ne trompe pas le client.
+ * @param {string} kind
+ * @returns {{ media: string, ext: string, mime: string, watermark: boolean }}
+ */
+export function mediaForKind(kind) {
+  return MEDIA_BY_KIND[kind] || MEDIA_BY_KIND.text;
+}
 
 // ─── Filigrane serveur ───
 
@@ -48,14 +149,30 @@ export async function watermarkImage(buffer) {
   const img = sharp(buffer);
   const meta = await img.metadata();
   const w = meta.width || 1024;
-  const fontSize = Math.max(16, Math.round(w * 0.024));
-  const pad = Math.round(fontSize * 0.9);
   // L'adresse canonique du studio depuis le 13/08. « keou.studio » n'a
   // jamais existé : chaque création publique portait un domaine mort, sur
   // le seul support qui nous fait de la publicité gratuite.
   const text = 'studio.kanaky.xyz';
-  const svgW = Math.round(text.length * fontSize * 0.64) + pad * 2;
-  const svgH = fontSize + pad * 2;
+  // Le bandeau doit TENIR dans l'image. Avec un corps de 16 px plancher il
+  // mesure ~200 px de large : sharp refuse de composer plus grand que le
+  // support (« Image to composite must have same dimensions or smaller ») et
+  // c'est le job entier qui échouait, pour un badge. Aucune génération du
+  // catalogue ne descend sous 1K, mais un rendu étroit ne doit pas coûter la
+  // création elle-même — on rétrécit le corps jusqu'à ce qu'il rentre.
+  const band = (f) => ({
+    w: Math.round(text.length * f * 0.64) + Math.round(f * 0.9) * 2,
+    h: f + Math.round(f * 0.9) * 2,
+  });
+  let fontSize = Math.max(16, Math.round(w * 0.024));
+  while (fontSize > 8 && band(fontSize).w > w) fontSize -= 1;
+  if (band(fontSize).w > w || band(fontSize).h > (meta.height || w)) {
+    // Trop étroit même au minimum lisible : mieux vaut l'image nue qu'un échec.
+    console.warn(`[ESSAI] image ${w}px : trop etroite pour le filigrane, deposee sans`);
+    return img.png().toBuffer();
+  }
+  const pad = Math.round(fontSize * 0.9);
+  const svgW = band(fontSize).w;
+  const svgH = band(fontSize).h;
   const svg = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">` +
     `<text x="${svgW - pad}" y="${svgH - pad}" text-anchor="end" ` +
@@ -79,17 +196,37 @@ function safeErrorMessage(err) {
   if (msg.includes('429') || msg.includes('rate limit')) {
     return 'Limite de debit atteinte cote provider — patientez une minute et reessayez';
   }
+  if (msg === 'ESSAI_TOO_LARGE') {
+    return 'The provider returned a file too large to process — try a smaller format';
+  }
   if (msg === 'ESSAI_TIMEOUT') {
-    return 'Delai depasse (4 min) — la generation a ete abandonnee, reessayez';
+    // Le délai dépend du média (4 min pour une image, 10 pour une vidéo) : le
+    // message ne cite plus de durée, il mentirait une fois sur deux.
+    return 'Delai depasse — la generation a ete abandonnee, reessayez';
   }
   return 'La generation a echoue — reessayez dans un instant';
 }
 
 // ─── Worker ───
 
+// Mêmes modèles que POST /api/generate/video pour un compte : un modèle
+// inconnu retombe sur le moins cher plutôt que d'échouer chez le fournisseur.
+const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2'];
+
+function videoModelOf(job) {
+  return VIDEO_MODELS.includes(job.videoModel) ? job.videoModel : 'grok-imagine';
+}
+
+/** Prompt vidéo du studio, augmenté de la direction créative du visiteur. */
+function buildVideoPrompt(creativeDirection) {
+  if (!creativeDirection) return VIDEO_PROMPT;
+  return `${VIDEO_PROMPT} ADDITIONAL CREATIVE DIRECTION: ${creativeDirection}. Integrate this into camera, lighting, atmosphere while keeping product locked.`;
+}
+
 /**
- * Crée la tâche provider selon le kind du job. Tous les kinds produisent une
- * image PNG → même pipeline aval (filigrane + R2 + galerie publique).
+ * Crée la tâche provider selon le kind du job. La forme du résultat (image,
+ * vidéo ou son) n'est PAS déduite ici : elle vient de MEDIA_BY_KIND, seule
+ * source de vérité de la chaîne aval.
  */
 async function createProviderTask(job) {
   switch (job.kind) {
@@ -121,6 +258,48 @@ async function createProviderTask(job) {
         imageUrl: job.imageUrl,
         aspectRatio: job.format,
       });
+    case 'video':
+      return kie.generateVideo(job.apiKey, {
+        model: videoModelOf(job),
+        prompt: buildVideoPrompt(job.creativeDirection),
+        imageUrl: job.imageUrl,
+        duration: job.duration,
+        resolution: job.resolution,
+        mode: job.mode,
+        sound: job.sound,
+        // Repli 16:9, et surtout PAS job.format. Le studio n'envoie ni ratio ni
+        // format sur /api/video (public/studio.html, videoJob) : le repli
+        // retombait donc sur le 1:1 que la route pose par défaut, et TOUTE
+        // vidéo anonyme sortait carrée là où un compte obtenait du 16:9 —
+        // sans un mot pour le dire. 16:9 est le format natif des modèles
+        // vidéo (c'est déjà le défaut de src/lib/providers/kie.js) ; le carré
+        // se demande, il ne se subit pas.
+        aspectRatio: job.aspectRatio || job.format || '16:9',
+        generateAudio: job.generateAudio,
+        variant: job.variant,
+      });
+    case 'upscale':
+      // Un seul kind d'agrandissement, et il est image : Topaz vidéo rendrait
+      // un MP4 que MEDIA_BY_KIND n'attend pas ici, et le visiteur anonyme
+      // agrandit ce qu'il vient de créer, c'est-à-dire une image.
+      return kie.upscaleImage(job.apiKey, {
+        imageUrl: job.imageUrl,
+        upscaleFactor: job.upscaleFactor === '8' ? '8' : '4',
+      });
+    case 'tts': {
+      const input = { text: job.text, voice: job.voice || 'Rachel' };
+      // kie.tts recopie tout réglage « défini » : un null partirait tel quel
+      // chez le fournisseur. On ne transmet donc que ceux réellement fournis.
+      for (const k of ['stability', 'similarity_boost', 'style', 'speed']) {
+        if (job[k] !== null && job[k] !== undefined) input[k] = job[k];
+      }
+      return kie.tts(job.apiKey, input);
+    }
+    case 'sfx':
+      return kie.sfx(job.apiKey, {
+        text: job.text,
+        duration_seconds: job.duration_seconds || undefined,
+      });
     default: // 'text' — essai simple existant
       return kie.textToImage(job.apiKey, {
         prompt: job.prompt,
@@ -131,31 +310,204 @@ async function createProviderTask(job) {
   }
 }
 
-async function runJob(job) {
+// ─── Récupération du rendu : plafonnée, contrôlée, jamais tamponnée pour rien ───
+
+/**
+ * Plafonds de téléchargement, par média.
+ *
+ * Avant, `Buffer.from(await dl.arrayBuffer())` avalait n'importe quoi : une
+ * vidéo de 400 Mo tenait entière en mémoire, et rien n'empêchait trois d'entre
+ * elles d'y tenir en même temps — le risque grandit avec la concurrence qu'on
+ * vient d'augmenter. Les valeurs sont larges devant ce que rend le catalogue
+ * (une image 2K ~5 Mo, une vidéo 720p de 15 s ~30 Mo) et étroites devant la
+ * mémoire d'un conteneur. Au-delà, le job échoue avec un message — ce qui vaut
+ * mieux que d'étouffer le serveur pour tous les autres visiteurs.
+ */
+const MAX_BYTES = Object.freeze({
+  image: 64 * 1024 * 1024,
+  video: 96 * 1024 * 1024,
+  audio: 16 * 1024 * 1024,
+});
+
+/** Taille annoncée par la source, ou null quand elle ne la déclare pas. */
+async function announcedSize(url) {
   try {
-    await query(`UPDATE essai_generations SET status = 'processing' WHERE id = $1`, [job.id]);
+    const r = await fetch(url, { method: 'HEAD' });
+    if (!r.ok) return null;
+    const n = Number(r.headers.get('content-length'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null; // HEAD refusé ou réseau : on comptera nous-mêmes, au fil de l'eau
+  }
+}
+
+/** Télécharge en comptant les octets, et coupe DÈS le dépassement. */
+async function downloadCapped(url, maxBytes) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`download ${res.status}`);
+  const announced = Number(res.headers.get('content-length'));
+  if (Number.isFinite(announced) && announced > maxBytes) throw new Error('ESSAI_TOO_LARGE');
+  if (!res.body) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > maxBytes) throw new Error('ESSAI_TOO_LARGE');
+    return buf;
+  }
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of res.body) {
+    total += chunk.length;
+    // Sortir de la boucle annule le flux. Attendre la fin du corps pour
+    // constater le dépassement reviendrait à accepter en mémoire exactement ce
+    // qu'on prétend refuser.
+    if (total > maxBytes) throw new Error('ESSAI_TOO_LARGE');
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, total);
+}
+
+/**
+ * Un objet R2 `essai/<uuid>.<ext>` est une création d'essai — donc DÉJÀ
+ * filigranée. L'upload anonyme, lui, vit sous `essai/uploads/` et ne l'a jamais
+ * été : le motif exige un uuid, pas n'importe quel chemin sous essai/.
+ */
+const TRIAL_RESULT_KEY_RE =
+  /(^|\/)essai\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/i;
+
+function isTrialResultUrl(url) {
+  if (!url) return false;
+  try { return TRIAL_RESULT_KEY_RE.test(decodeURIComponent(new URL(String(url)).pathname)); }
+  catch { return false; }
+}
+
+/**
+ * Faut-il poser un filigrane sur CE job ?
+ *
+ * La table dit ce qu'un kind produit ; elle ignore d'où vient la source. Un
+ * agrandissement anonyme part presque toujours d'une création d'essai —
+ * essai/<uuid>.png, filigrane compris. Topaz l'étirait x4 ou x8, le filigrane
+ * d'origine avec lui, et on en reposait un second par-dessus : deux adresses
+ * empilées sur la même image, dont une énorme et floue. Celle qui est déjà
+ * dans les pixels suffit.
+ */
+/**
+ * Appose le filigrane qui convient au média.
+ *
+ * L'image passe par sharp, la vidéo par ffmpeg. Le son n'en reçoit aucun : rien
+ * ne s'inscrit dans une piste sonore sans l'abîmer, et une annonce parlée
+ * détruirait précisément ce que le visiteur est venu chercher. La table des
+ * médias le dit déjà (watermark: false pour tts et sfx) ; ce commentaire est là
+ * pour que personne ne prenne cette absence pour un oubli.
+ *
+ * watermarkVideo ne jette jamais : ffmpeg absent, fichier illisible ou trop gros
+ * rendent la vidéo d'origine. On préfère une vidéo nue à une génération perdue
+ * après une minute d'attente et des crédits déjà dépensés chez le fournisseur.
+ */
+async function apposerFiligrane(raw, out) {
+  if (out.media === 'video') return watermarkVideo(raw);
+  if (out.media === 'image') return watermarkImage(raw);
+  return raw;
+}
+
+function shouldWatermark(job, out) {
+  if (!out.watermark) return false;
+  if (job.kind === 'upscale' && isTrialResultUrl(job.imageUrl)) return false;
+  return true;
+}
+
+const MPEG_EXT_RE = /^\.(mp3|mpeg|mpga)$/i;
+
+/**
+ * Le son est déposé en .mp3 et servi en audio/mpeg parce que la table le fige,
+ * et la route de service (src/routes/essai.js) relit ce type depuis le kind et
+ * non depuis l'objet : le délier ici seul ne suffirait pas.
+ *
+ * C'est juste aujourd'hui — elevenlabs/text-to-speech-turbo-2-5 et
+ * sound-effect-v2 ne rendent que du MPEG, et pollTask ne remonte de toute façon
+ * aucun format. Ce qui le casserait : un modèle rendant du WAV ou de l'OPUS.
+ * L'objet partirait sous .mp3, annoncé audio/mpeg, et avec le nosniff de la
+ * route le navigateur refuserait tout net de le lire. On le crie donc dans les
+ * logs au premier écart, plutôt que de l'apprendre par un visiteur.
+ */
+function warnUnexpectedAudioFormat(id, url) {
+  let ext = '';
+  try { ext = (new URL(String(url)).pathname.match(/\.[a-z0-9]{2,5}$/i) || [''])[0]; }
+  catch { return; }
+  if (!ext || MPEG_EXT_RE.test(ext)) return;
+  // Jamais l'URL du fournisseur dans un log — seulement son extension.
+  console.warn(`[ESSAI] job ${id}: le fournisseur rend du "${ext}", la file le stocke et le sert en MP3`);
+}
+
+/**
+ * Dépose le rendu du fournisseur sur R2 sous `key`.
+ *
+ * L'URL vient de la réponse du fournisseur et non du client — mais c'est NOTRE
+ * serveur qui la lit, donc exactement le vecteur que assertSafeUrl ferme pour
+ * les URL du visiteur (src/routes/essai.js). Une réponse détournée ne doit pas
+ * pouvoir nous faire lire 169.254.169.254.
+ *
+ * Deux chemins, choisis par le filigrane :
+ *   - rien à écrire dans le fichier → persistFromUrl (r2.js) fait passer les
+ *     octets de la source à R2 sans les tamponner. Il lui manque seulement une
+ *     borne : on lit la taille annoncée avant de le laisser partir. Il inscrit
+ *     sur l'objet le Content-Type de la source, sans conséquence — la route de
+ *     service réaffirme le type depuis le kind avant d'envoyer au navigateur.
+ *   - filigrane à poser → sharp exige le fichier entier, on tamponne, sous
+ *     plafond et en coupant dès le dépassement.
+ */
+async function persistProviderResult(resultUrl, key, out, job) {
+  assertSafeUrl(resultUrl);
+  const cap = MAX_BYTES[out.media] || MAX_BYTES.image;
+  const marquer = shouldWatermark(job, out);
+
+  if (!marquer) {
+    const size = await announcedSize(resultUrl);
+    if (size !== null) {
+      if (size > cap) throw new Error('ESSAI_TOO_LARGE');
+      await persistFromUrl(resultUrl, key);
+      return;
+    }
+    // Source muette sur sa taille : la borner suppose de compter, et compter
+    // suppose de lire. On retombe donc sur le chemin tamponné, sous le même
+    // plafond.
+  }
+
+  const raw = await downloadCapped(resultUrl, cap);
+  await uploadToR2(marquer ? await apposerFiligrane(raw, out) : raw, key, out.mime);
+}
+
+async function runJob(job) {
+  const out = mediaForKind(job.kind);
+  const startedAt = Date.now();
+  try {
+    // media est réaffirmé ici, et pas seulement à l'insertion : la file est la
+    // seule à connaître la table des médias, le client saura donc toujours ce
+    // qu'il reçoit même si la route appelante ne l'a pas renseigné.
+    await query(`UPDATE essai_generations SET status = 'processing', media = $2 WHERE id = $1`, [job.id, out.media]);
 
     // 1. Création de la tâche provider (clé du visiteur, RAM only)
     const task = await createProviderTask(job);
 
+    // veo3 se sonde sur un autre point d'entrée que le reste du catalogue :
+    // pollTask a besoin du modèle pour choisir la bonne URL.
+    const pollMetadata = job.kind === 'video'
+      ? JSON.stringify({ videoModel: videoModelOf(job) })
+      : '{}';
+
     // 2. Polling jusqu'à état terminal ou timeout
-    const deadline = Date.now() + POLL_TIMEOUT_MS;
+    const deadline = Date.now() + (out.media === 'video' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
     let resultUrl = null;
     for (;;) {
       if (Date.now() > deadline) throw new Error('ESSAI_TIMEOUT');
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: '{}' });
+      const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: pollMetadata });
       if (st.status === 'failed') throw new Error(st.error || 'provider failed');
       if (st.status === 'completed' && st.resultUrl) { resultUrl = st.resultUrl; break; }
     }
 
-    // 3. Téléchargement + filigrane + R2 — l'URL provider ne sort jamais d'ici
-    const dl = await fetch(resultUrl);
-    if (!dl.ok) throw new Error(`download ${dl.status}`);
-    const raw = Buffer.from(await dl.arrayBuffer());
-    const watermarked = await watermarkImage(raw);
-    const r2Key = `essai/${job.id}.png`;
-    await uploadToR2(watermarked, r2Key, 'image/png');
+    // 3. Téléchargement + filigrane éventuel + R2 — l'URL provider ne sort jamais d'ici
+    const r2Key = `essai/${job.id}.${out.ext}`;
+    if (out.media === 'audio') warnUnexpectedAudioFormat(job.id, resultUrl);
+    await persistProviderResult(resultUrl, r2Key, out, job);
 
     await query(
       `UPDATE essai_generations SET status = 'completed', r2_key = $1, completed_at = NOW()
@@ -172,15 +524,46 @@ async function runJob(job) {
     ).catch(() => {});
   } finally {
     job.apiKey = null; // la clé ne survit pas au job
-    running--;
+    active.delete(job);
+    // On mesure l'occupation réelle d'une voie, succès comme échec : c'est
+    // elle, pas le succès, qui détermine l'attente annoncée à un refus.
+    recordJobDuration(Date.now() - startedAt);
     setImmediate(pump);
   }
 }
 
+/**
+ * Prochain job à servir, choisi équitablement entre adresses IP.
+ *
+ * queue.shift() servait le plus ancien, point : le lot de vingt du premier
+ * visiteur passait entièrement avant la première variante du second, qui
+ * attendait derrière une heure durant. On prend donc, parmi les jobs en
+ * attente, celui dont l'IP a le moins de jobs DÉJÀ en cours. L'ordre d'arrivée
+ * reste le départ et tranche les égalités, puisqu'on parcourt la file dans cet
+ * ordre avec une comparaison stricte.
+ * @returns {number} index dans `queue`, ou -1 si la file est vide
+ */
+function pickNextIndex() {
+  const charge = new Map();
+  for (const j of active) charge.set(j.ip, (charge.get(j.ip) || 0) + 1);
+  let best = -1;
+  let bestCharge = Infinity;
+  for (let i = 0; i < queue.length; i++) {
+    const c = charge.get(queue[i].ip) || 0;
+    if (c < bestCharge) { bestCharge = c; best = i; }
+    if (bestCharge === 0) break; // rien de mieux qu'une IP inactive, et c'est la plus ancienne
+  }
+  return best;
+}
+
 function pump() {
-  while (running < CONCURRENCY && queue.length > 0) {
-    const job = queue.shift();
-    running++;
+  while (active.size < CONCURRENCY && queue.length > 0) {
+    const idx = pickNextIndex();
+    // Inatteignable tant que la file n'est pas vide — mais splice(-1, 1)
+    // retirerait le DERNIER job, ce qui serait un bug silencieux.
+    if (idx < 0) break;
+    const job = queue.splice(idx, 1)[0];
+    active.add(job);
     runJob(job);
   }
 }
@@ -189,20 +572,65 @@ function pump() {
 
 /**
  * Enfile une génération. La clé n'est référencée que par l'objet job.
- * kind : 'text' (défaut) | 'image' | 'polish' | 'remix' | 'adapt'.
- * imageUrl / creativeDirection ne servent qu'aux kinds studio.
+ * kind : 'text' (défaut) | 'image' | 'polish' | 'remix' | 'adapt' | 'upscale'
+ *        | 'video' | 'tts' | 'sfx'.
+ *
+ * Les paramètres propres à une opération portent EXACTEMENT le nom qu'ils ont
+ * dans les routes d'un compte (POST /api/generate/video, /api/tools/tts,
+ * /api/tools/sfx, /api/tools/image-upscale) : la route anonyme n'a rien à
+ * traduire, et les deux surfaces dérivent moins facilement.
+ *   - vidéo        : videoModel, duration, resolution, mode, sound,
+ *                    aspectRatio, generateAudio, variant, creativeDirection
+ *   - voix         : text, voice, stability, similarity_boost, style, speed
+ *   - bruitage     : text, duration_seconds
+ *   - agrandissement : imageUrl, upscaleFactor
  * @returns {{ ok: true, position: number } | { ok: false, code: number, error: string }}
  */
-export function enqueue({ id, prompt, format, apiKey, ip, kind = 'text', imageUrl = null, creativeDirection = null }) {
+export function enqueue({
+  id, prompt, format, apiKey, ip,
+  kind = 'text',
+  imageUrl = null,
+  creativeDirection = null,
+  // vidéo
+  videoModel = null, duration = null, resolution = null, mode = null,
+  sound = null, aspectRatio = null, generateAudio = null, variant = null,
+  // voix et bruitage
+  text = null, voice = null, stability = null, similarity_boost = null,
+  style = null, speed = null, duration_seconds = null,
+  // agrandissement
+  upscaleFactor = null,
+}) {
+  // Les deux refus nomment la limite qui a joué et chiffrent l'attente. Un refus
+  // muet est ce qui a fait perdre une heure à un visiteur persuadé que son lot
+  // de cinq était parti : trois seulement l'étaient.
   if (queue.length >= MAX_QUEUE) {
-    return { ok: false, code: 429, error: 'File d\'essai pleine — reessayez dans quelques minutes' };
+    return {
+      ok: false, code: 429,
+      error: `Trial queue full (${queue.length} waiting) — try again in about ${waitMinutes(queue.length)} min`,
+    };
   }
-  const mine = queue.filter((j) => j.ip === ip).length;
+  // File ET en cours : le plafond ne comptait que la file, et mentait donc sur
+  // ce qu'il comptait dès que pump() avait sorti un job pour l'exécuter.
+  const mine = countForIp(ip);
   if (mine >= MAX_PER_IP) {
-    return { ok: false, code: 429, error: 'Vous avez deja des generations en file — attendez qu\'elles se terminent' };
+    // L'attente annoncée est celle de SA plus ancienne génération encore en
+    // file : c'est elle qui libérera la place. Toutes en cours ? un cycle.
+    const firstMine = queue.findIndex((j) => j.ip === ip);
+    const ahead = firstMine === -1 ? 1 : firstMine + 1;
+    return {
+      ok: false, code: 429,
+      error: `You already have ${mine} generations queued or running (limit ${MAX_PER_IP}) — try again in about ${waitMinutes(ahead)} min`,
+    };
   }
-  queue.push({ id, prompt, format, apiKey, ip, kind, imageUrl, creativeDirection });
-  const position = queue.length + running; // rang global dans la file
+  queue.push({
+    id, prompt, format, apiKey, ip, kind, imageUrl, creativeDirection,
+    videoModel, duration, resolution, mode, sound, aspectRatio, generateAudio, variant,
+    text, voice, stability, similarity_boost, style, speed, duration_seconds,
+    upscaleFactor,
+  });
+  // Rang d'arrivée, pas ordre de service : depuis que la file se sert au tour
+  // par tour, ce nombre est une estimation haute pour l'UI, pas une promesse.
+  const position = queue.length + active.size;
   setImmediate(pump);
   return { ok: true, position };
 }
@@ -210,10 +638,10 @@ export function enqueue({ id, prompt, format, apiKey, ip, kind = 'text', imageUr
 /** Position 1-based d'un job encore en file (0 = en cours ou absent de la file). */
 export function positionOf(id) {
   const idx = queue.findIndex((j) => j.id === id);
-  return idx === -1 ? 0 : idx + 1 + running;
+  return idx === -1 ? 0 : idx + 1 + active.size;
 }
 
 /** État instantané pour l'UI. */
 export function queueStats() {
-  return { waiting: queue.length, running, concurrency: CONCURRENCY };
+  return { waiting: queue.length, running: active.size, concurrency: CONCURRENCY };
 }

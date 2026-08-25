@@ -43,17 +43,65 @@ function ensureCleanup() {
 const RESSEMBLE_A_UNE_IP = /^[0-9a-fA-F:.]{3,45}$/;
 
 /**
- * L'adresse du visiteur, telle que le premier proxy l'a vue.
+ * Adresse d'infrastructure : celle d'un proxy, pas celle d'un visiteur.
+ * Couvre les plages privées IPv4, la boucle locale, le lien-local et les
+ * adresses uniques locales IPv6 — plus la forme « ::ffff:10.0.0.1 » que
+ * Node rend sur une pile double.
+ */
+function estInterne(ip) {
+  const a = ip.toLowerCase().replace(/^::ffff:/, '');
+  return (
+    a === '::1' || a === 'localhost'
+    || /^127\./.test(a)
+    || /^10\./.test(a)
+    || /^192\.168\./.test(a)
+    || /^172\.(1[6-9]|2\d|3[01])\./.test(a)
+    || /^169\.254\./.test(a)
+    || /^f[cd][0-9a-f]{2}:/.test(a)
+    || /^fe80:/.test(a)
+  );
+}
+
+/** Au-delà, l'en-tête est fabriqué : on ne le lit pas plus loin. */
+const MAX_MAILLONS = 20;
+
+/**
+ * L'adresse du visiteur — celle qu'un proxy de confiance a inscrite.
  *
- * X-Forwarded-For s'écrit « client, proxy1, proxy2 » : la première entrée est
- * l'origine. On la préfère à `req.ip`, qui dépend d'un réglage `trust proxy`
- * que personne ne peut garder exact quand la plateforme change sa topologie.
+ * ─── Deux erreurs successives, et pourquoi celle-ci est la bonne ───
+ *
+ * 1) On a d'abord fait confiance à `req.ip`, qui dépend d'un réglage
+ *    `trust proxy` devant correspondre EXACTEMENT au nombre de proxys
+ *    traversés. La topologie réelle en comptait davantage : `req.ip` rendait
+ *    une adresse interne, LA MÊME pour tout le monde, et un visiteur consommait
+ *    le budget de tous les autres. C'est ce qui a produit les « Too many
+ *    requests » du 25/08 sur un simple lot de cinq images.
+ *
+ * 2) On a alors lu la PREMIÈRE entrée de X-Forwarded-For. C'était pire, et
+ *    mesuré : cette entrée est écrite par le CLIENT. Une seule machine qui la
+ *    change à chaque requête a fait passer 63 générations d'affilée et rempli
+ *    la file — après quoi tout visiteur honnête recevait « réessayez dans
+ *    trente minutes ». Un studio public fermable depuis un seul poste.
+ *
+ * L'en-tête s'écrit « client, proxy1, proxy2 » : chaque proxy AJOUTE À DROITE
+ * l'adresse dont il a reçu la requête. Tout ce qu'un attaquant fabrique se
+ * retrouve donc forcément À GAUCHE de ce que notre proxy a inscrit. On lit
+ * l'en-tête EN PARTANT DE LA DROITE et on retient la première adresse publique
+ * : les maillons d'infrastructure sont sautés, et les valeurs forgées restent
+ * hors d'atteinte quel qu'en soit le nombre.
+ *
+ * Cette lecture ne demande à connaître ni le nombre de proxys ni leurs
+ * adresses — c'est précisément ce qui la rend robuste au jour où la plateforme
+ * change sa topologie sans prévenir.
  */
 export function clientIp(req) {
   const xff = req.headers?.['x-forwarded-for'];
   if (typeof xff === 'string' && xff.length > 0) {
-    const premier = xff.split(',')[0].trim();
-    if (RESSEMBLE_A_UNE_IP.test(premier)) return premier;
+    const maillons = xff.split(',', MAX_MAILLONS).map((v) => v.trim());
+    for (let i = maillons.length - 1; i >= 0; i--) {
+      const m = maillons[i];
+      if (RESSEMBLE_A_UNE_IP.test(m) && !estInterne(m)) return m;
+    }
   }
   return req.ip || req.connection?.remoteAddress || 'inconnu';
 }
