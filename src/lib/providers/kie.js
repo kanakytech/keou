@@ -268,6 +268,9 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
 
 // ─── TTS (ElevenLabs) ───
 
+/** Identifiant de voix donné en exemple par la documentation KIE (26/08/2026). */
+const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';
+
 export async function tts(apiKey, { text, voice, stability, similarity_boost, style, speed }) {
   /* On n'impose plus « Rachel » — le fournisseur a changé de convention.
    *
@@ -280,8 +283,17 @@ export async function tts(apiKey, { text, voice, stability, similarity_boost, st
    * Le champ est FACULTATIF et le fournisseur a son propre défaut : on ne le
    * transmet donc que si l'appelant en a choisi un, plutôt que d'imposer une
    * valeur qui peut redevenir invalide au prochain changement de leur côté. */
-  const input = { text };
-  if (typeof voice === 'string' && voice.trim()) input.voice = voice.trim();
+  /* Le champ est obligatoire, quoi qu'en dise la documentation.
+   *
+   * Elle l'annonce facultatif avec un défaut côté fournisseur. À l'essai, KIE
+   * répond « 422: voiceId cannot be empty » — il faut donc toujours en envoyer
+   * un. Et ce doit être un IDENTIFIANT : l'ancien code passait « Rachel », un
+   * nom de l'ancienne API ElevenLabs, qui ne se résolvait en rien — d'où
+   * l'échec de toute génération de voix depuis trois mois.
+   *
+   * VOIX_PAR_DEFAUT est l'identifiant que leur propre documentation donne en
+   * exemple. À changer si le catalogue bouge : c'est le seul endroit. */
+  const input = { text, voice: (typeof voice === 'string' && voice.trim()) ? voice.trim() : VOIX_PAR_DEFAUT };
   /* Bornes du schéma ElevenLabs chez KIE : stability, similarity_boost et style
    * dans [0,1], speed dans [0.7,1.2]. Les curseurs de l'interface les
    * respectent déjà ; ce filet ne sert qu'aux appels API directs, où une valeur
