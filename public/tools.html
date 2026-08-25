@@ -451,7 +451,12 @@
       <div class="tool-card-icon">${t.icon}</div>
       <div class="tool-card-name">${t.name}</div>
       <div class="tool-card-desc">${t.desc}</div>
-      <div class="tool-card-cost">${t.cost}</div>
+      <!-- En anonyme, Keou ne facture rien : la clé du visiteur est débitée
+           directement par le fournisseur. Afficher NOS tarifs sur cette page
+           laissait croire le contraire, alors que studio.html disait déjà la
+           vérité. Deux surfaces du même produit ne peuvent pas répondre
+           différemment à « qui paie ? ». -->
+      <div class="tool-card-cost">${window.IS_ANON ? I18N.t('Billed to your own API key') : t.cost}</div>
     </div>
   `).join('');
 
