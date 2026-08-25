@@ -238,11 +238,11 @@ const AnonMode = (() => {
     // les atteindre — il n'y avait aucun bouton pour y aller. L'ordre reprend
     // celui de la nav connectée (studio, …, outils, aide, sur-mesure).
     const items = [
-      { id: 'studio', href: '/studio.html', label: 'Production Engine', icon: icons.studio },
-      { id: 'gallery', href: '/essai.html', label: 'Community gallery', icon: icons.gallery },
-      { id: 'tools', href: '/tools.html', label: 'Creative Tools', icon: icons.tools },
-      { id: 'help', href: '/help.html', label: 'Help', icon: icons.help },
-      { id: 'custom', href: '/custom.html', label: 'Custom build — tailored to your workflow', icon: icons.pro },
+      { id: 'studio', court: 'Studio', href: '/studio.html', label: 'Production Engine', icon: icons.studio },
+      { id: 'gallery', court: 'Gallery', href: '/essai.html', label: 'Community gallery', icon: icons.gallery },
+      { id: 'tools', court: 'Tools', href: '/tools.html', label: 'Creative Tools', icon: icons.tools },
+      { id: 'help', court: 'Help', href: '/help.html', label: 'Help', icon: icons.help },
+      { id: 'custom', court: 'Custom', href: '/custom.html', label: 'Custom build — tailored to your workflow', icon: icons.pro },
     ];
 
     // Même règle que shared/nav.js : l'entrée active se déduit du chemin. Elle
@@ -268,6 +268,27 @@ const AnonMode = (() => {
         <a class="app-sidebar-item" href="/login.html" data-tooltip="Sign in / create account">${icons.login}</a>
       </div>`;
     document.body.insertBefore(sidebar, document.body.firstChild);
+
+    /* Une barre du bas pour le mobile — sinon il n'y a AUCUNE navigation.
+     *
+     * shared/styles.css masque .app-sidebar sous 768 px et donne la main à
+     * .mobile-bottom-nav, que shared/nav.js construit pour un compte. Le mode
+     * anonyme, lui, n'en construisait pas : sur un téléphone, le studio public
+     * n'offrait plus aucun moyen d'atteindre la galerie ni les outils — juste
+     * trois liens perdus dans le corps de la page. C'est pourtant le seul
+     * chemin praticable pour la majorité des visiteurs.
+     *
+     * Cinq entrées : au-delà, les cibles deviennent trop étroites pour un
+     * pouce. « Se connecter » reste donc hors de cette barre — c'est la seule
+     * des six à ne rien apporter à quelqu'un venu essayer sans compte. */
+    document.querySelector('.mobile-bottom-nav')?.remove();
+    const barreBasse = document.createElement('div');
+    barreBasse.className = 'mobile-bottom-nav';
+    barreBasse.innerHTML = items.map((it) =>
+      `<a class="mobile-bottom-nav-item${active === it.id ? ' active' : ''}" href="${it.href}">`
+      + `${it.icon}<span>${it.court || it.label}</span></a>`
+    ).join('');
+    document.body.appendChild(barreBasse);
 
     // Le studio décale son contenu de la largeur de la sidebar fixe (60px) via
     // le conteneur .app-content — même mécanique que la nav connectée
