@@ -462,13 +462,40 @@ export async function pollTask(apiKey, { taskId, recordId, metadata }) {
     if (r.status === 401 || r.status === 403) return { status: 'failed', error: 'KIE.AI auth error — check API key' };
     if (r.status === 404) return { status: 'failed', error: 'KIE.AI task not found (expired or invalid)' };
     if (r.status === 410) return { status: 'failed', error: 'KIE.AI task expired' };
-    // Transient — keep polling
-    if (!r.ok) return { status: 'processing' };
+    /* Une panne d'en face ne doit plus se faire passer pour « ça travaille ».
+     *
+     * Toute réponse non-ok rendait « processing ». Un 524 — le code Cloudflare
+     * qui dit que le serveur d'origine n'a pas répondu — était donc indiscernable
+     * d'une génération en cours : on sondait quatre minutes dans le vide, puis on
+     * rendait « délai dépassé » sans motif, alors que le fournisseur criait
+     * depuis la première seconde. Constaté le 27/08 sur une génération d'image.
+     *
+     * On rend donc le code, et c'est l'appelant qui décide : quelques secousses
+     * se traversent, une panne installée s'annonce. */
+    if (!r.ok) return { status: 'processing', panneAmont: r.status };
+
     // KIE peut répondre 200 avec l'erreur dans le body
     const peek = await r.clone().json().catch(() => null);
     const bodyCode = Number(peek?.code);
     if (bodyCode === 401) return { status: 'failed', error: 'KIE.AI auth error — check API key' };
     if (bodyCode === 402) return { status: 'failed', error: 'KIE.AI credits exhausted — top up your account' };
+    /* Les autres états terminaux de leur énumération, qu'on laissait filer :
+     * 404 tâche inconnue · 422 paramètres refusés · 501 génération échouée ·
+     * 505 fonctionnalité désactivée. Chacun est définitif — continuer à sonder
+     * ne fait qu'immobiliser une voie jusqu'au délai. */
+    const TERMINAUX = {
+      404: 'KIE.AI task not found (expired or invalid)',
+      422: 'KIE.AI refused the parameters',
+      501: 'Generation failed at the provider',
+      505: 'This model is disabled on your KIE.AI account',
+    };
+    if (TERMINAUX[bodyCode]) {
+      return { status: 'failed', error: peek?.msg ? `${TERMINAUX[bodyCode]} — ${String(peek.msg).slice(0, 90)}` : TERMINAUX[bodyCode] };
+    }
+    // 429 et 455 sont passagers : on les compte comme une panne d'amont.
+    if (bodyCode === 429 || bodyCode === 455 || bodyCode === 500) {
+      return { status: 'processing', panneAmont: bodyCode };
+    }
 
     const data = await r.json();
 

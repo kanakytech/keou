@@ -1326,5 +1326,7 @@ window.KEOU_FR_PATTERNS = {
   "You already have {} generations queued or running (limit {}) — try again in about {} min": "Vous avez déjà {} générations en file ou en cours (limite {}) — réessayez dans environ {} min",
   "Too many requests from this network address ({}) — the limit applies to the connection, not to you personally. Try again in {} s.": "Trop de requêtes venant de cette adresse réseau ({}) — la limite porte sur la connexion, pas sur vous personnellement. Réessayez dans {} s.",
   "Too many requests from this network address — the limit applies to the connection, not to you personally. Try again in {} s.": "Trop de requêtes venant de cette adresse réseau — la limite porte sur la connexion, pas sur vous personnellement. Réessayez dans {} s.",
-  "Provider refused the request: {}": "Le fournisseur a refusé la demande : {}"
+  "Provider refused the request: {}": "Le fournisseur a refusé la demande : {}",
+  "The provider stopped responding (HTTP {}) — their side, not yours. Wait a few minutes before trying again.": "Le fournisseur ne répond plus (HTTP {}) — c’est chez eux, pas chez vous. Attendez quelques minutes avant de réessayer.",
+  "The provider is unavailable (HTTP {}) — try again in a few minutes.": "Le fournisseur est indisponible (HTTP {}) — réessayez dans quelques minutes."
 };

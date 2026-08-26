@@ -230,6 +230,22 @@ function safeErrorMessage(err) {
   if (raw === 'ESSAI_TOO_LARGE') {
     return 'The provider returned a file too large to process — try a smaller format';
   }
+  /* Une panne du fournisseur, nommée par son code.
+   *
+   * « La génération a échoué, réessayez » envoyait le visiteur recommencer — et
+   * repayer — alors que le problème n'est ni chez lui ni chez nous. Un 524 dit
+   * que leur serveur n'a pas répondu : le seul geste utile est d'attendre, pas
+   * de relancer. On le dit. */
+  const amont = raw.match(/^ESSAI_AMONT_(\d{3})$/);
+  if (amont) {
+    const code = amont[1];
+    if (code === '524' || code === '504' || code === '522' || code === '520') {
+      return `The provider stopped responding (HTTP ${code}) — their side, not yours. Wait a few minutes before trying again.`;
+    }
+    if (code === '429') return 'Provider rate limit reached — wait a minute and try again';
+    return `The provider is unavailable (HTTP ${code}) — try again in a few minutes.`;
+  }
+
   if (raw === 'ESSAI_TIMEOUT') {
     // Le délai dépend du média (4 min pour une image, 10 pour une vidéo) : le
     // message ne cite plus de durée, il mentirait une fois sur deux.
@@ -640,12 +656,35 @@ async function runJob(job) {
     // 2. Polling jusqu'à état terminal ou timeout
     const deadline = Date.now() + (out.media === 'video' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
     let resultUrl = null;
+    /* Une panne installée chez le fournisseur s'annonce, elle ne s'attend pas.
+     *
+     * Le sondage ne distinguait pas « la génération travaille » de « le serveur
+     * d'en face ne répond plus ». Un 524 — le code Cloudflare d'une origine
+     * muette — se traversait donc quatre minutes durant, pour finir en « délai
+     * dépassé » sans motif, alors que le fournisseur criait depuis la première
+     * seconde. Constaté le 27/08 sur une génération d'image.
+     *
+     * Quelques secousses se traversent : un réseau hoquette, un service
+     * redémarre. Au-delà d'une minute d'échecs D'AFFILÉE, ce n'est plus une
+     * secousse, et le visiteur a le droit de savoir sur quoi il attend. */
+    const MAX_PANNES_AMONT = Math.max(4, Math.round(60_000 / POLL_INTERVAL_MS));
+    let pannes = 0;
+    let dernierePanne = null;
+
     for (;;) {
       if (Date.now() > deadline) throw new Error('ESSAI_TIMEOUT');
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
       const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: pollMetadata });
       if (st.status === 'failed') throw new Error(st.error || 'provider failed');
       if (st.status === 'completed' && st.resultUrl) { resultUrl = st.resultUrl; break; }
+
+      if (st.panneAmont) {
+        pannes++;
+        dernierePanne = st.panneAmont;
+        if (pannes >= MAX_PANNES_AMONT) throw new Error(`ESSAI_AMONT_${dernierePanne}`);
+      } else {
+        pannes = 0;   // une seule réponse saine efface la série
+      }
     }
 
     // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
