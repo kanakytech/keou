@@ -18,7 +18,17 @@ import * as falProvider from './lib/providers/fal.js';
 
 const POLL_INTERVAL = 15_000;   // 15 seconds
 const MAX_AGE_MS = 60 * 60_000; // 1 hour — give up after this
-const BATCH_SIZE = 10;          // Process up to 10 tasks in parallel
+/* Quatre plutôt que dix — par prudence, pas par diagnostic.
+ *
+ * J'ai d'abord cru que ce lot saturait le pool et causait les « connection
+ * timeout » des journaux. Le banc a montré le contraire : chaque tâche relâche
+ * sa connexion entre deux requêtes, l'appel au fournisseur se faisant sans en
+ * tenir aucune. Dix en parallèle ne vident donc pas un pool de dix.
+ *
+ * On garde quand même quatre : le poller est du travail de fond et peut prendre
+ * deux tours de plus, là où un visiteur ne peut pas attendre. La vraie cause des
+ * ratés était ailleurs — voir la reprise de connexion dans src/db.js. */
+const BATCH_SIZE = Number(process.env.POLLER_BATCH_SIZE) || 4;
 
 // ─── Concurrency control (mutex) ───
 let _polling = false;
