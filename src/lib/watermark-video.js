@@ -80,6 +80,16 @@ async function bandeau(largeurVideo) {
     .toBuffer();
 }
 
+/* Le chemin de la police installée par le Dockerfile. */
+const POLICE = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+
+/* Échapper pour le filtre drawtext : deux-points, apostrophes et antislashs y
+ * ont un sens. « studio.kanaky.xyz » n'en contient aucun, mais le jour où le
+ * texte change, une adresse avec un « : » casserait tout le filtre en silence. */
+function echapperDrawtext(t) {
+  return t.replace(/\\/g, '\\\\').replace(/:/g, '\\:').replace(/'/g, "\\'");
+}
+
 function lancer(args) {
   return new Promise((resolve, reject) => {
     const p = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -141,22 +151,46 @@ export async function watermarkVideo(buffer) {
      *
      * On réessaie donc une fois en réencodant l'audio. Perdre un peu de qualité
      * sonore vaut mieux que publier un travail sans protection. */
-    const base = [
-      '-y', '-loglevel', 'error',
-      '-i', entree,
-      '-i', marque,
-      '-filter_complex', 'overlay=W-w-16:H-h-16',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
-      // Déplace l'index en tête : sans ça une vidéo servie en flux ne démarre
-      // qu'une fois entièrement téléchargée.
-      '-movflags', '+faststart',
+    /* ffmpeg écrit le texte lui-même, sharp ne sert que de repli.
+     *
+     * Le bandeau produit par sharp sortait TRANSPARENT dans le conteneur : la
+     * vidéo repassait bien par ffmpeg — l'index en tête du fichier le prouve —
+     * mais l'incrustation n'ajoutait rien, et rien n'était journalisé puisque
+     * rien n'avait échoué. sharp rend une image vide sans s'en plaindre.
+     *
+     * `drawtext` lit le fichier de police directement, sans intermédiaire. On
+     * l'essaie d'abord ; si cette compilation de ffmpeg n'a pas libfreetype, on
+     * retombe sur l'incrustation d'image. Chaque chemin dit lequel a servi. */
+    const texteFiltre =
+      `drawtext=fontfile=${POLICE}:text='${echapperDrawtext(TEXTE)}'` +
+      `:x=w-tw-20:y=h-th-20:fontsize=h/22:fontcolor=white@0.55` +
+      `:shadowcolor=black@0.35:shadowx=2:shadowy=2`;
+
+    const essais = [
+      { nom: 'drawtext',        filtre: ['-vf', texteFiltre],                     audio: ['-c:a', 'copy'] },
+      { nom: 'drawtext+aac',    filtre: ['-vf', texteFiltre],                     audio: ['-c:a', 'aac', '-b:a', '128k'] },
+      { nom: 'incrustation',    filtre: ['-filter_complex', 'overlay=W-w-16:H-h-16'], audio: ['-c:a', 'copy'], marque: true },
     ];
-    try {
-      await lancer([...base.slice(0, -2), '-c:a', 'copy', ...base.slice(-2), sortie]);
-    } catch (premiere) {
-      console.warn('[FILIGRANE vidéo] copie audio refusée, réencodage —', premiere.message.slice(0, 140));
-      await lancer([...base.slice(0, -2), '-c:a', 'aac', '-b:a', '128k', ...base.slice(-2), sortie]);
+
+    let pose = null;
+    let derniere = null;
+    for (const e of essais) {
+      const entrees = e.marque ? ['-i', entree, '-i', marque] : ['-i', entree];
+      try {
+        await lancer([
+          '-y', '-loglevel', 'error', ...entrees, ...e.filtre,
+          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+          ...e.audio, '-movflags', '+faststart', sortie,
+        ]);
+        pose = e.nom;
+        break;
+      } catch (err) {
+        derniere = err;
+        console.warn(`[FILIGRANE vidéo] « ${e.nom} » refusé — ${err.message.slice(0, 130)}`);
+      }
     }
+    if (!pose) throw derniere || new Error('aucune méthode de filigrane n’a abouti');
+    console.log(`[FILIGRANE vidéo] posé par « ${pose} »`);
 
     const res = await readFile(sortie);
     return res.length > 0 ? res : buffer;
