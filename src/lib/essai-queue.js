@@ -409,6 +409,8 @@ async function createProviderTask(job) {
        * et la clé du visiteur débitée. Voir src/lib/providers/kie.js. */
       const input = { text: job.text };
       if (typeof job.voice === 'string' && job.voice.trim()) input.voice = job.voice.trim();
+      // Le moteur choisi par la requête, s'il fait partie de la liste connue.
+      if (job.voiceModel) input.voiceModel = job.voiceModel;
       // kie.tts recopie tout réglage « défini » : un null partirait tel quel
       // chez le fournisseur. On ne transmet donc que ceux réellement fournis.
       for (const k of ['stability', 'similarity_boost', 'style', 'speed']) {
@@ -795,7 +797,7 @@ export function enqueue({
   videoModel = null, duration = null, resolution = null, mode = null,
   sound = null, aspectRatio = null, generateAudio = null, variant = null,
   // voix et bruitage
-  text = null, voice = null, stability = null, similarity_boost = null,
+  text = null, voice = null, voiceModel = null, stability = null, similarity_boost = null,
   style = null, speed = null, duration_seconds = null,
   // agrandissement
   upscaleFactor = null,
@@ -825,7 +827,7 @@ export function enqueue({
   queue.push({
     id, prompt, format, apiKey, ip, kind, imageUrl, creativeDirection,
     videoModel, duration, resolution, mode, sound, aspectRatio, generateAudio, variant,
-    text, voice, stability, similarity_boost, style, speed, duration_seconds,
+    text, voice, voiceModel, stability, similarity_boost, style, speed, duration_seconds,
     upscaleFactor,
   });
   // Rang d'arrivée, pas ordre de service : depuis que la file se sert au tour

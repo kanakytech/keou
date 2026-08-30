@@ -272,10 +272,15 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
 const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';   // « James » dans leur catalogue
 /* Moteur de voix par défaut. ElevenLabs est en panne chez KIE au 26/08 : on
  * passe par Gemini, au même catalogue. KIE_TTS_MODEL permet de revenir. */
+const MOTEURS_VOIX = Object.freeze([
+  'google/gemini-3-1-flash-tts',
+  'elevenlabs/text-to-speech-multilingual-v2',
+  'elevenlabs/text-to-speech-turbo-2-5',
+]);
 const MODELE_VOIX_DEFAUT = 'google/gemini-3-1-flash-tts';
 const VOIX_GEMINI_DEFAUT = 'Puck';
 
-export async function tts(apiKey, { text, voice, stability, similarity_boost, style, speed }) {
+export async function tts(apiKey, { text, voice, voiceModel, stability, similarity_boost, style, speed }) {
   /* Deux moteurs, et Gemini d'abord — parce qu'ElevenLabs est en panne chez KIE.
    *
    * Le 26/08, les DEUX modèles ElevenLabs du catalogue KIE (turbo-2-5 et
@@ -290,7 +295,14 @@ export async function tts(apiKey, { text, voice, stability, similarity_boost, st
    *
    * KIE_TTS_MODEL permet de revenir à ElevenLabs le jour où ils réparent, sans
    * toucher au code. */
-  const modele = process.env.KIE_TTS_MODEL || MODELE_VOIX_DEFAUT;
+  /* Le moteur peut se choisir par requête, dans une liste connue.
+   *
+   * ElevenLabs et Gemini n'ont ni la même voix ni le même prix, et l'un des deux
+   * tombe régulièrement chez le fournisseur. Pouvoir basculer sans redéployer
+   * évite d'avoir à choisir un gagnant définitif — et permet d'essayer l'autre
+   * quand le premier refuse, ce qui est exactement ce qui s'est passé en août. */
+  const modele = MOTEURS_VOIX.includes(voiceModel) ? voiceModel
+    : (process.env.KIE_TTS_MODEL || MODELE_VOIX_DEFAUT);
 
   if (modele.startsWith('google/')) {
     const input = {

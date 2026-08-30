@@ -1024,7 +1024,7 @@ router.post('/studio/upscale', async (req, res) => {
 // ─── Studio : voix de synthèse (texte visiteur, filtré) ───
 router.post('/studio/tts', async (req, res) => {
   try {
-    const { text, voice, stability, similarity_boost, style, speed } = req.body || {};
+    const { text, voice, voiceModel, stability, similarity_boost, style, speed } = req.body || {};
     const cleanText = typeof text === 'string' ? text.trim() : '';
     if (!cleanText) return res.status(400).json({ error: 'text is required' });
     if (cleanText.length > MAX_TTS_CHARS) {
