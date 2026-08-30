@@ -559,6 +559,18 @@
               <textarea class="form-input tts-text" id="tts-text" placeholder="Enter text to convert to speech..." rows="5" maxlength="${ttsMax}"></textarea>
               <div class="tts-char-count" id="tts-char-count">0 / ${ttsMax.toLocaleString('en-US')}</div>
             </div>
+            <!-- Deux moteurs, parce qu'aucun des deux n'est fiable tout seul.
+                 ElevenLabs a rendu « Internal Error » pendant plusieurs jours en
+                 aout ; Gemini a pris le relais. Pouvoir basculer en un clic evite
+                 d'attendre un correctif de leur cote pour pouvoir travailler. -->
+            <div class="form-group">
+              <label class="form-label">Engine</label>
+              <select class="form-input" id="tts-engine">
+                <option value="google/gemini-3-1-flash-tts" selected>Gemini — fast, reliable</option>
+                <option value="elevenlabs/text-to-speech-multilingual-v2">ElevenLabs multilingual — best for French</option>
+                <option value="elevenlabs/text-to-speech-turbo-2-5">ElevenLabs turbo — English</option>
+              </select>
+            </div>
             <div class="form-group">
               <label class="form-label">Voice</label>
               <select class="form-input" id="tts-voice">${voiceOptions}</select>
@@ -920,8 +932,12 @@
     if (text.length > ttsMax) { toast(`Text exceeds ${ttsMax.toLocaleString('en-US')} character limit`); return; }
 
     const voice = document.getElementById('tts-voice').value;
+    // Le moteur choisi part avec la requête ; le serveur le valide contre sa
+    // propre liste, l'interface ne fait que proposer.
+    const moteur = document.getElementById('tts-engine');
 
     const body = { text, voice };
+    if (moteur && moteur.value) body.voiceModel = moteur.value;
 
     // Advanced settings (only if panel is open)
     const panel = document.getElementById('adv-panel');
