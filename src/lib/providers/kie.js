@@ -323,7 +323,18 @@ export async function tts(apiKey, { text, voice, stability, similarity_boost, st
    * lui, KIE répond « 422: voiceId cannot be empty ». Et ce doit être un
    * identifiant : « Rachel », un nom de l'ancienne API, ne se résolvait en rien
    * — c'est ce qui faisait échouer la voix depuis trois mois. */
-  const input = { text, voice: (typeof voice === 'string' && voice.trim()) ? voice.trim() : VOIX_PAR_DEFAUT };
+  /* Le champ s'appelle `voice_id`, pas `voice`.
+   *
+   * Trois sources, trois versions : la page web de KIE annonce `input.voice`,
+   * leur validateur répond « voiceId cannot be empty », et leur documentation
+   * intégrale montre `voice_id`. C'est cette dernière qui fait foi — les deux
+   * autres expliquent pourquoi l'appel échouait sans jamais dire quoi corriger.
+   *
+   * On envoie les deux graphies : `voice_id` parce que c'est la bonne, `voice`
+   * parce qu'elle ne coûte rien et couvre le cas où l'une des deux surfaces dit
+   * vrai. Un champ inconnu est ignoré ; un champ manquant fait échouer. */
+  const identifiant = (typeof voice === 'string' && voice.trim()) ? voice.trim() : VOIX_PAR_DEFAUT;
+  const input = { text, voice_id: identifiant, voice: identifiant };
   const stab = nombreBorne(stability, 0, 1);
   if (stab !== undefined) input.stability = stab;
   const similarite = nombreBorne(similarity_boost, 0, 1);
@@ -483,17 +494,31 @@ export async function pollTask(apiKey, { taskId, recordId, metadata }) {
      * 404 tâche inconnue · 422 paramètres refusés · 501 génération échouée ·
      * 505 fonctionnalité désactivée. Chacun est définitif — continuer à sonder
      * ne fait qu'immobiliser une voie jusqu'au délai. */
+    /* La table des codes de KIE, telle que leur documentation intégrale la
+     * donne. On ne lisait que 401 et 402 : tous les autres états définitifs
+     * filaient jusqu'au délai de quatre minutes, en immobilisant une voie de la
+     * file et sans jamais dire au visiteur ce qu'il pouvait corriger.
+     *
+     * Chaque message vise l'action possible : « votre prompt » n'est pas la même
+     * chose que « leur serveur », et le visiteur ne doit relancer que quand
+     * relancer sert à quelque chose. */
     const TERMINAUX = {
+      400: 'Request refused — check the prompt (policy) or the source image (must be a public URL)',
       404: 'KIE.AI task not found (expired or invalid)',
       422: 'KIE.AI refused the parameters',
-      501: 'Generation failed at the provider',
+      451: 'The source image could not be fetched, or was judged unsafe — use a public http(s) URL',
+      501: 'Generation failed at the provider — try a different prompt',
       505: 'This model is disabled on your KIE.AI account',
+      433: 'This API sub-key has reached its usage limit',
     };
     if (TERMINAUX[bodyCode]) {
       return { status: 'failed', error: peek?.msg ? `${TERMINAUX[bodyCode]} — ${String(peek.msg).slice(0, 90)}` : TERMINAUX[bodyCode] };
     }
     // 429 et 455 sont passagers : on les compte comme une panne d'amont.
-    if (bodyCode === 429 || bodyCode === 455 || bodyCode === 500) {
+    /* Passagers : 408 est le délai d'attente d'AMONT (dix minutes sans résultat
+     * chez eux), 455 une maintenance, 500 une panne interne, 429 une limite de
+     * débit. Aucun n'est de notre fait ni de celui du visiteur. */
+    if (bodyCode === 408 || bodyCode === 429 || bodyCode === 455 || bodyCode === 500) {
       return { status: 'processing', panneAmont: bodyCode };
     }
 
