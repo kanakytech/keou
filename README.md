@@ -226,6 +226,10 @@ How it behaves, honestly:
   Local video is on the roadmap; we would rather say "not yet" than ship a
   workflow that breaks on half the installs.
 - A GPU is strongly recommended. CPU works for testing; you will not enjoy it.
+- **Apple Silicon (M-series Macs): install ComfyUI natively**, not through the
+  compose profile — Docker on macOS has no GPU passthrough, but native ComfyUI
+  uses Metal and works well. A 16 GB M3 renders SDXL in ~1-3 min per image and
+  upscales in seconds; FLUX schnell wants 16 GB+ and patience.
 
 ---
 
