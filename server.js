@@ -514,6 +514,95 @@ app.use('/api/essai', essaiRoutes);
 // /api/auth/agency, voit une édition qui n'est pas community et rend false, puis
 // Auth.guard() renvoie au login. Un 404 ici casserait le bouton « Launch Keou »
 // de tout déploiement auto-hébergé.
+// ─── SEO / GEO ───
+// Trois routes DYNAMIQUES, jamais des fichiers dans public/ : public/ est
+// partagé par toutes les éditions (déploiements clients white-label, build
+// OSS via scripts/build-oss.mjs qui embarque tout public/) — un robots.txt
+// statique pointant vers studio.kanaky.xyz fuiterait chez chaque client et
+// chaque self-host. Community = version SEO complète ; enterprise = instances
+// privées clients, tout est interdit aux robots ; opensource = neutre, chaque
+// self-host décide pour lui-même.
+const SEO_HOST = 'https://studio.kanaky.xyz';
+const SEO_PAGES = [
+  ['/', 'weekly', '1.0'],
+  ['/product-images.html', 'monthly', '0.9'],
+  ['/video.html', 'monthly', '0.9'],
+  ['/self-host.html', 'monthly', '0.9'],
+  ['/docs.html', 'monthly', '0.8'],
+  ['/essai.html', 'monthly', '0.7'],
+  ['/install.html', 'monthly', '0.7'],
+  ['/custom.html', 'yearly', '0.5'],
+  ['/help.html', 'monthly', '0.4'],
+  ['/donate.html', 'yearly', '0.3'],
+];
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  if (config.edition === 'community') {
+    // Retrieval ET entraînement bienvenus : être cité par les moteurs IA est
+    // un objectif, pas un risque — le produit est open source et gratuit.
+    res.send(
+      'User-agent: *\nAllow: /\nDisallow: /api/\n\n' +
+      `Sitemap: ${SEO_HOST}/sitemap.xml\n`,
+    );
+  } else if (config.edition === 'enterprise') {
+    res.send('User-agent: *\nDisallow: /\n');
+  } else {
+    res.send('User-agent: *\nAllow: /\n');
+  }
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  if (config.edition !== 'community') return res.status(404).end();
+  const lastmod = new Date().toISOString().slice(0, 10);
+  const urls = SEO_PAGES.map(([p, freq, prio]) =>
+    `  <url><loc>${SEO_HOST}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>${freq}</changefreq><priority>${prio}</priority></url>`,
+  ).join('\n');
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+  );
+});
+
+app.get('/llms.txt', (req, res) => {
+  if (config.edition === 'enterprise') return res.status(404).end();
+  res.type('text/plain; charset=utf-8');
+  if (config.edition !== 'community') {
+    // Self-host : on pointe vers le projet, pas vers notre instance.
+    return res.send(
+      '# Keou\n\n> Open-source AI product-visual studio (MIT). ' +
+      'This is a self-hosted instance.\n\n- Project: https://github.com/kanakytech/keou\n',
+    );
+  }
+  res.send(`# Keou Studio
+
+> Open-source (MIT) AI creative production engine: product images with
+> pixel-locked product fidelity, cinematic video, voice and sound — free
+> online without an account, or self-hosted with your own API keys (BYOK).
+
+Keou Studio is built by Kanaky Tech (https://kanaky.xyz), Auckland. The hosted
+instance at ${SEO_HOST} is free and requires no signup; the same software is
+MIT-licensed and self-hostable.
+
+## Key pages
+
+- [Studio (no signup)](${SEO_HOST}/launch): use it now.
+- [AI product images](${SEO_HOST}/product-images.html): pixel-locked product photos.
+- [AI product video](${SEO_HOST}/video.html): the video engines and how they work.
+- [Self-hosting](${SEO_HOST}/self-host.html): Docker/Railway, BYOK, MIT license.
+- [Documentation](${SEO_HOST}/docs.html)
+- [MCP install (agents)](${SEO_HOST}/install.html): use Keou from Claude via MCP.
+- [Source code](https://github.com/kanakytech/keou)
+
+## Facts
+
+- License: MIT. Repository: https://github.com/kanakytech/keou
+- Pricing of the hosted community instance: free, no account required.
+- Generation runs through external model APIs with your own keys (BYOK) —
+  models do not run locally.
+- Contact: contact@kanaky.xyz
+`);
+});
+
 app.get('/launch', (req, res) => {
   // La redirection perdait la chaîne de requête : un lien partagé en
   // « /launch?lang=fr » atterrissait en anglais, sans que rien ne le signale.

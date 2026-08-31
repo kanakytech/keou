@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Self-Hosted AI Image Generation — Open Source Photoroom Alternative | Keou Studio</title>
+<meta name="description" content="Self-host Keou Studio with Docker or Railway: an MIT-licensed AI product image and video studio. The models do not run locally — you host the studio, generation runs on your own KIE.AI or Fal.ai keys.">
+<link rel="canonical" href="https://studio.kanaky.xyz/self-host.html">
+<meta property="og:title" content="Self-Hosted AI Image Generation — Open Source Photoroom Alternative">
+<meta property="og:description" content="Run the whole Keou studio on your own servers with Docker or Railway. MIT licensed, BYOK — you host the studio, generation runs on your own provider keys.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://studio.kanaky.xyz/self-host.html">
+<meta property="og:image" content="https://studio.kanaky.xyz/logo-keou.png">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://studio.kanaky.xyz/self-host.html",
+      "url": "https://studio.kanaky.xyz/self-host.html",
+      "name": "Self-Hosted AI Image Generation — Open Source Photoroom Alternative",
+      "description": "Run the whole Keou studio on your own servers with Docker or Railway. MIT licensed, BYOK — you host the studio, generation runs on your own provider keys.",
+      "isPartOf": { "@type": "WebSite", "name": "Keou Studio", "url": "https://studio.kanaky.xyz/" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do the AI models run locally when I self-host Keou?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No, and we would rather say it plainly: you self-host the studio — frontend, API, database, storage — but the generation itself goes through KIE.AI or Fal.ai using your own API keys. No GPU is needed on your server, and no model weights are downloaded. If you need fully offline, on-device inference, Keou is not that tool." }
+        },
+        {
+          "@type": "Question",
+          "name": "What do I need to self-host Keou?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Node.js 20+, PostgreSQL, a Cloudflare R2 bucket (free tier is enough — required for uploads), and a provider key. A Dockerfile and a Railway configuration ship in the repository; the app listens on port 3401 and runs migrations automatically at boot." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a self-hosted Keou commercially?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. The licence is MIT: run it for clients, charge them, keep the money, rebrand it. No licence fee, no revenue share, no attribution requirement." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#f0f0ec;--ink-soft:rgba(240,240,236,.72);--ink-muted:rgba(240,240,236,.55);--ink-faint:rgba(240,240,236,.4);
+  --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
+  --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
+  --radius:16px;--radius-sm:12px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
+img{max-width:100%}
+
+/* ── Ambient ── */
+.ambient{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.ambient::before{content:'';position:absolute;top:-25%;right:-12%;width:720px;height:720px;background:radial-gradient(circle,rgba(200,240,96,.06),transparent 68%);border-radius:50%}
+.ambient::after{content:'';position:absolute;bottom:-15%;left:-12%;width:560px;height:560px;background:radial-gradient(circle,rgba(255,255,255,.02),transparent 70%);border-radius:50%}
+
+/* ── Nav (Liquid Glass on scroll) ── */
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;background:transparent;border-bottom:1px solid transparent;backdrop-filter:blur(0px) saturate(100%);-webkit-backdrop-filter:blur(0px) saturate(100%);transition:background .4s ease,border-color .4s ease,backdrop-filter .4s ease,-webkit-backdrop-filter .4s ease,box-shadow .4s ease}
+.lp-nav.scrolled{background:rgba(5,5,5,.72);backdrop-filter:blur(20px) saturate(170%) brightness(1.06);-webkit-backdrop-filter:blur(20px) saturate(170%) brightness(1.06);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:inset 0 -1px 0 rgba(255,255,255,.04),0 8px 32px rgba(0,0,0,.07)}
+@media (prefers-reduced-transparency:reduce){.lp-nav.scrolled{background:rgba(5,5,5,.97);backdrop-filter:none;-webkit-backdrop-filter:none}}
+.lp-brand{display:flex;align-items:center;gap:11px;text-decoration:none}
+.lp-brand img{height:30px;width:auto;border-radius:50%}
+.lp-brand-name{display:flex;flex-direction:column;line-height:1.15}
+.lp-brand-name strong{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
+.lp-nav-links{display:flex;gap:6px;align-items:center}
+.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
+.lp-nav-link.primary{background:var(--accent);color:#050505;font-weight:600}
+.lp-nav-link.primary:hover{background:#d6f57e}
+@media (max-width:720px){.lp-nav-link.ghost{display:none}}
+
+/* ── Shared ── */
+.section{max-width:1080px;margin:0 auto;padding:0 32px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:18px}
+.eyebrow svg{color:var(--accent)}
+.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;transition:all .25s;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;gap:9px}
+.btn-hero.primary{background:var(--accent);color:#050505}
+.btn-hero.primary:hover{background:#d6f57e;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border:1.5px solid var(--border)}
+.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06)}
+
+/* ── Page hero ── */
+.hero{padding:150px 32px 24px;max-width:1080px;margin:0 auto;text-align:center}
+.hero h1{font-size:clamp(30px,4.6vw,52px);font-weight:800;line-height:1.1;margin:0 auto 22px;max-width:840px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .sub{font-size:clamp(15px,1.9vw,18px);color:var(--ink-muted);max-width:680px;margin:0 auto 32px;line-height:1.7}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+.hero-note{font-size:12.5px;color:var(--ink-faint)}
+.hero-note a{color:var(--ink-muted)}
+
+/* ── Article ── */
+.article{max-width:760px;margin:0 auto;padding:44px 32px 0}
+.article h2{font-size:clamp(21px,2.6vw,28px);font-weight:700;margin:52px 0 14px}
+.article h2:first-child{margin-top:0}
+.article p{color:var(--ink-soft);font-size:15.5px;margin-bottom:15px;line-height:1.75}
+.article ul{color:var(--ink-soft);font-size:15.5px;margin:0 0 15px 22px;line-height:1.75}
+.article li{margin-bottom:7px}
+.article li::marker{color:var(--accent)}
+.article a{color:var(--accent);text-decoration:none}
+.article a:hover{text-decoration:underline}
+.article b{color:var(--ink)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:20px 0;font-size:14.5px;color:var(--ink-soft)}
+.note b{color:var(--ink)}
+.term{background:#000;border:1px solid var(--border-strong);border-radius:12px;padding:16px 18px;margin:16px 0;overflow-x:auto}
+.term code{font-family:'JetBrains Mono','Menlo',monospace;font-size:12.5px;line-height:1.75;color:#d7d7d3;white-space:pre;display:block}
+.term .c{color:rgba(240,240,236,.4)}
+.term .k{color:var(--accent)}
+
+/* ── FAQ ── */
+.faq{max-width:760px;margin:0 auto;padding:24px 32px 0}
+.faq h2{font-size:clamp(21px,2.6vw,28px);font-weight:700;margin:36px 0 20px}
+.faq-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:20px 22px;margin-bottom:12px}
+.faq-item h3{font-size:15.5px;font-weight:600;margin-bottom:8px;color:var(--ink)}
+.faq-item p{font-size:14.5px;color:var(--ink-muted);line-height:1.7}
+.faq-item p a{color:var(--accent);text-decoration:none}
+
+/* ── Final CTA ── */
+.final{padding:80px 0 100px;text-align:center}
+.final-card{padding:56px 40px;border:1px solid var(--border);border-radius:24px;background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
+.final-card::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:520px;height:280px;background:radial-gradient(ellipse,rgba(200,240,96,.18),transparent 70%);pointer-events:none}
+.final h2{font-size:clamp(24px,3.4vw,36px);font-weight:800;margin-bottom:14px}
+.final p{color:var(--ink-muted);max-width:520px;margin:0 auto 30px;font-size:15.5px}
+
+/* ── Footer ── */
+.lp-footer{border-top:1px solid var(--border);padding:36px 32px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;max-width:1080px;margin:0 auto}
+.lp-footer .fbrand{display:flex;align-items:center;gap:10px;color:var(--ink-muted);font-size:13px}
+.lp-footer .fbrand img{height:22px;border-radius:5px}
+.lp-footer .fbrand b{color:var(--ink-soft)}
+.lp-footer .flinks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color .2s}
+.lp-footer .flinks a:hover{color:var(--ink)}
+
+/* ── Reveal on scroll ── */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<nav class="lp-nav" id="lp-nav">
+  <a class="lp-brand" href="/">
+    <img src="/logo-keou.png" alt="Keou Studio">
+    <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
+  </a>
+  <div class="lp-nav-links">
+    <a class="lp-nav-link ghost" href="/#features">Features</a>
+    <a class="lp-nav-link ghost" href="/docs.html">Docs</a>
+    <a class="lp-nav-link ghost" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
+    <a class="lp-nav-link" href="/login.html">Sign in</a>
+    <a class="lp-nav-link primary" href="/launch">Launch Keou</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="eyebrow">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+    MIT licence · Docker · Railway
+  </span>
+  <h1>Self-hosted AI image generation, <em>with the honest caveat up front</em></h1>
+  <p class="sub">Keou Studio is an MIT-licensed AI product image and video studio you can run on your own servers with Docker or Railway. One thing said plainly before anything else: the models do not run on your machine. You host the studio — generation goes through your own KIE.AI or Fal.ai API keys.</p>
+  <div class="hero-ctas">
+    <a class="btn-hero primary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
+      Get the source on GitHub
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
+    <a class="btn-hero secondary" href="/launch">Try it hosted first</a>
+  </div>
+  <p class="hero-note">Identical feature set to the hosted studio — no watermark, no public gallery, your brand.</p>
+</header>
+
+<article class="article">
+  <section class="reveal">
+    <h2>What you host, and what you don't</h2>
+    <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. What you do <b>not</b> host is the inference. Every generation call goes out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded, no offline mode. If you are looking for fully on-device image generation, Keou is not that tool, and we would rather you know before you clone the repository.</p>
+    <p>What self-hosting buys you instead: <b>no watermark</b> on anything, <b>nothing published</b> to any gallery, full signed downloads and export-pack ZIPs, your own brand across the interface, and no shared queue — your capacity is whatever your provider key and your server allow. Users can each paste their own key; it stays in their browser and is never written to your server's disk, database or logs.</p>
+  </section>
+
+  <section class="reveal">
+    <h2>What you need</h2>
+    <ul>
+      <li><b>Node.js 20+</b> and <b>PostgreSQL</b> — migrations run automatically at boot.</li>
+      <li><b>A Cloudflare R2 bucket</b> — the free tier is enough, but it is required: uploads return 503 without it, and uploading a photo is the product's first move.</li>
+      <li><b>A provider key</b> — <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" rel="noopener">KIE.AI</a> or Fal.ai; each user can paste their own.</li>
+      <li><b>ADMIN_EMAIL and ADMIN_PASSWORD</b> set before first boot — self-serve signup is off by default in a self-hosted deployment, so without a seeded account nobody can sign in.</li>
+    </ul>
+  </section>
+
+  <section class="reveal">
+    <h2>Docker in two commands</h2>
+    <div class="term">
+      <code>docker build <span class="k">-t</span> keou .
+docker run <span class="k">-p</span> 3401:3401 <span class="k">--env-file</span> .env keou   <span class="c"># open http://localhost:3401</span></code>
+    </div>
+    <p>The image runs as a non-root user and ships a healthcheck on <code style="font-family:monospace;font-size:.9em">/health</code>. On <b>Railway</b>: deploy from GitHub, add a PostgreSQL service (the connection string is injected for you), set <code style="font-family:monospace;font-size:.9em">JWT_SECRET</code>, the admin pair and the R2 variables — <code style="font-family:monospace;font-size:.9em">railway.json</code> and the healthcheck are already in the repository, and auto-deploy on <code style="font-family:monospace;font-size:.9em">main</code> keeps you on the latest build. The full environment reference is in the <a href="/docs.html">documentation</a>.</p>
+  </section>
+
+  <section class="reveal">
+    <h2>An open-source alternative to Photoroom-style tools</h2>
+    <p>If you are comparing against hosted product-photo tools like Photoroom, here is the honest framing. Keou covers the product-photography workflow — commercial scenes generated around a <a href="/product-images.html">pixel-locked product</a>, retouching, format adaptation, export packs — plus <a href="/video.html">product video</a>, voice-overs and sound, organised by client and campaign with review links. What you gain by self-hosting is control: your infrastructure, your data, your costs at provider rates, and an MIT licence with no seat pricing. What you give up is the convenience of a managed service — you operate the server, the database and the storage yourself.</p>
+    <div class="note">
+      <b>MIT means MIT.</b> Run it for clients, charge them, keep the money, rebrand it. No licence fee, no revenue share, no attribution requirement. The build carries a removable provenance mark naming Kanaky Tech as author — documented openly in the <a href="/docs.html">docs</a>, it phones nothing home and gates nothing.
+    </div>
+  </section>
+</article>
+
+<section class="faq">
+  <h2 class="reveal">Frequently asked questions</h2>
+  <div class="faq-item reveal">
+    <h3>Do the AI models run locally when I self-host?</h3>
+    <p>No. You self-host the studio — frontend, API, database, storage — but generation goes through KIE.AI or Fal.ai on your own keys. No GPU needed, no weights downloaded. If you need fully offline inference, Keou is not that tool.</p>
+  </div>
+  <div class="faq-item reveal">
+    <h3>What do I need to run it?</h3>
+    <p>Node.js 20+, PostgreSQL, a Cloudflare R2 bucket (free tier, required for uploads) and a provider key. Dockerfile and Railway config ship in the repo; the app listens on port 3401 and migrates its own schema at boot.</p>
+  </div>
+  <div class="faq-item reveal">
+    <h3>Can I use it commercially?</h3>
+    <p>Yes. MIT licence: client work, paid work, rebranding — all allowed, with no fee, revenue share or attribution requirement.</p>
+  </div>
+</section>
+
+<section class="final section">
+  <div class="final-card reveal">
+    <h2>Clone it, boot it, own it</h2>
+    <p>The same studio that runs at <a href="/launch" style="color:var(--accent);text-decoration:none">studio.kanaky.xyz</a> — on your servers, under your brand, with none of the hosted-demo limits.</p>
+    <div class="hero-ctas">
+      <a class="btn-hero primary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
+        github.com/kanakytech/keou
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <a class="btn-hero secondary" href="/docs.html">Read the docs</a>
+    </div>
+  </div>
+</section>
+
+<footer class="lp-footer">
+  <div class="fbrand">
+    <img src="/logo-keou.png" alt="Keou Studio">
+    <span><b>Keou</b> — the creative production engine · built by <a href="https://kanaky.xyz" rel="noopener" style="color:inherit;text-decoration:underline">Kanaky Tech</a></span>
+  </div>
+  <div class="flinks">
+    <a href="/docs.html">Docs</a>
+    <a href="/product-images.html">AI product photos</a>
+    <a href="/video.html">AI product video</a>
+    <a href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
+    <a href="/login.html">Sign in</a>
+  </div>
+  <p style="width:100%;text-align:center;margin-top:4px;font-size:12.5px;color:var(--ink-faint)">
+    Free platform, no account · The full source is <a href="https://github.com/kanakytech/keou" rel="noopener" style="color:var(--ink-muted);text-decoration:underline">public on GitHub</a>, MIT licensed
+  </p>
+</footer>
+
+<script>
+const nav = document.getElementById('lp-nav');
+const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
