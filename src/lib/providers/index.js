@@ -7,6 +7,7 @@
 
 import * as kie from './kie.js';
 import * as fal from './fal.js';
+import * as comfy from './comfy.js';
 import { config } from '../../config.js';
 import { queryOne } from '../../db.js';
 import { decryptKey } from '../../utils/crypto.js';
@@ -19,6 +20,13 @@ import { isByok } from '../../middleware/edition.js';
 let _defaultProviderCache = { value: null, exp: 0 };
 
 export async function getProvider() {
+  // Le moteur local prime quand l'exploitant l'a EXPLICITEMENT configuré
+  // (URL posée + préférence 'local') — y compris en édition BYOK : un
+  // self-host community avec son ComfyUI n'a aucune raison d'exiger une clé
+  // cloud pour générer des images. Sur l'instance hébergée, LOCAL_ENGINE_URL
+  // n'est jamais posée, donc ce chemin est mort par construction.
+  if (config.localEngine?.url && config.defaultProvider === 'local') return comfy;
+
   // On RESPECTE la préférence de l'exploitant : DEFAULT_PROVIDER=fal était
   // ignoré ici, ce qui rendait Fal.ai inatteignable dans toute l'édition
   // publiée alors que le README l'annonce comme fournisseur possible.
@@ -57,6 +65,7 @@ export async function getProvider() {
     } catch (err) { console.error('[PROVIDER PREF]', err.message); }
   }
 
+  if (pref === 'local' && config.localEngine?.url) return comfy;
   if (pref === 'fal' && hasFal) return fal;
   if (pref === 'kie' && hasKie) return kie;
 
@@ -72,9 +81,15 @@ export async function getProvider() {
 const _cache = { kie: { key: null, exp: 0 }, fal: { key: null, exp: 0 } };
 
 export async function getProviderApiKey(providerName) {
-  if (!['kie', 'fal'].includes(providerName)) {
+  if (!['kie', 'fal', 'local'].includes(providerName)) {
     throw new Error(`Unknown provider: ${providerName}`);
   }
+
+  // Le moteur local n'a pas de clé : le « fournisseur » est la machine de
+  // l'exploitant. On retourne une chaîne vide plutôt que de jeter — le
+  // poller et les routes traitent la clé comme un opaque qu'ils repassent
+  // au module provider, qui l'ignore.
+  if (providerName === 'local') return '';
 
   // BYOK editions: the only accepted key is the one the caller sent on this
   // request (X-Provider-Key). Nothing is read from DB/env and nothing is

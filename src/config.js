@@ -67,7 +67,16 @@ export const config = {
     apiKey: process.env.FAL_API_KEY,
   },
 
-  defaultProvider: process.env.DEFAULT_PROVIDER || 'kie', // "kie" | "fal"
+  // Moteur local (self-host) : une instance ComfyUI que CE serveur peut
+  // joindre. Jamais actif sur l'instance hébergée — le serveur ne peut pas
+  // atteindre le localhost d'un visiteur. Images + upscale en v1.
+  localEngine: {
+    url: process.env.LOCAL_ENGINE_URL || process.env.COMFYUI_URL || '',
+    checkpoint: process.env.LOCAL_CHECKPOINT || '',       // sinon : premier modèle installé
+    upscaleModel: process.env.LOCAL_UPSCALE_MODEL || '',  // sinon : premier modèle installé
+  },
+
+  defaultProvider: process.env.DEFAULT_PROVIDER || 'kie', // "kie" | "fal" | "local"
 
   r2: {
     accountId: process.env.R2_ACCOUNT_ID,

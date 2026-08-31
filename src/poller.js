@@ -15,6 +15,7 @@ import { persistFromUrl } from './lib/r2.js';
 import { getProviderApiKey } from './lib/providers/index.js';
 import * as kieProvider from './lib/providers/kie.js';
 import * as falProvider from './lib/providers/fal.js';
+import * as comfyProvider from './lib/providers/comfy.js';
 
 const POLL_INTERVAL = 15_000;   // 15 seconds
 const MAX_AGE_MS = 60 * 60_000; // 1 hour — give up after this
@@ -41,7 +42,7 @@ async function processTask(task) {
     providerName = meta.provider || 'kie';
   } catch (err) { console.error('[POLLER META]', err.message); }
 
-  const provider = providerName === 'fal' ? falProvider : kieProvider;
+  const provider = providerName === 'local' ? comfyProvider : providerName === 'fal' ? falProvider : kieProvider;
 
   let apiKey;
   try {

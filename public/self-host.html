@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>Self-Hosted AI Image Generation — Open Source Photoroom Alternative | Keou Studio</title>
-<meta name="description" content="Self-host Keou Studio with Docker or Railway: an MIT-licensed AI product image and video studio. The models do not run locally — you host the studio, generation runs on your own KIE.AI or Fal.ai keys.">
+<meta name="description" content="Self-host Keou Studio with Docker or Railway: an MIT-licensed AI product image and video studio. Generate through your own KIE.AI or Fal.ai keys — or fully local, with images and upscaling running on your own ComfyUI.">
 <link rel="canonical" href="https://studio.kanaky.xyz/self-host.html">
 <meta property="og:title" content="Self-Hosted AI Image Generation — Open Source Photoroom Alternative">
 <meta property="og:description" content="Run the whole Keou studio on your own servers with Docker or Railway. MIT licensed, BYOK — you host the studio, generation runs on your own provider keys.">
@@ -34,7 +34,7 @@
         {
           "@type": "Question",
           "name": "Do the AI models run locally when I self-host Keou?",
-          "acceptedAnswer": { "@type": "Answer", "text": "No, and we would rather say it plainly: you self-host the studio — frontend, API, database, storage — but the generation itself goes through KIE.AI or Fal.ai using your own API keys. No GPU is needed on your server, and no model weights are downloaded. If you need fully offline, on-device inference, Keou is not that tool." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Images can, since v1.0: point Keou at your own ComfyUI instance (LOCAL_ENGINE_URL) and image generation, polish, remix, format adapt and upscaling run entirely on your hardware — no cloud, no per-image cost. Video, voice and sound effects still go through KIE.AI or Fal.ai with your own keys; we would rather say that plainly than promise local video that breaks on half the installs." }
         },
         {
           "@type": "Question",
@@ -177,7 +177,7 @@ img{max-width:100%}
     MIT licence · Docker · Railway
   </span>
   <h1>Self-hosted AI image generation, <em>with the honest caveat up front</em></h1>
-  <p class="sub">Keou Studio is an MIT-licensed AI product image and video studio you can run on your own servers with Docker or Railway. One thing said plainly before anything else: the models do not run on your machine. You host the studio — generation goes through your own KIE.AI or Fal.ai API keys.</p>
+  <p class="sub">Keou Studio is an MIT-licensed AI product image and video studio you can run on your own servers with Docker or Railway. Two ways to generate, both yours: through your own KIE.AI or Fal.ai API keys — or fully local, with images and upscaling running on your own ComfyUI, no cloud involved.</p>
   <div class="hero-ctas">
     <a class="btn-hero primary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
       Get the source on GitHub
@@ -227,7 +227,7 @@ docker run <span class="k">-p</span> 3401:3401 <span class="k">--env-file</span>
   <h2 class="reveal">Frequently asked questions</h2>
   <div class="faq-item reveal">
     <h3>Do the AI models run locally when I self-host?</h3>
-    <p>No. You self-host the studio — frontend, API, database, storage — but generation goes through KIE.AI or Fal.ai on your own keys. No GPU needed, no weights downloaded. If you need fully offline inference, Keou is not that tool.</p>
+    <p>Images can, since v1.0: point Keou at your own <a href="https://github.com/comfyanonymous/ComfyUI" rel="noopener">ComfyUI</a> instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware — no cloud, no per-image cost. Video, voice and sound effects still go through KIE.AI or Fal.ai on your own keys — we would rather say that plainly than promise local video that breaks on half the installs.</p>
   </div>
   <div class="faq-item reveal">
     <h3>What do I need to run it?</h3>

@@ -597,8 +597,9 @@ MIT-licensed and self-hostable.
 
 - License: MIT. Repository: https://github.com/kanakytech/keou
 - Pricing of the hosted community instance: free, no account required.
-- Generation runs through external model APIs with your own keys (BYOK) —
-  models do not run locally.
+- Generation engines: external model APIs with your own keys (BYOK), or a
+  fully local ComfyUI instance for images and upscaling (self-hosted installs,
+  LOCAL_ENGINE_URL) — video and voice remain cloud-only.
 - Contact: contact@kanaky.xyz
 `);
 });

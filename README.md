@@ -6,12 +6,22 @@
 
 **One raw product photo in. A full commercial campaign out.**
 
-Product images, cinematic video, voice-overs, sound design and multi-format delivery packs —
-self-hosted, on your own provider key.
+Product images, cinematic video, voice-overs, sound design and multi-format delivery packs.
+**Try it in 10 seconds — no account, no install, no GPU:** [studio.kanaky.xyz/launch](https://studio.kanaky.xyz/launch).
+Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 
 [![Licence](https://img.shields.io/badge/licence-MIT-c8f060?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-c8f060?style=flat-square)](https://nodejs.org)
+[![Release](https://img.shields.io/github/v/release/kanakytech/keou?style=flat-square&color=c8f060)](https://github.com/kanakytech/keou/releases)
 [![Try it](https://img.shields.io/badge/try%20it-studio.kanaky.xyz-c8f060?style=flat-square)](https://studio.kanaky.xyz/launch)
+
+<p>
+  <img src="https://studio.kanaky.xyz/showcase/1.jpg" width="170" alt="Product render">
+  <img src="https://studio.kanaky.xyz/showcase/2.jpg" width="170" alt="Product render">
+  <img src="https://studio.kanaky.xyz/showcase/3.jpg" width="170" alt="Product render">
+  <img src="https://studio.kanaky.xyz/showcase/4.jpg" width="170" alt="Product render">
+</p>
+<sub>Real renders from the hosted studio — the product in each shot is pixel-locked, never redrawn.</sub>
 
 [Try it without installing](https://studio.kanaky.xyz/launch) ·
 [Full documentation](https://studio.kanaky.xyz/docs.html) ·
@@ -36,7 +46,10 @@ Three files stay in our private repo, and none is a feature: our provider costs 
 margin table, the Stripe plumbing that bills *our* hosted instance, and the operator
 credit top-ups behind it. Nothing in the studio reads them.
 
-> **Previously:** this edition was deliberately cut down — image and video only — as a
+<details>
+<summary><b>Previously</b> — how this edition stopped being a funnel</summary>
+
+> This edition was deliberately cut down — image and video only — as a
 > funnel toward a licence that unlocked the rest. That funnel is gone.
 >
 > We still sell something, but it is a different kind of thing: the licence was money
@@ -44,6 +57,8 @@ credit top-ups behind it. Nothing in the studio reads them.
 > does not exist yet**. There is no price list, because there is no product to price.
 > If the public build does what you need, you owe us nothing — and that is the outcome
 > we expect for most people who read this.
+
+</details>
 
 ---
 
@@ -59,6 +74,7 @@ credit top-ups behind it. Nothing in the studio reads them.
 | **Export packs** | Platform-ready variants from a single approved visual, in one action. Three presets ship (1, 4 and 8 formats); `src/lib/packs.js` is a plain list you extend. |
 | **Voice & sound** | Voice-overs and sound effects for the clips, in the same pipeline. |
 | **Upscaling** | Images and video, ×4 or ×8 (Topaz). Those are the only two factors the routes accept; anything else falls back to ×4. |
+| **Local engine** | Plug in your own ComfyUI: images, polish, remix, adapt and upscaling run fully local — no cloud, no per-image cost. See [Fully local](#fully-local-no-cloud). |
 | **Clients & campaigns** | Organise output by client, campaign and approval state. |
 | **Share links** | Send a client a review link and collect structured feedback. |
 | **Teams** | Accounts, roles and quotas for a studio of more than one. |
@@ -92,7 +108,7 @@ of the same server, and none of those limits apply to an install you run.
 |---|---|
 | **Node.js** | ≥ 20 |
 | **PostgreSQL** | any recent version |
-| **A provider key** | [KIE.AI](https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793) or [Fal.ai](https://fal.ai) — each user pastes their own |
+| **A generation engine** | [KIE.AI](https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793) or [Fal.ai](https://fal.ai) keys (each user pastes their own) — **or your own [ComfyUI](https://github.com/comfyanonymous/ComfyUI) for fully local images**, see [Fully local](#fully-local-no-cloud) |
 | **Object storage** | A Cloudflare R2 bucket (free tier is enough). **Required to upload anything** — `POST /api/upload` returns 503 without it, and uploading a photo is the product's first move. It also keeps results alive past the ~14 days a provider URL lasts. |
 | **ffmpeg** | Optional — only for the public anonymous studio. It stamps `studio.kanaky.xyz` into generated video the way sharp already does for images. Without it, video is served unwatermarked and a line is written to the log; nothing else breaks. The bundled `Dockerfile` installs it for you. `GET /health` reports what is actually installed — see below. |
 
@@ -110,7 +126,19 @@ binary leaves `/health` green, because the service still works — it just
 watermarks less. The probe runs once at startup and is memoised, so container
 healthchecks hitting it every 30 s cost nothing.
 
-### Run it
+### Run it — one command
+
+```bash
+git clone https://github.com/kanakytech/keou.git && cd keou
+printf 'JWT_SECRET=%s\nADMIN_EMAIL=you@example.com\nADMIN_PASSWORD=change-me-now\n' "$(openssl rand -hex 32)" > .env
+docker compose up -d
+```
+
+That's it — PostgreSQL included. Open **http://localhost:3401** and sign in with the
+`.env` credentials. Add `--profile local` to also start a ComfyUI generation engine
+(see [Fully local](#fully-local-no-cloud)).
+
+### Run it — by hand
 
 ```bash
 git clone https://github.com/kanakytech/keou.git
@@ -164,6 +192,72 @@ speaks plain TCP, add `DATABASE_SSL=0` to your `.env`.
 
 Skip `ADMIN_EMAIL` / `ADMIN_PASSWORD` and the deploy succeeds, the healthcheck goes
 green, and nobody can sign in — the database has no account to let through.
+
+---
+
+## Fully local (no cloud)
+
+Point Keou at a [ComfyUI](https://github.com/comfyanonymous/ComfyUI) instance and
+**image generation, polish, remix, format adapt and upscaling run on your own
+hardware** — no provider key, no per-image cost, nothing leaves your machine.
+
+```bash
+# your ComfyUI is at http://localhost:8188 with at least one checkpoint installed
+LOCAL_ENGINE_URL=http://localhost:8188
+DEFAULT_PROVIDER=local
+```
+
+Or let compose start one next to Keou:
+
+```bash
+docker compose --profile local up -d
+# then drop a checkpoint into ./comfyui/checkpoints (FLUX schnell fp8, or any SDXL)
+```
+
+How it behaves, honestly:
+
+- Keou **auto-detects your installed models** (`/object_info`) — set
+  `LOCAL_CHECKPOINT` / `LOCAL_UPSCALE_MODEL` to pin specific ones. Sampling is
+  tuned by model family (FLUX schnell → 4 steps, FLUX dev → 20, SD/SDXL → 25).
+- With a reference photo, the local engine runs img2img at low denoise — an
+  **approximation** of the pixel-locked product fidelity the cloud editing
+  models give. Good, not identical. Judge it on your own products.
+- **Video, voice and sound effects still need a cloud key** (KIE.AI or Fal.ai).
+  Local video is on the roadmap; we would rather say "not yet" than ship a
+  workflow that breaks on half the installs.
+- A GPU is strongly recommended. CPU works for testing; you will not enjoy it.
+
+---
+
+## FAQ — the objections, answered up front
+
+**Why BYOK instead of bundled credits?**
+Because bundled credits mean a markup, and a markup means a paywall. With your
+own key you pay the provider's price — typically **a few cents per image** —
+and this platform adds zero on top. With your own ComfyUI you pay nothing at all.
+
+**So what does a visual actually cost me?**
+Cloud: cents per image, more for video (each engine's rate is shown before you
+run it). Local: your electricity. The hosted demo at
+[studio.kanaky.xyz/launch](https://studio.kanaky.xyz/launch) is free — bring a
+key, results are watermarked and public.
+
+**Is it *really* open source?**
+MIT, everything: the studio, the prompt stack that makes outputs good, packs,
+teams, share links, the MCP server. Three private files exist and none is a
+feature — our margin table and the Stripe plumbing for *our* hosted instance.
+Use Keou for client work, rebrand it, keep the money. No fees, no attribution.
+
+**How is this different from ComfyUI?**
+ComfyUI is a node graph for building generation workflows — maximum control,
+steep learning curve. Keou is the layer above: a production studio for people
+who need fifty on-brand product visuals before lunch, not a graph editor. Since
+ComfyUI can BE Keou's engine, they compose rather than compete.
+
+**Why is the product "pixel-locked"? What does that mean?**
+The scene around your product is generated; the product itself — shape, text,
+labels, logos — is not redrawn. On cloud editing engines this is native; on the
+local engine it is approximated with low-denoise img2img.
 
 ---
 

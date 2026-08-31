@@ -1,0 +1,28 @@
+name: Bug report
+description: Something broke — tell us what, where, and how to see it too.
+labels: [bug]
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Hosted studio (studio.kanaky.xyz)
+        - Self-hosted install
+        - Local engine (ComfyUI)
+        - MCP / API
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what you got. Screenshots welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server logs (self-hosted only)
+      description: Relevant lines from the server output. Strip any API keys.
+      render: shell

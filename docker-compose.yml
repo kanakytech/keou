@@ -1,0 +1,83 @@
+# Keou Studio — one-command install.
+#
+#   docker compose up -d
+#   → http://localhost:3401  (sign in with ADMIN_EMAIL / ADMIN_PASSWORD)
+#
+# Add a fully local generation engine (images + upscaling, no cloud):
+#
+#   docker compose --profile local up -d
+#   → ComfyUI on :8188, Keou routes image jobs to it when
+#     DEFAULT_PROVIDER=local. Drop at least one checkpoint into
+#     ./comfyui/models/checkpoints first (FLUX schnell fp8 or any SDXL).
+#     A GPU is strongly recommended — CPU generation works but is slow.
+#
+# Honest limits, stated up front:
+#   - Image/video UPLOADS need S3-compatible storage (R2). Without the R2_*
+#     vars the server runs, but upload endpoints return 503. Text-to-image
+#     works without it.
+#   - Video, voice and sound effects always need a cloud provider key
+#     (KIE.AI or Fal.ai) — the local engine covers images and upscaling.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keou
+      POSTGRES_USER: keou
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-keou-local-dev}
+    volumes:
+      - keou-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U keou']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keou:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '3401:3401'
+    environment:
+      DATABASE_URL: postgres://keou:${POSTGRES_PASSWORD:-keou-local-dev}@db:5432/keou
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — any long random string}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      EDITION: ${EDITION:-opensource}
+      # Cloud providers (optional — leave empty to use the local engine or
+      # paste keys per-request from the studio):
+      KIE_API_KEY: ${KIE_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      # Local engine (used when the `local` profile is running):
+      LOCAL_ENGINE_URL: ${LOCAL_ENGINE_URL:-http://comfyui:8188}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-kie}
+      # Uploads (optional, see note above):
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+
+  comfyui:
+    profiles: ['local']
+    image: yanwk/comfyui-boot:latest
+    restart: unless-stopped
+    ports:
+      - '8188:8188'
+    volumes:
+      - ./comfyui:/root/ComfyUI/models
+    # Remove this block to run on CPU (slow but functional):
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  keou-db:

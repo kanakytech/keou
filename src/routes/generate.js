@@ -287,7 +287,8 @@ router.get('/status/:type/:taskId', requireAuth, async (req, res) => {
 
     const kieProvider = await import('../lib/providers/kie.js');
     const falProvider = await import('../lib/providers/fal.js');
-    const provider = providerName === 'fal' ? falProvider : kieProvider;
+    const comfyProvider = await import('../lib/providers/comfy.js');
+    const provider = providerName === 'local' ? comfyProvider : providerName === 'fal' ? falProvider : kieProvider;
 
     let apiKey;
     try { apiKey = await getProviderApiKey(providerName); }
