@@ -14,6 +14,7 @@ Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-c8f060?style=flat-square)](https://nodejs.org)
 [![Release](https://img.shields.io/github/v/release/kanakytech/keou?style=flat-square&color=c8f060)](https://github.com/kanakytech/keou/releases)
 [![Try it](https://img.shields.io/badge/try%20it-studio.kanaky.xyz-c8f060?style=flat-square)](https://studio.kanaky.xyz/launch)
+[![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-live%20Space-c8f060?style=flat-square&logo=huggingface&logoColor=111111)](https://huggingface.co/spaces/kanakytech/keou-studio)
 
 <p>
   <img src="https://studio.kanaky.xyz/showcase/1.jpg" width="170" alt="Product render">
@@ -24,6 +25,7 @@ Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 <sub>Real renders from the hosted studio — the product in each shot is pixel-locked, never redrawn.</sub>
 
 [Try it without installing](https://studio.kanaky.xyz/launch) ·
+[Hugging Face Space](https://huggingface.co/spaces/kanakytech/keou-studio) ·
 [Full documentation](https://studio.kanaky.xyz/docs.html) ·
 [Quick start](#quick-start) ·
 [Configuration](#configuration) ·
