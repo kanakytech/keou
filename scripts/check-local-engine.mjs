@@ -28,6 +28,23 @@ const stub = http.createServer((req, res) => {
   if (url.pathname === '/object_info/UpscaleModelLoader') {
     return send(200, { UpscaleModelLoader: { input: { required: { model_name: [['RealESRGAN_x4plus.pth']] } } } });
   }
+  // Modèles vidéo — pilotés par le test (globalThis.STUB_VIDEO) pour vérifier
+  // le refus SANS modèles puis le graphe AVEC.
+  if (url.pathname === '/object_info/UNETLoader') {
+    return send(200, { UNETLoader: { input: { required: { unet_name: [globalThis.STUB_VIDEO ? [ 'wan2.2_ti2v_5B_fp16.safetensors' ] : []] } } } });
+  }
+  if (url.pathname === '/object_info/CLIPLoader') {
+    return send(200, { CLIPLoader: { input: { required: { clip_name: [globalThis.STUB_VIDEO ? ['umt5_xxl_fp8_e4m3fn_scaled.safetensors'] : []] } } } });
+  }
+  if (url.pathname === '/object_info/VAELoader') {
+    return send(200, { VAELoader: { input: { required: { vae_name: [globalThis.STUB_VIDEO ? ['wan2.2_vae.safetensors'] : []] } } } });
+  }
+  if (url.pathname === '/object_info/LoraLoaderModelOnly') {
+    return send(200, { LoraLoaderModelOnly: { input: { required: { lora_name: [[]] } } } });
+  }
+  if (url.pathname === '/object_info/SaveVideo') {
+    return send(200, globalThis.STUB_VIDEO ? { SaveVideo: { input: { required: {} } } } : {});
+  }
   if (url.pathname === '/upload/image' && req.method === 'POST') {
     return send(200, { name: 'keou-input-test.png', subfolder: '', type: 'input' });
   }
@@ -48,6 +65,11 @@ const stub = http.createServer((req, res) => {
     if (id === 'stub-pending') return send(200, {});
     if (id === 'stub-error') {
       return send(200, { [id]: { status: { status_str: 'error', completed: false, messages: [['execution_error', { exception_message: 'CUDA out of memory' }]] }, outputs: {} } });
+    }
+    if (id === 'stub-video') {
+      // SaveVideo range le mp4 sous `images` avec le flag `animated` — vérifié
+      // dans PreviewVideo.as_dict() du code ComfyUI.
+      return send(200, { [id]: { status: { status_str: 'success', completed: true }, outputs: { 58: { images: [{ filename: 'keou_00001_.mp4', subfolder: 'keou-video', type: 'output' }], animated: [true] } } } });
     }
     return send(200, { [id]: { status: { status_str: 'success', completed: true }, outputs: { 7: { images: [{ filename: 'keou_00001_.png', subfolder: '', type: 'output' }] } } } });
   }
@@ -111,14 +133,45 @@ try {
   ok('pollTask : completed / processing / failed avec message');
 } catch (e) { ko('pollTask', e); }
 
-// 5. refus nets + coût nul
+// 5. vidéo SANS modèles : refus actionnable ; tts toujours refusé ; coût nul
 try {
-  await assert.rejects(() => comfy.generateVideo('', {}), /cloud provider/);
+  globalThis.STUB_VIDEO = false;
+  comfy.clearModelCache();
+  await assert.rejects(() => comfy.generateVideo('', { prompt: 'x' }), /no video model installed/);
   await assert.rejects(() => comfy.tts('', {}), /cloud provider/);
   assert.equal(comfy.calculateCost('image'), 0);
   assert.equal(comfy.calculateCost('video'), 0);
-  ok('vidéo/tts refusés proprement, coût nul');
+  ok('vidéo sans modèles refusée avec instructions, tts refusé, coût nul');
 } catch (e) { ko('refus/coût', e); }
+
+// 6. vidéo AVEC Wan 5B : graphe complet t2v et i2v
+try {
+  globalThis.STUB_VIDEO = true;
+  comfy.clearModelCache();
+  const t = await comfy.generateVideo('', { prompt: 'slow dolly-in on the bottle', aspectRatio: '9:16' });
+  const graph = submitted[t.taskId];
+  assert.equal(graph[37].inputs.unet_name, 'wan2.2_ti2v_5B_fp16.safetensors');
+  assert.equal(graph[55].class_type, 'Wan22ImageToVideoLatent');
+  assert.equal(graph[55].inputs.width, 704);
+  assert.equal(graph[55].inputs.height, 1280);
+  assert.equal(graph[55].inputs.length, 121);
+  assert.equal(graph[58].class_type, 'SaveVideo');
+  assert.ok(!graph[56], 't2v ne doit pas charger d\'image');
+  const t2 = await comfy.generateVideo('', { prompt: 'x', imageUrl: `http://localhost:${PORT}/fake-source.png`, aspectRatio: '16:9' });
+  const g2 = submitted[t2.taskId];
+  assert.equal(g2[56].class_type, 'LoadImage');
+  assert.deepEqual(g2[55].inputs.start_image, ['56', 0]);
+  ok('generateVideo local : graphe Wan 5B t2v + i2v corrects');
+} catch (e) { ko('generateVideo', e); }
+
+// 7. sondage vidéo : le mp4 sous `images`+`animated` remonte en resultUrl
+try {
+  const done = await comfy.pollTask('', { taskId: 'stub-video' });
+  assert.equal(done.status, 'completed');
+  assert.ok(done.resultUrl.includes('keou_00001_.mp4'), `resultUrl mp4 attendu, reçu ${done.resultUrl}`);
+  assert.ok(done.resultUrl.includes('subfolder=keou-video'), 'le subfolder vidéo doit être conservé');
+  ok('pollTask vidéo : mp4 récupéré via /view');
+} catch (e) { ko('pollTask vidéo', e); }
 
 // 6. le routeur retourne le provider local quand configuré
 try {

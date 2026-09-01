@@ -34,7 +34,7 @@
         {
           "@type": "Question",
           "name": "Do the AI models run locally when I self-host Keou?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Images can, since v1.0: point Keou at your own ComfyUI instance (LOCAL_ENGINE_URL) and image generation, polish, remix, format adapt and upscaling run entirely on your hardware — no cloud, no per-image cost. Video, voice and sound effects still go through KIE.AI or Fal.ai with your own keys; we would rather say that plainly than promise local video that breaks on half the installs." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes: point Keou at your own ComfyUI instance (LOCAL_ENGINE_URL) and image generation, polish, remix, format adapt and upscaling run entirely on your hardware — and video too, if your ComfyUI has the Wan 2.2 or LTX-Video models installed (auto-detected; without them you get a clear message listing what to add). No cloud, no per-generation cost. Voice and sound effects still go through KIE.AI or Fal.ai — ComfyUI core has no TTS." }
         },
         {
           "@type": "Question",
@@ -192,7 +192,7 @@ img{max-width:100%}
 <article class="article">
   <section class="reveal">
     <h2>What you host, and what you don't</h2>
-    <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. For the inference itself you have two options. <b>Cloud:</b> generation calls go out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded. <b>Local, since v1.0:</b> point Keou at your own ComfyUI instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware, no cloud involved. Video, voice and sound effects remain cloud-only for now — we would rather you know before you clone the repository.</p>
+    <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. For the inference itself you have two options. <b>Cloud:</b> generation calls go out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded. <b>Local, since v1.0:</b> point Keou at your own ComfyUI instance (<code>LOCAL_ENGINE_URL</code>) and images — and video, with the Wan 2.2 or LTX-Video models installed — run entirely on your hardware, no cloud involved. Voice and sound effects remain cloud-only — we would rather you know before you clone the repository.</p>
     <p>What self-hosting buys you instead: <b>no watermark</b> on anything, <b>nothing published</b> to any gallery, full signed downloads and export-pack ZIPs, your own brand across the interface, and no shared queue — your capacity is whatever your provider key and your server allow. Users can each paste their own key; it stays in their browser and is never written to your server's disk, database or logs.</p>
   </section>
 
@@ -228,7 +228,7 @@ docker run <span class="k">-p</span> 3401:3401 <span class="k">--env-file</span>
   <h2 class="reveal">Frequently asked questions</h2>
   <div class="faq-item reveal">
     <h3>Do the AI models run locally when I self-host?</h3>
-    <p>Images can, since v1.0: point Keou at your own <a href="https://github.com/comfyanonymous/ComfyUI" rel="noopener">ComfyUI</a> instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware — no cloud, no per-image cost. Video, voice and sound effects still go through KIE.AI or Fal.ai on your own keys — we would rather say that plainly than promise local video that breaks on half the installs.</p>
+    <p>Yes: point Keou at your own <a href="https://github.com/comfyanonymous/ComfyUI" rel="noopener">ComfyUI</a> instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware — <b>and video too</b>, if your ComfyUI has the Wan 2.2 or LTX-Video models installed (auto-detected — without them you get a clear message listing exactly what to add). No cloud, no per-generation cost, nothing leaves your machine. Voice and sound effects still go through KIE.AI or Fal.ai on your own keys — ComfyUI core has no TTS, and we don't ship promises built on custom nodes.</p>
   </div>
   <div class="faq-item reveal">
     <h3>What do I need to run it?</h3>

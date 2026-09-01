@@ -66,9 +66,11 @@ export async function probeLocalEngine() {
     ]);
     const checkpoints = ckpt?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0] || [];
     const upscaleModels = up?.UpscaleModelLoader?.input?.required?.model_name?.[0] || [];
+    const videoEngines = await detectVideoEngines().catch(() => ({}));
     return {
       configured: true, reachable: true, url: config.localEngine.url,
       checkpoints: checkpoints.length, upscaleModels: upscaleModels.length,
+      video: Object.entries(videoEngines).filter(([, v]) => v).map(([k]) => k),
       active: config.defaultProvider === 'local',
     };
   } catch (err) {
@@ -252,14 +254,216 @@ export async function upscaleImage(_apiKey, { imageUrl }) {
   return submit(graph);
 }
 
-// ─── Hors périmètre v1 — refus nets ───
+// ─── Vidéo locale — Wan 2.2 / LTX-Video (nodes core ComfyUI) ───────────────
+// Graphes reconstruits depuis les templates OFFICIELS Comfy-Org
+// (video_wan2_2_5B_ti2v.json, video_wan2_2_14B_i2v.json, ltxv_*.json) — pas
+// de custom node. Le gate est double : les NODES (vieille install) et surtout
+// les MODÈLES (le vrai manque). On n'active que ce qui est réellement là.
 
-const UNSUPPORTED = 'Local engine: images and upscaling only for now — video, voice and sound effects still need a cloud provider key (KIE.AI or Fal.ai)';
+const VIDEO_NEGATIVE = 'blurry, low quality, distorted, deformed, flickering, watermark, text, static image';
 
-export async function generateVideo() { throw new Error(UNSUPPORTED); }
+// Dimensions par moteur — toujours des multiples de 32 (contrainte des VAE
+// vidéo), longueurs ≡ 1 mod 4 (Wan) / mod 8 (LTX), valeurs des templates.
+const WAN5B_DIMS = { '1:1': [768, 768], '16:9': [1280, 704], '9:16': [704, 1280], '4:3': [960, 704], '3:4': [704, 960], '21:9': [1280, 544] };
+const WAN14B_DIMS = { '1:1': [640, 640], '16:9': [832, 480], '9:16': [480, 832], '4:3': [704, 544], '3:4': [544, 704] };
+const LTX_DIMS = { '1:1': [640, 640], '16:9': [768, 512], '9:16': [512, 768], '4:3': [704, 544], '3:4': [544, 704] };
+
+async function loaderChoices(nodeType, inputName) {
+  try {
+    const info = await comfyJson(`/object_info/${nodeType}`);
+    return info?.[nodeType]?.input?.required?.[inputName]?.[0] || [];
+  } catch { return []; }
+}
+
+/**
+ * Quels moteurs vidéo cette instance peut réellement servir.
+ * Cache 60 s — même rythme que les checkpoints image.
+ */
+let _videoCache = { v: null, exp: 0 };
+
+/** Réservé aux tests : invalide les caches modèles (image + vidéo). */
+export function clearModelCache() {
+  _videoCache = { v: null, exp: 0 };
+  _models.ckpt = { value: null, exp: 0 };
+  _models.upscale = { value: null, exp: 0 };
+}
+export async function detectVideoEngines() {
+  const now = Date.now();
+  if (_videoCache.v && now < _videoCache.exp) return _videoCache.v;
+
+  const [unets, clips, vaes, ckpts, loras, saveNode] = await Promise.all([
+    loaderChoices('UNETLoader', 'unet_name'),
+    loaderChoices('CLIPLoader', 'clip_name'),
+    loaderChoices('VAELoader', 'vae_name'),
+    loaderChoices('CheckpointLoaderSimple', 'ckpt_name'),
+    loaderChoices('LoraLoaderModelOnly', 'lora_name'),
+    comfyJson('/object_info/SaveVideo').catch(() => ({})),
+  ]);
+  const has = (list, re) => list.find((n) => re.test(n)) || null;
+  // SaveVideo est core depuis v0.3.34 (mai 2025) — absent = install trop
+  // vieille pour la vidéo, on ne promet rien.
+  const nodesOk = !!saveNode?.SaveVideo;
+
+  const umt5 = has(clips, /umt5/i);
+  const engines = {
+    wan5b: nodesOk && has(unets, /wan2\.2.*ti2v.*5B/i) && umt5 && has(vaes, /wan2\.2_vae/i)
+      ? { unet: has(unets, /wan2\.2.*ti2v.*5B/i), clip: umt5, vae: has(vaes, /wan2\.2_vae/i) } : null,
+    wan14b: nodesOk && has(unets, /wan2\.2_i2v_high_noise_14B/i) && has(unets, /wan2\.2_i2v_low_noise_14B/i) && umt5 && has(vaes, /wan_2\.1_vae/i)
+      ? {
+          high: has(unets, /wan2\.2_i2v_high_noise_14B/i), low: has(unets, /wan2\.2_i2v_low_noise_14B/i),
+          clip: umt5, vae: has(vaes, /wan_2\.1_vae/i),
+          loraHigh: has(loras, /lightx2v.*high_noise/i), loraLow: has(loras, /lightx2v.*low_noise/i),
+        } : null,
+    ltx: nodesOk && has(ckpts, /ltx-video-2b/i) && has(clips, /t5xxl/i)
+      ? { ckpt: has(ckpts, /ltx-video-2b/i), clip: has(clips, /t5xxl/i) } : null,
+  };
+  _videoCache = { v: engines, exp: now + 60_000 };
+  return engines;
+}
+
+function pickVideoEngine(engines, wantsI2V) {
+  const pin = (process.env.LOCAL_VIDEO_ENGINE || '').toLowerCase();
+  if (pin && engines[pin]) return pin;
+  // 5B d'abord : un seul modèle, t2v ET i2v, 8 Go de VRAM. 14B ensuite
+  // (i2v uniquement, qualité max). LTX en repli léger et rapide.
+  if (engines.wan5b) return 'wan5b';
+  if (engines.wan14b && wantsI2V) return 'wan14b';
+  if (engines.ltx) return 'ltx';
+  return null;
+}
+
+async function wan5bGraph({ prompt, imageUrl, aspectRatio }) {
+  const e = (await detectVideoEngines()).wan5b;
+  const [width, height] = WAN5B_DIMS[aspectRatio] || WAN5B_DIMS['16:9'];
+  const g = {
+    37: { class_type: 'UNETLoader', inputs: { unet_name: e.unet, weight_dtype: 'default' } },
+    38: { class_type: 'CLIPLoader', inputs: { clip_name: e.clip, type: 'wan', device: 'default' } },
+    39: { class_type: 'VAELoader', inputs: { vae_name: e.vae } },
+    48: { class_type: 'ModelSamplingSD3', inputs: { model: ['37', 0], shift: 8 } },
+    6: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: prompt || '' } },
+    7: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: VIDEO_NEGATIVE } },
+    55: { class_type: 'Wan22ImageToVideoLatent', inputs: { vae: ['39', 0], width, height, length: 121, batch_size: 1 } },
+    3: {
+      class_type: 'KSampler',
+      inputs: { model: ['48', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['55', 0], seed: seed(), steps: 20, cfg: 5, sampler_name: 'uni_pc', scheduler: 'simple', denoise: 1 },
+    },
+    8: { class_type: 'VAEDecode', inputs: { samples: ['3', 0], vae: ['39', 0] } },
+    57: { class_type: 'CreateVideo', inputs: { images: ['8', 0], fps: 24 } },
+    58: { class_type: 'SaveVideo', inputs: { video: ['57', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+  };
+  if (imageUrl) {
+    const up = await uploadFromUrl(imageUrl);
+    g[56] = { class_type: 'LoadImage', inputs: { image: up.name } };
+    g[55].inputs.start_image = ['56', 0];
+  }
+  return g;
+}
+
+async function wan14bGraph({ prompt, imageUrl, aspectRatio }) {
+  const e = (await detectVideoEngines()).wan14b;
+  const [width, height] = WAN14B_DIMS[aspectRatio] || WAN14B_DIMS['16:9'];
+  const up = await uploadFromUrl(imageUrl);
+  const hasLora = !!(e.loraHigh && e.loraLow);
+  // Avec les LoRA lightx2v : 4 pas / cfg 1 / bascule au pas 2 — le défaut du
+  // template officiel. Sans : 20 pas / cfg 3.5 / bascule au pas 10.
+  const steps = hasLora ? 4 : 20;
+  const cfg = hasLora ? 1 : 3.5;
+  const switchAt = hasLora ? 2 : 10;
+  const g = {
+    95: { class_type: 'UNETLoader', inputs: { unet_name: e.high, weight_dtype: 'default' } },
+    96: { class_type: 'UNETLoader', inputs: { unet_name: e.low, weight_dtype: 'default' } },
+    84: { class_type: 'CLIPLoader', inputs: { clip_name: e.clip, type: 'wan', device: 'default' } },
+    90: { class_type: 'VAELoader', inputs: { vae_name: e.vae } },
+    97: { class_type: 'LoadImage', inputs: { image: up.name } },
+    93: { class_type: 'CLIPTextEncode', inputs: { clip: ['84', 0], text: prompt || '' } },
+    89: { class_type: 'CLIPTextEncode', inputs: { clip: ['84', 0], text: VIDEO_NEGATIVE } },
+    104: { class_type: 'ModelSamplingSD3', inputs: { model: hasLora ? ['101', 0] : ['95', 0], shift: 5 } },
+    103: { class_type: 'ModelSamplingSD3', inputs: { model: hasLora ? ['102', 0] : ['96', 0], shift: 5 } },
+    98: { class_type: 'WanImageToVideo', inputs: { positive: ['93', 0], negative: ['89', 0], vae: ['90', 0], start_image: ['97', 0], width, height, length: 81, batch_size: 1 } },
+    86: {
+      class_type: 'KSamplerAdvanced',
+      inputs: { model: ['104', 0], positive: ['98', 0], negative: ['98', 1], latent_image: ['98', 2], add_noise: 'enable', noise_seed: seed(), steps, cfg, sampler_name: 'euler', scheduler: 'simple', start_at_step: 0, end_at_step: switchAt, return_with_leftover_noise: 'enable' },
+    },
+    85: {
+      class_type: 'KSamplerAdvanced',
+      inputs: { model: ['103', 0], positive: ['98', 0], negative: ['98', 1], latent_image: ['86', 0], add_noise: 'disable', noise_seed: 0, steps, cfg, sampler_name: 'euler', scheduler: 'simple', start_at_step: switchAt, end_at_step: steps, return_with_leftover_noise: 'disable' },
+    },
+    87: { class_type: 'VAEDecode', inputs: { samples: ['85', 0], vae: ['90', 0] } },
+    94: { class_type: 'CreateVideo', inputs: { images: ['87', 0], fps: 16 } },
+    108: { class_type: 'SaveVideo', inputs: { video: ['94', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+  };
+  if (hasLora) {
+    g[101] = { class_type: 'LoraLoaderModelOnly', inputs: { model: ['95', 0], lora_name: e.loraHigh, strength_model: 1.0 } };
+    g[102] = { class_type: 'LoraLoaderModelOnly', inputs: { model: ['96', 0], lora_name: e.loraLow, strength_model: 1.0 } };
+  }
+  return g;
+}
+
+async function ltxGraph({ prompt, imageUrl, aspectRatio }) {
+  const e = (await detectVideoEngines()).ltx;
+  const [width, height] = LTX_DIMS[aspectRatio] || LTX_DIMS['16:9'];
+  const g = {
+    44: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: e.ckpt } },
+    38: { class_type: 'CLIPLoader', inputs: { clip_name: e.clip, type: 'ltxv', device: 'default' } },
+    6: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: prompt || '' } },
+    7: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: 'low quality, worst quality, deformed, distorted, motion smear, motion artifacts' } },
+    69: { class_type: 'LTXVConditioning', inputs: { positive: ['6', 0], negative: ['7', 0], frame_rate: 25 } },
+    71: { class_type: 'LTXVScheduler', inputs: { steps: 30, max_shift: 2.05, base_shift: 0.95, stretch: true, terminal: 0.1, latent: null } },
+    73: { class_type: 'KSamplerSelect', inputs: { sampler_name: 'euler' } },
+    72: {
+      class_type: 'SamplerCustom',
+      inputs: { model: ['44', 0], add_noise: true, noise_seed: seed(), cfg: 3, positive: ['69', 0], negative: ['69', 1], sampler: ['73', 0], sigmas: ['71', 0], latent_image: null },
+    },
+    8: { class_type: 'VAEDecode', inputs: { samples: ['72', 0], vae: ['44', 2] } },
+    78: { class_type: 'CreateVideo', inputs: { images: ['8', 0], fps: 24 } },
+    79: { class_type: 'SaveVideo', inputs: { video: ['78', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+  };
+  if (imageUrl) {
+    const up = await uploadFromUrl(imageUrl);
+    // Piège de version : le 5e input de LTXVImgToVideo s'appelle `strength`
+    // sur les builds récents, `image_noise_scale` sur les anciens — on lit
+    // /object_info au lieu de deviner.
+    const info = await comfyJson('/object_info/LTXVImgToVideo').catch(() => ({}));
+    const inputs = info?.LTXVImgToVideo?.input?.required || {};
+    const i2v = { positive: ['6', 0], negative: ['7', 0], vae: ['44', 2], image: ['80', 0], width, height, length: 97, batch_size: 1 };
+    if ('strength' in inputs) i2v.strength = 1.0;
+    else if ('image_noise_scale' in inputs) i2v.image_noise_scale = 0.15;
+    g[80] = { class_type: 'LoadImage', inputs: { image: up.name } };
+    g[77] = { class_type: 'LTXVImgToVideo', inputs: i2v };
+    g[69].inputs.positive = ['77', 0];
+    g[69].inputs.negative = ['77', 1];
+    g[71].inputs.latent = ['77', 2];
+    g[72].inputs.latent_image = ['77', 2];
+  } else {
+    g[70] = { class_type: 'EmptyLTXVLatentVideo', inputs: { width, height, length: 97, batch_size: 1 } };
+    g[71].inputs.latent = ['70', 0];
+    g[72].inputs.latent_image = ['70', 0];
+  }
+  return g;
+}
+
+export async function generateVideo(_apiKey, { prompt, imageUrl, aspectRatio }) {
+  const engines = await detectVideoEngines();
+  const engine = pickVideoEngine(engines, !!imageUrl);
+  if (!engine) {
+    throw new Error(
+      'Local engine: no video model installed. For local video, add Wan 2.2 5B to your ComfyUI (diffusion_models/wan2.2_ti2v_5B_fp16.safetensors + text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors + vae/wan2.2_vae.safetensors — ~17 GB, runs on 8 GB VRAM) or LTX-Video 2B — or use a cloud provider key for video.'
+    );
+  }
+  const params = { prompt, imageUrl, aspectRatio: aspectRatio || '16:9' };
+  const graph = engine === 'wan5b' ? await wan5bGraph(params)
+    : engine === 'wan14b' ? await wan14bGraph(params)
+    : await ltxGraph(params);
+  return submit(graph);
+}
+
+// ─── Hors périmètre — refus nets ───
+
+const UNSUPPORTED = 'Local engine: voice and sound effects need a cloud provider key (KIE.AI or Fal.ai) — ComfyUI core has no TTS';
+
 export async function tts() { throw new Error(UNSUPPORTED); }
 export async function sfx() { throw new Error(UNSUPPORTED); }
-export async function upscaleVideo() { throw new Error(UNSUPPORTED); }
+export async function upscaleVideo() { throw new Error('Local engine: video upscaling still needs a cloud provider key — the local upscaler covers images'); }
 
 // ─── Sondage ───
 

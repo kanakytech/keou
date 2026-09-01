@@ -605,8 +605,9 @@ MIT-licensed and self-hostable.
 - License: MIT. Repository: https://github.com/kanakytech/keou
 - Pricing of the hosted community instance: free, no account required.
 - Generation engines: external model APIs with your own keys (BYOK), or a
-  fully local ComfyUI instance for images and upscaling (self-hosted installs,
-  LOCAL_ENGINE_URL) — video and voice remain cloud-only.
+  fully local ComfyUI instance (self-hosted installs, LOCAL_ENGINE_URL) —
+  images and upscaling always, video too when Wan 2.2 or LTX-Video models are
+  installed. Voice and SFX remain cloud-only.
 - Contact: contact@kanaky.xyz
 `);
 });
@@ -737,7 +738,8 @@ const server = app.listen(PORT, () => {
   // la première génération ratée.
   if (config.localEngine?.url) {
     if (localEngineState.reachable) {
-      console.log(`  [LOCAL] ComfyUI @ ${config.localEngine.url} — ${localEngineState.checkpoints} checkpoint(s), ${localEngineState.upscaleModels} upscale model(s)`
+      const video = localEngineState.video?.length ? `, vidéo: ${localEngineState.video.join('+')}` : ', vidéo: aucun modèle (Wan 2.2 / LTX absents)';
+      console.log(`  [LOCAL] ComfyUI @ ${config.localEngine.url} — ${localEngineState.checkpoints} checkpoint(s), ${localEngineState.upscaleModels} upscale model(s)${video}`
         + (config.defaultProvider === 'local' ? ' — ACTIF (DEFAULT_PROVIDER=local)' : ' — configuré mais INACTIF : posez DEFAULT_PROVIDER=local pour l\'utiliser'));
     } else {
       console.warn(`  [LOCAL] ComfyUI injoignable @ ${config.localEngine.url} — ${localEngineState.error || 'pas de réponse'}`);

@@ -14,7 +14,6 @@ Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-c8f060?style=flat-square)](https://nodejs.org)
 [![Release](https://img.shields.io/github/v/release/kanakytech/keou?style=flat-square&color=c8f060)](https://github.com/kanakytech/keou/releases)
 [![Try it](https://img.shields.io/badge/try%20it-studio.kanaky.xyz-c8f060?style=flat-square)](https://studio.kanaky.xyz/launch)
-[![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-live%20Space-c8f060?style=flat-square&logo=huggingface&logoColor=111111)](https://huggingface.co/spaces/kanakytech/keou-studio)
 
 <p>
   <img src="https://studio.kanaky.xyz/showcase/1.jpg" width="170" alt="Product render">
@@ -25,7 +24,6 @@ Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 <sub>Real renders from the hosted studio — the product in each shot is pixel-locked, never redrawn.</sub>
 
 [Try it without installing](https://studio.kanaky.xyz/launch) ·
-[Hugging Face Space](https://huggingface.co/spaces/kanakytech/keou-studio) ·
 [Full documentation](https://studio.kanaky.xyz/docs.html) ·
 [Quick start](#quick-start) ·
 [Configuration](#configuration) ·
@@ -76,7 +74,7 @@ credit top-ups behind it. Nothing in the studio reads them.
 | **Export packs** | Platform-ready variants from a single approved visual, in one action. Three presets ship (1, 4 and 8 formats); `src/lib/packs.js` is a plain list you extend. |
 | **Voice & sound** | Voice-overs and sound effects for the clips, in the same pipeline. |
 | **Upscaling** | Images and video, ×4 or ×8 (Topaz). Those are the only two factors the routes accept; anything else falls back to ×4. |
-| **Local engine** | Plug in your own ComfyUI: images, polish, remix, adapt and upscaling run fully local — no cloud, no per-image cost. See [Fully local](#fully-local-no-cloud). |
+| **Local engine** | Plug in your own ComfyUI: images, polish, remix, adapt, upscaling — **and video** with Wan 2.2 / LTX models installed — run fully local. No cloud, no per-generation cost. See [Fully local](#fully-local-no-cloud). |
 | **Clients & campaigns** | Organise output by client, campaign and approval state. |
 | **Share links** | Send a client a review link and collect structured feedback. |
 | **Teams** | Accounts, roles and quotas for a studio of more than one. |
@@ -228,9 +226,14 @@ How it behaves, honestly:
 - With a reference photo, the local engine runs img2img at low denoise — an
   **approximation** of the pixel-locked product fidelity the cloud editing
   models give. Good, not identical. Judge it on your own products.
-- **Video, voice and sound effects still need a cloud key** (KIE.AI or Fal.ai).
-  Local video is on the roadmap; we would rather say "not yet" than ship a
-  workflow that breaks on half the installs.
+- **Video runs locally too** — install the [Wan 2.2 5B](https://docs.comfy.org/tutorials/video/wan/wan2_2)
+  models in your ComfyUI (~17 GB, runs on 8 GB VRAM: `wan2.2_ti2v_5B_fp16` +
+  `umt5_xxl` text encoder + `wan2.2_vae`) and text-to-video / image-to-video
+  activate automatically. Wan 2.2 14B (quality) and LTX-Video 2B (speed) are
+  detected too; nothing is promised that your instance can't serve — without
+  the models you get a clear message listing exactly what to install.
+- **Voice and sound effects still need a cloud key** (KIE.AI or Fal.ai) —
+  ComfyUI core has no TTS, and we don't ship promises built on custom nodes.
 - A GPU is strongly recommended. CPU works for testing; you will not enjoy it.
 - **Apple Silicon (M-series Macs): install ComfyUI natively**, not through the
   compose profile — Docker on macOS has no GPU passthrough, but native ComfyUI
