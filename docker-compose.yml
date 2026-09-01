@@ -6,10 +6,12 @@
 # Add a fully local generation engine (images + upscaling, no cloud):
 #
 #   docker compose --profile local up -d
-#   → ComfyUI on :8188, Keou routes image jobs to it when
-#     DEFAULT_PROVIDER=local. Drop at least one checkpoint into
-#     ./comfyui/models/checkpoints first (FLUX schnell fp8 or any SDXL).
-#     A GPU is strongly recommended — CPU generation works but is slow.
+#   → ComfyUI on :8188. Set DEFAULT_PROVIDER=local in .env so Keou actually
+#     routes image jobs to it, and drop at least one checkpoint into
+#     ./comfyui/checkpoints (FLUX schnell fp8 or any SDXL); upscale models go
+#     into ./comfyui/upscale_models. NVIDIA GPU expected — on a host without
+#     one, remove the deploy: block below (CPU, slow); on Apple Silicon run
+#     ComfyUI natively instead (Docker has no GPU passthrough on macOS).
 #
 # Honest limits, stated up front:
 #   - Image/video UPLOADS need S3-compatible storage (R2). Without the R2_*
@@ -44,6 +46,9 @@ services:
       - '3401:3401'
     environment:
       DATABASE_URL: postgres://keou:${POSTGRES_PASSWORD:-keou-local-dev}@db:5432/keou
+      # The bundled Postgres speaks plain TCP — without this, NODE_ENV=production
+      # turns TLS on and the boot crash-loops on "server does not support SSL".
+      DATABASE_SSL: ${DATABASE_SSL:-0}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — any long random string}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
@@ -55,10 +60,10 @@ services:
       # Local engine (used when the `local` profile is running):
       LOCAL_ENGINE_URL: ${LOCAL_ENGINE_URL:-http://comfyui:8188}
       DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-kie}
-      # Uploads (optional, see note above):
+      # Uploads (optional, see note above). Same names as README/.env.example:
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-}
       R2_BUCKET: ${R2_BUCKET:-}
       R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
 

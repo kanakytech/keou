@@ -211,7 +211,11 @@ Or let compose start one next to Keou:
 
 ```bash
 docker compose --profile local up -d
-# then drop a checkpoint into ./comfyui/checkpoints (FLUX schnell fp8, or any SDXL)
+# then: set DEFAULT_PROVIDER=local in your .env (compose defaults to kie),
+# and drop a checkpoint into ./comfyui/checkpoints (FLUX schnell fp8, or any
+# SDXL) — upscale models go into ./comfyui/upscale_models.
+# No NVIDIA GPU on the host? Remove the deploy: block from the comfyui
+# service (CPU, slow). On Apple Silicon, run ComfyUI natively instead.
 ```
 
 How it behaves, honestly:

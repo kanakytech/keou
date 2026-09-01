@@ -808,7 +808,9 @@ export function enqueue({
   if (queue.length >= MAX_QUEUE) {
     return {
       ok: false, code: 429,
-      error: `Trial queue full (${queue.length} waiting) — try again in about ${waitMinutes(queue.length)} min`,
+      // « Community queue », pas « Trial queue » : le studio anonyme est présenté
+      // partout comme l'édition community — « trial » sonnait comme une démo bridée.
+      error: `Community queue is full (${queue.length} waiting) — try again in about ${waitMinutes(queue.length)} min`,
     };
   }
   // File ET en cours : le plafond ne comptait que la file, et mentait donc sur

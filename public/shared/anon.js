@@ -224,9 +224,18 @@ const AnonMode = (() => {
     if (hasConsent() || document.getElementById('anon-consent-backdrop')) return;
     const wrap = document.createElement('div');
     wrap.id = 'anon-consent-backdrop';
+    /* Les deux conditions qui font renoncer se lisent AVANT le pavé de détail :
+     * un visiteur qui survole doit tomber dessus en premier. Le texte détaillé
+     * reste tel quel en dessous — c'est lui qui fait foi. (Si un jour le moteur
+     * local tourne côté hébergé, la 2e puce — « your own KIE.AI key » — sera à
+     * adapter : /api/engine le dira, mais ce modal s'affiche avant ce fetch.) */
     wrap.innerHTML = `
       <div class="anon-consent-card" role="dialog" aria-modal="true" aria-labelledby="anon-consent-title">
         <h3 id="anon-consent-title">Welcome to the anonymous studio</h3>
+        <ul class="anon-consent-points">
+          <li><b>Everything you create here is public</b> — watermarked, in the community gallery</li>
+          <li><b>You bring your own KIE.AI key</b> — billed by KIE, never stored on our servers</li>
+        </ul>
         <p>The full Keou studio, free, no account. Paste your own KIE.AI key — it stays in your browser and rides each request, never stored on our servers.</p>
         <p class="anon-consent-rules"><b>Everything you create here is public.</b> Every image, video and sound appears in the <a href="/essai.html" target="_blank" rel="noopener">community gallery</a> with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none — nothing can be written into an audio track without ruining it. The gallery viewer has a save button, so any visitor can keep what you make here. Forbidden content (sexual, minors, violence, hate, real people, ID documents) is refused and reportable.</p>
         <p class="anon-consent-alt">Need private client work, your library and downloads? <a href="/login.html">Create a free account</a> instead.</p>
@@ -355,6 +364,8 @@ const AnonMode = (() => {
     if (!main || !main.parentNode || document.getElementById('byok-bar')) return;
     const bar = document.createElement('div');
     bar.id = 'byok-bar';
+    // Même divulgation que la barre du studio : le lien « Get a key » est
+    // affilié — dit tel quel — et la note explique qui facture et où vit la clé.
     bar.innerHTML = `
       <div class="byok-inner">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
@@ -362,9 +373,10 @@ const AnonMode = (() => {
         <input type="password" id="byok-input" placeholder="Paste your KIE.AI API key" autocomplete="off" spellcheck="false">
         <button type="button" id="byok-save">Save</button>
         <span id="byok-status"></span>
-        <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
+        <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a><span class="byok-ref">(referral link)</span>
         <a href="/help.html" class="byok-get">Help &amp; docs</a>
-      </div>`;
+      </div>
+      <p class="byok-note">KIE.AI is the model provider. Your key stays in this browser and is billed by KIE directly &mdash; we never see it or charge you.</p>`;
     main.parentNode.insertBefore(bar, main);
 
     const input = bar.querySelector('#byok-input');
@@ -398,6 +410,9 @@ const AnonMode = (() => {
       .anon-consent-card{max-width:480px;width:100%;background:#141414;border:1px solid rgba(255,255,255,.1);
         border-radius:16px;padding:28px;color:#e5e5e5}
       .anon-consent-card h3{margin:0 0 12px;font-size:18px}
+      .anon-consent-points{margin:0 0 14px;padding-left:18px;font-size:13px;line-height:1.6;color:#c9c9c9}
+      .anon-consent-points li{margin-bottom:6px}
+      .anon-consent-points b{color:#e5e5e5}
       .anon-consent-card p{margin:0 0 12px;font-size:13px;line-height:1.6;color:#a3a3a3}
       .anon-consent-card a{color:#e5e5e5}
       .anon-consent-rules{padding:10px 12px;border:1px solid rgba(255,200,80,.25);
@@ -421,6 +436,8 @@ const AnonMode = (() => {
         padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
       #byok-bar #byok-status.ok{color:#6fcf97}
       #byok-bar .byok-get{color:var(--ink-muted,#9a9a9a);text-decoration:none;border-bottom:1px dotted currentColor}
+      #byok-bar .byok-note{margin:6px 2px 0;font-size:11px;color:var(--ink-faint,#8a8a8a);line-height:1.5}
+      #byok-bar .byok-ref{font-size:10.5px;color:var(--ink-faint,#8a8a8a)}
     `;
     document.head.appendChild(css);
   }

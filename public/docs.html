@@ -192,10 +192,10 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
 <aside class="sidenav" id="sidenav">
   <div class="sn-group">
     <div class="sn-title">Start</div>
+    <a class="sn-link" href="#first"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>First image in 60s</a>
     <a class="sn-link" href="#what"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>What Keou is</a>
     <a class="sn-link" href="#features"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>What it does</a>
     <a class="sn-link" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Install</a>
-    <a class="sn-link" href="#first"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>First visual</a>
   </div>
   <div class="sn-group">
     <div class="sn-title">Operate</div>
@@ -227,6 +227,26 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
   <h1>Keou Studio <em>documentation</em></h1>
   <p>Everything needed to install, configure, deploy, secure and extend the studio. Written for someone who has never seen the codebase.</p>
 </div>
+
+<section id="first">
+  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>Your first image in 60 seconds</h2>
+  <ol class="steps">
+    <li><h4>Open the studio</h4><p>The fastest path is the hosted studio: <a href="/launch"><b>studio.kanaky.xyz/launch</b></a> — no install, no account. Self-hosting instead? See <a href="#install">Install</a> first, the steps below are the same.</p></li>
+    <li><h4>Get a provider key</h4><p>Sign up at <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">kie.ai</a> — they give you free credits. Copy the long API key string.</p></li>
+    <li><h4>Paste it in the key bar</h4><p>Top of the studio. Press <b>Save</b>. It is written to this browser's <code>localStorage</code> and nowhere else.</p></li>
+    <li><h4>Drop a product photo</h4><p>Any reasonably lit shot works. A plain background helps but is not required — the scene gets rebuilt anyway.</p></li>
+    <li><h4>Describe the scene, not the product</h4><p>Say where it sits and how it is lit: <i>"on wet volcanic stone at dawn, sea mist behind, low warm sun from the left"</i>. Do not describe the object — it is already in the photo and it will not be redrawn.</p></li>
+    <li><h4>Generate, then refine</h4><p>Use <b>Polish</b> to fix a detail, <b>Remix</b> for a different direction, <b>Adapt</b> for other ratios, <b>Pack</b> for the multi-format set.</p></li>
+  </ol>
+
+    <div class="note">
+    <p><b>Affiliate disclosure.</b> The kie.ai links on this site carry our referral code. If you sign up through one, KIE pays us a small share of what you spend in your first month. Your price is exactly the same either way, and the platform works with any key — including one created without our link. It is one of the ways an open-source project with no paid tier pays for itself, and we would rather say so than have you find out.</p>
+  </div>
+
+<div class="note">
+    <p><b>Prompting note.</b> The production prompt stack already handles product fidelity, composition and commercial framing. Your brief should add context, not instructions — the more you fight the stack with technical directives, the worse the output gets.</p>
+  </div>
+</section>
 
 <section id="what">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>What Keou is</h2>
@@ -378,24 +398,6 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
   </ol>
 </section>
 
-<section id="first">
-  <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>Your first visual</h2>
-  <ol class="steps">
-    <li><h4>Get a provider key</h4><p>Sign up at <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">kie.ai</a> — they give you free credits. Copy the long API key string.</p></li>
-    <li><h4>Paste it in the key bar</h4><p>Top of the studio. Press <b>Save</b>. It is written to this browser's <code>localStorage</code> and nowhere else.</p></li>
-    <li><h4>Drop a product photo</h4><p>Any reasonably lit shot works. A plain background helps but is not required — the scene gets rebuilt anyway.</p></li>
-    <li><h4>Describe the scene, not the product</h4><p>Say where it sits and how it is lit: <i>"on wet volcanic stone at dawn, sea mist behind, low warm sun from the left"</i>. Do not describe the object — it is already in the photo and it will not be redrawn.</p></li>
-    <li><h4>Generate, then refine</h4><p>Use <b>Polish</b> to fix a detail, <b>Remix</b> for a different direction, <b>Adapt</b> for other ratios, <b>Pack</b> for the multi-format set.</p></li>
-  </ol>
-
-    <div class="note">
-    <p><b>Affiliate disclosure.</b> The kie.ai links on this site carry our referral code. If you sign up through one, KIE pays us a small share of what you spend in your first month. Your price is exactly the same either way, and the platform works with any key — including one created without our link. It is one of the ways an open-source project with no paid tier pays for itself, and we would rather say so than have you find out.</p>
-  </div>
-
-<div class="note">
-    <p><b>Prompting note.</b> The production prompt stack already handles product fidelity, composition and commercial framing. Your brief should add context, not instructions — the more you fight the stack with technical directives, the worse the output gets.</p>
-  </div>
-</section>
 
 <section id="architecture">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="M6 10v4a2 2 0 0 0 2 2h6"/></svg></span>Architecture</h2>
@@ -561,8 +563,10 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
     <tbody>
       <tr><td><code>PORT</code></td><td><code>3401</code></td><td>HTTP port.</td></tr>
       <tr><td><code>EDITION</code></td><td><code>opensource</code></td><td>Set by <code>index.js</code>. Leave it alone.</td></tr>
-      <tr><td><code>DEFAULT_PROVIDER</code></td><td><code>kie</code></td><td><code>kie</code> or <code>fal</code>.</td></tr>
+      <tr><td><code>DEFAULT_PROVIDER</code></td><td><code>kie</code></td><td><code>kie</code>, <code>fal</code> or <code>local</code>.</td></tr>
       <tr><td><code>KIE_API_KEY</code><br><code>FAL_API_KEY</code></td><td>—</td><td>A server-side fallback key, for a private instance where you would rather not hand a key to each user. Leave unset for pure bring-your-own-key.</td></tr>
+      <tr><td><code>LOCAL_ENGINE_URL</code></td><td>—</td><td>URL of your own ComfyUI instance (e.g. <code>http://localhost:8188</code>). With <code>DEFAULT_PROVIDER=local</code>, image generation, polish, remix, adapt and upscaling run on it — no cloud, no per-image cost. Video, voice and SFX still need a provider key. The boot log and <code>/health</code> report what the engine sees.</td></tr>
+      <tr><td><code>LOCAL_CHECKPOINT</code><br><code>LOCAL_UPSCALE_MODEL</code></td><td>auto</td><td>Pin a specific model by filename. Unset, Keou auto-detects what your ComfyUI has installed and uses the first one.</td></tr>
       <tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td>Enables the assistant. Without it the chat returns a clear error and nothing else is affected.</td></tr>
       <tr><td><code>ANTHROPIC_MODEL</code></td><td><code>claude-sonnet-5</code></td><td>Model backing the assistant.</td></tr>
       <tr><td><code>OPENAI_API_KEY</code></td><td>—</td><td>Speech-to-text for voice input in the assistant.</td></tr>

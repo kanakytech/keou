@@ -11,7 +11,7 @@
 <meta property="og:description" content="Run the whole Keou studio on your own servers with Docker or Railway. MIT licensed, BYOK — you host the studio, generation runs on your own provider keys.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://studio.kanaky.xyz/self-host.html">
-<meta property="og:image" content="https://studio.kanaky.xyz/logo-keou.png">
+<meta property="og:image" content="https://studio.kanaky.xyz/docs-img/studio.png">
 <link rel="icon" type="image/png" href="/logo-keou.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -151,6 +151,7 @@ img{max-width:100%}
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
 .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+@media (max-width:480px){.lp-nav{padding:12px 14px;gap:8px}.lp-brand-name span{display:none}.lp-nav-link[href="/login.html"]{display:none}.lp-nav-link{padding:8px 11px;font-size:12.5px}}
 </style>
 </head>
 <body>
@@ -191,7 +192,7 @@ img{max-width:100%}
 <article class="article">
   <section class="reveal">
     <h2>What you host, and what you don't</h2>
-    <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. What you do <b>not</b> host is the inference. Every generation call goes out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded, no offline mode. If you are looking for fully on-device image generation, Keou is not that tool, and we would rather you know before you clone the repository.</p>
+    <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. For the inference itself you have two options. <b>Cloud:</b> generation calls go out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded. <b>Local, since v1.0:</b> point Keou at your own ComfyUI instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware, no cloud involved. Video, voice and sound effects remain cloud-only for now — we would rather you know before you clone the repository.</p>
     <p>What self-hosting buys you instead: <b>no watermark</b> on anything, <b>nothing published</b> to any gallery, full signed downloads and export-pack ZIPs, your own brand across the interface, and no shared queue — your capacity is whatever your provider key and your server allow. Users can each paste their own key; it stays in their browser and is never written to your server's disk, database or logs.</p>
   </section>
 

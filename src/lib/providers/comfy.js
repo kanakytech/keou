@@ -36,12 +36,44 @@ async function fetchWithTimeout(url, opts = {}, ms = 30_000) {
 }
 
 async function comfyJson(path, opts = {}) {
-  const r = await fetchWithTimeout(`${base()}${path}`, opts);
+  let r;
+  try {
+    r = await fetchWithTimeout(`${base()}${path}`, opts);
+  } catch (err) {
+    // undici cache l'ECONNREFUSED dans err.cause — sans ça, l'opérateur voit
+    // « fetch failed » et ne sait pas que son ComfyUI est éteint.
+    const cause = err?.cause?.code || err?.message || 'network error';
+    throw new Error(`Local engine unreachable at ${base()} — is ComfyUI running? (${cause})`);
+  }
   if (!r.ok) {
     const text = await r.text().catch(() => '');
-    throw new Error(`ComfyUI ${r.status} on ${path}: ${text.slice(0, 200)}`);
+    throw new Error(`Local engine: ComfyUI ${r.status} on ${path}: ${text.slice(0, 200)}`);
   }
   return r.json();
+}
+
+/**
+ * Sonde de santé — même principe que la sonde ffmpeg du serveur : dire au
+ * boot et dans /health ce que le moteur local voit réellement, plutôt que de
+ * laisser l'opérateur le découvrir à la première génération.
+ */
+export async function probeLocalEngine() {
+  if (!config.localEngine?.url) return { configured: false };
+  try {
+    const [ckpt, up] = await Promise.all([
+      comfyJson('/object_info/CheckpointLoaderSimple'),
+      comfyJson('/object_info/UpscaleModelLoader').catch(() => null),
+    ]);
+    const checkpoints = ckpt?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0] || [];
+    const upscaleModels = up?.UpscaleModelLoader?.input?.required?.model_name?.[0] || [];
+    return {
+      configured: true, reachable: true, url: config.localEngine.url,
+      checkpoints: checkpoints.length, upscaleModels: upscaleModels.length,
+      active: config.defaultProvider === 'local',
+    };
+  } catch (err) {
+    return { configured: true, reachable: false, url: config.localEngine.url, error: err.message, active: config.defaultProvider === 'local' };
+  }
 }
 
 // ─── Découverte des modèles installés (cache 60 s) ───
@@ -222,7 +254,7 @@ export async function upscaleImage(_apiKey, { imageUrl }) {
 
 // ─── Hors périmètre v1 — refus nets ───
 
-const UNSUPPORTED = 'The local engine handles images and upscaling for now — video, voice and sound effects still need a cloud provider key (KIE.AI or Fal.ai)';
+const UNSUPPORTED = 'Local engine: images and upscaling only for now — video, voice and sound effects still need a cloud provider key (KIE.AI or Fal.ai)';
 
 export async function generateVideo() { throw new Error(UNSUPPORTED); }
 export async function tts() { throw new Error(UNSUPPORTED); }

@@ -334,6 +334,10 @@ app.get('/health', async (req, res) => {
     // « ok ». C'est la seule façon de rendre le filigrane vérifiable de
     // l'extérieur sans transformer un badge manquant en panne.
     const body = { ok: true, uptime: process.uptime(), media: mediaHealth() };
+    // Même principe que `media` : informatif, jamais bloquant. L'opérateur qui
+    // a posé LOCAL_ENGINE_URL voit ici si son ComfyUI répond et avec combien
+    // de modèles — au lieu de le découvrir à la première génération.
+    if (config.localEngine?.url) body.localEngine = localEngineState;
     _healthCache = { ok: true, ts: now, body };
     res.json(body);
   } catch {
@@ -439,6 +443,9 @@ async function bootDatabase(retries = 3) {
       return;
     } catch (err) {
       console.error(`  [DB] Migration attempt ${i + 1}/${retries} failed:`, err.message);
+      if (/does not support SSL/i.test(err.message || '')) {
+        console.error('  [DB] Votre Postgres parle en clair et NODE_ENV=production impose le TLS — posez DATABASE_SSL=0 (le docker-compose fourni le fait par défaut).');
+      }
       if (i < retries - 1) await new Promise(r => setTimeout(r, 3000));
       else throw err;
     }
@@ -637,6 +644,39 @@ app.get('/', (req, res) => {
   res.sendFile(join(__dirname, 'public', page));
 });
 
+// État moteur pour le front (studio) : public mais minimal — pas de chemins,
+// pas de versions détaillées. Permet au studio d'afficher « Local · ComfyUI »
+// et de ne pas réclamer une clé cloud quand le moteur local est actif.
+app.get('/api/engine', (req, res) => {
+  res.json({
+    provider: (config.localEngine?.url && config.defaultProvider === 'local') ? 'local' : config.defaultProvider,
+    localEngine: config.localEngine?.url
+      ? { configured: true, reachable: !!localEngineState.reachable, checkpoints: localEngineState.checkpoints || 0, active: config.defaultProvider === 'local' }
+      : { configured: false },
+  });
+});
+
+// Sous docker compose sans R2, l'URL de résultat http://comfyui:8188/view?…
+// est un hostname interne que le navigateur ne résout pas : ce proxy rend le
+// résultat atteignable. Réservé au moteur local configuré, paramètres bornés.
+app.get('/api/local-view', async (req, res) => {
+  if (!config.localEngine?.url) return res.status(404).end();
+  const { filename, subfolder = '', type = 'output' } = req.query;
+  if (typeof filename !== 'string' || !/^[\w.-]{1,200}$/.test(filename)) return res.status(400).json({ error: 'bad filename' });
+  if (typeof subfolder !== 'string' || subfolder.length > 200 || subfolder.includes('..')) return res.status(400).json({ error: 'bad subfolder' });
+  if (type !== 'output') return res.status(400).json({ error: 'bad type' });
+  try {
+    const params = new URLSearchParams({ filename, subfolder, type });
+    const upstream = await fetch(`${config.localEngine.url.replace(/\/+$/, '')}/view?${params}`);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.set('Content-Type', upstream.headers.get('content-type') || 'image/png');
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch {
+    res.status(502).json({ error: 'local engine unreachable' });
+  }
+});
+
 // ─── 404 Handler (unknown API routes) ───
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Not found' });
@@ -663,6 +703,24 @@ process.on('uncaughtException', (err) => {
 
 // ─── Start ───
 const PORT = config.port;
+// ─── Moteur local — sonde au boot (même principe que ffmpeg) ───
+// L'état est mémoïsé et resondé toutes les 60 s : /health et /api/engine le
+// servent sans re-frapper ComfyUI à chaque requête.
+let localEngineState = { configured: false };
+async function refreshLocalEngine() {
+  if (!config.localEngine?.url) return;
+  try {
+    const { probeLocalEngine } = await import('./src/lib/providers/comfy.js');
+    localEngineState = await probeLocalEngine();
+  } catch (err) {
+    localEngineState = { configured: true, reachable: false, error: err.message };
+  }
+}
+if (config.localEngine?.url) {
+  await refreshLocalEngine();
+  setInterval(refreshLocalEngine, 60_000).unref();
+}
+
 const server = app.listen(PORT, () => {
   console.log(`\n  KEOU Agency — B2B Platform`);
   console.log(`  http://localhost:${PORT}`);
@@ -675,6 +733,18 @@ const server = app.listen(PORT, () => {
   // immédiatement ce qu'une image reconstruite a perdu en route.
   console.log(`  [MEDIA] ffmpeg ${mediaCaps.ffmpeg || 'absent'} (video watermark: ${mediaCaps.ffmpeg ? 'on' : 'OFF'})`
     + ` | sharp ${mediaCaps.sharp || 'absent'} (image watermark: ${mediaCaps.sharp ? 'on' : 'OFF'})`);
+  // Même principe que [MEDIA] : l'état du moteur local se lit au boot, pas à
+  // la première génération ratée.
+  if (config.localEngine?.url) {
+    if (localEngineState.reachable) {
+      console.log(`  [LOCAL] ComfyUI @ ${config.localEngine.url} — ${localEngineState.checkpoints} checkpoint(s), ${localEngineState.upscaleModels} upscale model(s)`
+        + (config.defaultProvider === 'local' ? ' — ACTIF (DEFAULT_PROVIDER=local)' : ' — configuré mais INACTIF : posez DEFAULT_PROVIDER=local pour l\'utiliser'));
+    } else {
+      console.warn(`  [LOCAL] ComfyUI injoignable @ ${config.localEngine.url} — ${localEngineState.error || 'pas de réponse'}`);
+    }
+  } else if (config.defaultProvider === 'local') {
+    console.warn(`  [LOCAL] DEFAULT_PROVIDER=local mais LOCAL_ENGINE_URL absent — repli silencieux sur les fournisseurs cloud. Posez LOCAL_ENGINE_URL (ex: http://localhost:8188).`);
+  }
   console.log(`  [ROUTES] auth, generate, upload, download, dashboard, history, profile, admin, team, projects, campaigns, activity, tools, analytics, jarvis\n`);
 });
 

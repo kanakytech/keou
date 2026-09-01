@@ -80,8 +80,11 @@ export const config = {
 
   r2: {
     accountId: process.env.R2_ACCOUNT_ID,
-    accessKeyId: process.env.R2_ACCESS_KEY,
-    secretAccessKey: process.env.R2_SECRET_KEY,
+    // Les deux jeux de noms circulent (README/.env.example d'un côté, les
+    // conventions AWS SDK de l'autre) — on accepte les deux pour qu'un
+    // opérateur qui a « tout configuré » ne reçoive jamais le 503 quand même.
+    accessKeyId: process.env.R2_ACCESS_KEY || process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY,
     bucket: process.env.R2_BUCKET || 'keou-uploads',
     // L'endpoint était figé sur Cloudflare : un auto-hébergeur sans compte
     // Cloudflare ne pouvait brancher NI MinIO, NI AWS S3, NI Backblaze, NI

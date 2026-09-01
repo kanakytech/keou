@@ -100,10 +100,17 @@ async function processTask(task) {
       console.log(`  [POLLER] #${task.id} completed (${task.type}/${providerName}) → R2 persisted`);
     } catch (r2Err) {
       console.warn(`  [POLLER] #${task.id} R2 persist failed: ${r2Err.message} — using ${providerName} URL`);
+      let fallbackUrl = result.resultUrl;
+      if (providerName === 'local') {
+        // Sans R2, l'URL ComfyUI (http://comfyui:8188/view?…) est un hostname
+        // Docker interne que le navigateur ne résout pas — on sert le résultat
+        // via le proxy du serveur, qui lui sait joindre le moteur.
+        try { fallbackUrl = `/api/local-view${new URL(result.resultUrl).search}`; } catch { /* URL brute conservée */ }
+      }
       await query(
         `UPDATE generations SET status='completed', result_url=$1, completed_at=NOW()
          WHERE id=$2 AND status IN ('pending','processing')`,
-        [result.resultUrl, task.id]
+        [fallbackUrl, task.id]
       );
     }
 

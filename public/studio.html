@@ -377,7 +377,33 @@
 #byok-bar input { flex: 1; min-width: 180px; background: rgba(0,0,0,.25); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 7px 10px; color: var(--ink, #eee); font-size: 12px; outline: none; }
 #byok-bar button { background: var(--accent, #c8f060); color: #050505; border: 0; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
 #byok-bar #byok-status.ok { color: #6fcf97; }
+/* Clé rejetée par le fournisseur : la barre doit le dire, pas rester verte. */
+#byok-bar #byok-status.err { color: var(--error, #f87171); }
 #byok-bar .byok-get { color: var(--ink-muted, #9a9a9a); text-decoration: none; border-bottom: 1px dotted currentColor; }
+/* Divulgation : qui facture, où vit la clé, et que le lien est affilié. */
+#byok-bar .byok-note { margin: 6px 2px 0; font-size: 11px; color: var(--ink-faint, #8a8a8a); line-height: 1.5; }
+#byok-bar .byok-ref { font-size: 10.5px; color: var(--ink-faint, #8a8a8a); }
+/* Flash de bordure quand on renvoie le visiteur vers la barre (Generate sans clé). */
+#byok-bar.byok-flash .byok-inner { animation: byokFlash 1.1s ease; }
+@keyframes byokFlash { 0%, 55% { border-color: var(--error, #f87171); box-shadow: 0 0 0 3px rgba(248,113,113,.22); } 100% { box-shadow: none; } }
+
+/* En file d'attente serveur : la barre de progression perçue MENT sur une
+   attente de 30 min — elle est gelée à zéro tant que le job n'est pas passé
+   à 'processing'. Retirer l'attribut relance l'animation depuis le début. */
+.result-card[data-server-state="queued"] .result-overlay.active .ov-progress i { animation: none; transform: scaleX(0); }
+
+/* Lien « essayer avec une image d'exemple » dans la drop zone vide. */
+.drop-sample { margin-top: 10px; background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; color: var(--ink-muted); border-bottom: 1px dotted currentColor; }
+.drop-sample:hover { color: var(--ink); }
+
+/* Note anonyme sous les presets : chaque variante débite la clé du visiteur. */
+.preset-key-note { margin: 8px 2px 0; font-size: 11px; color: var(--ink-faint, #8a8a8a); line-height: 1.5; }
+
+/* Squelette de chargement : le temps des deux fetches d'auth, la page était
+   un body vide — un spinner centré dit au moins que quelque chose arrive. */
+#boot-loader { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+#boot-loader .boot-spin { width: 26px; height: 26px; border: 2.5px solid rgba(255,255,255,.08); border-top-color: var(--ink-muted, #888); border-radius: 50%; animation: bootSpin .8s linear infinite; }
+@keyframes bootSpin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -462,6 +488,9 @@
   </div>
 </div>
 
+<!-- Squelette : visible pendant les fetches d'auth, retiré quand le studio s'affiche -->
+<div id="boot-loader" aria-hidden="true"><div class="boot-spin"></div></div>
+
 <main class="main" id="main-content" style="display:none">
 
   <!-- Studio Header with Project Selector -->
@@ -486,6 +515,7 @@
       <div id="drop-content">
         <div class="drop-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
         <p class="drop-text"><span class="drop-text-desktop">Drop your product images here or </span><span class="drop-text-mobile">Tap to upload </span><span>browse</span></p>
+        <button type="button" class="drop-sample">No product photo handy? Try a sample &#8594;</button>
       </div>
     </div>
   </section>
@@ -540,6 +570,9 @@
         <span class="platform-label">Custom</span>
       </button>
     </div>
+    <!-- En anonyme, chaque preset ×5/×10 débite la clé KIE du visiteur : le
+         dire AVANT le clic, pas après la facture. Dévoilé par le garde d'auth. -->
+    <p id="preset-key-note" class="preset-key-note" hidden>Each variant is billed on your KIE key &mdash; start with &times;1 to see the quality first.</p>
 
     <p class="section-label">Output Format</p>
     <div class="format-grid">
@@ -694,10 +727,16 @@
 // The visitor pastes their own provider API key. It lives in localStorage only
 // and rides every generation request as X-Provider-Key — never stored server-side.
 function renderByokBar() {
+  // Moteur local actif (self-host ComfyUI) : aucune clé cloud n'est requise
+  // pour les images — afficher la barre serait réclamer une clé pour rien.
+  if (window.ENGINE_LOCAL) return;
   const main = document.getElementById('main-content');
   if (!main || document.getElementById('byok-bar')) return;
   const bar = document.createElement('div');
   bar.id = 'byok-bar';
+  // « (referral link) » : le lien « Get a key » est affilié — non déclaré, il
+  // se retourne contre nous à la première lecture attentive. La note dessous
+  // dit qui facture et où vit la clé, AVANT que le visiteur ne la colle.
   bar.innerHTML = `
     <div class="byok-inner">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
@@ -705,9 +744,11 @@ function renderByokBar() {
       <input type="password" id="byok-input" placeholder="Paste your KIE.AI API key" autocomplete="off" spellcheck="false">
       <button type="button" id="byok-save">Save</button>
       <span id="byok-status"></span>
-      <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a>
+      <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener" class="byok-get">Get a key &#8599;</a><span class="byok-ref">(referral link)</span>
       <a href="/help.html" class="byok-get">Help &amp; docs</a>
-    </div>`;
+    </div>
+    <p class="byok-note">KIE.AI is the model provider. Your key stays in this browser and is billed by KIE directly &mdash; we never see it or charge you.</p>
+    <p class="byok-note" id="byok-need" hidden>You need a KIE.AI API key to generate &mdash; paste it here. It stays in your browser and is billed by KIE directly, not by us. Getting a key takes ~2 min.</p>`;
   main.parentNode.insertBefore(bar, main);
   const input = bar.querySelector('#byok-input');
   const status = bar.querySelector('#byok-status');
@@ -716,6 +757,8 @@ function renderByokBar() {
     status.textContent = k ? 'Key saved in this browser' : 'No key set';
     status.className = k ? 'ok' : '';
     if (k) input.placeholder = '••••••••••••  (saved)';
+    // La clé est posée : le rappel « il vous faut une clé » n'a plus lieu d'être.
+    if (k) bar.querySelector('#byok-need').hidden = true;
   };
   bar.querySelector('#byok-save').addEventListener('click', () => {
     const v = input.value.trim();
@@ -726,6 +769,37 @@ function renderByokBar() {
   });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') bar.querySelector('#byok-save').click(); });
   refresh();
+}
+
+/* Le clic Generate sans clé (mode anonyme, moteur local inactif) ne doit RIEN
+ * envoyer : chaque soumission partirait vers un refus certain, avec 3 retries
+ * et ~15 s de faux spinner par carte. On ramène plutôt le visiteur à la barre
+ * de clé : scroll, focus, flash de bordure, et le message qui explique. */
+function demandProviderKey() {
+  const bar = document.getElementById('byok-bar');
+  if (!bar) return;
+  const need = document.getElementById('byok-need');
+  if (need) need.hidden = false;
+  bar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  bar.classList.remove('byok-flash');
+  void bar.offsetWidth; // relance l'animation si on re-clique
+  bar.classList.add('byok-flash');
+  const input = bar.querySelector('#byok-input');
+  if (input) setTimeout(() => input.focus({ preventScroll: true }), 350);
+}
+
+/* Clé rejetée par le fournisseur : la barre BYOK affichait « Key saved » en
+ * vert pendant que chaque carte disait le contraire. Dès qu'une erreur de
+ * génération parle de la clé, la barre passe en erreur et revient en vue —
+ * une seule fois, pas un scroll par carte d'un lot de vingt. */
+function maybeFlagKeyError(msg) {
+  if (!msg || !/api key|unauthorized/i.test(String(msg))) return;
+  const status = document.getElementById('byok-status');
+  if (!status || status.classList.contains('err')) return; // déjà signalé
+  status.textContent = 'Key rejected by KIE — check or replace it';
+  status.className = 'err';
+  const bar = document.getElementById('byok-bar');
+  if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ─── Auth Guard ───
@@ -754,6 +828,28 @@ function renderByokBar() {
   window.IS_OS = typeof Auth.isOpensource === 'function' && Auth.isOpensource();
   // Community edition: the same complete studio, hosted by us. Still BYOK.
   window.IS_CM = typeof Auth.isCommunity === 'function' && Auth.isCommunity();
+
+  /* Moteur d'images : cloud (clé requise) ou local (ComfyUI, aucune clé).
+   * GET /api/engine est public et minimal ; on le lit UNE fois ici et on
+   * mémorise — le clic Generate (pré-vol de clé), la barre BYOK et le badge
+   * s'appuient tous sur ce même état. fetch nu, pas authFetch : en anonyme,
+   * l'adaptateur ne connaît pas cette route et répondrait 403. Sur l'instance
+   * hébergée le provider n'est jamais 'local' — tout ceci reste inerte. */
+  window.ENGINE_LOCAL = false;
+  window.ENGINE_REACHABLE = false;
+  if (window.IS_OS || window.IS_CM) {
+    try {
+      const engRes = await fetch('/api/engine', { credentials: 'same-origin' });
+      if (engRes.ok) {
+        const eng = await engRes.json();
+        if (eng.provider === 'local') {
+          window.ENGINE_LOCAL = true;
+          window.ENGINE_REACHABLE = !!(eng.localEngine && eng.localEngine.reachable);
+        }
+      }
+    } catch {} // moteur inconnu = cloud : on retombe sur le comportement d'avant
+  }
+
   if (window.IS_OS) {
     document.body.classList.add('edition-opensource');
     renderByokBar();
@@ -761,8 +857,26 @@ function renderByokBar() {
     renderByokBar();
   }
 
+  // En anonyme avec clé cloud, chaque variante coûte au visiteur : la note sous
+  // les presets le dit avant le clic. Sans clé requise (moteur local), rien.
+  if (anon && !window.ENGINE_LOCAL) {
+    document.getElementById('preset-key-note')?.removeAttribute('hidden');
+  }
+
   // Production engine badge.
-  if (window.IS_CM) {
+  // Le moteur local passe devant tout : c'est l'état réel de CETTE instance.
+  if (window.ENGINE_LOCAL) {
+    const el = document.getElementById('provider-badge');
+    if (el) {
+      if (window.ENGINE_REACHABLE) {
+        el.textContent = 'Local · ComfyUI';
+      } else {
+        el.textContent = 'Local engine unreachable';
+        el.style.color = 'var(--error, #f87171)';
+        el.style.borderColor = 'var(--error, #f87171)';
+      }
+    }
+  } else if (window.IS_CM) {
     const el = document.getElementById('provider-badge');
     if (el) el.textContent = 'KIE.AI';
   } else if (!window.IS_OS) (async () => {
@@ -953,6 +1067,7 @@ function renderByokBar() {
   Select.init();
 
   // Show studio with animation
+  document.getElementById('boot-loader')?.remove(); // le squelette a fini son office
   const mainEl = document.getElementById('main-content');
   mainEl.style.display = '';
   requestAnimationFrame(() => mainEl.classList.add('visible'));
@@ -1018,7 +1133,27 @@ function getCampaignId() {
 const dropZone = $('#drop-zone');
 const fileInput = $('#file-input');
 
-dropZone.addEventListener('click', () => { if (!isProcessing) fileInput.click(); });
+// Le lien « Try a sample » vit DANS la zone : son clic ne doit pas ouvrir
+// aussi le sélecteur de fichiers.
+dropZone.addEventListener('click', (e) => { if (!isProcessing && !e.target.closest('.drop-sample')) fileInput.click(); });
+
+/* Image d'exemple : le visiteur sans photo sous la main restait bloqué au
+ * premier pas. On récupère un visuel du showcase en blob et on l'injecte par
+ * le MÊME chemin que le drag&drop (addFiles) — aucun traitement spécial. */
+dropZone.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.drop-sample');
+  if (!btn || isProcessing) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch('/showcase/1.jpg');
+    if (!res.ok) throw new Error('sample unavailable');
+    const blob = await res.blob();
+    addFiles([new File([blob], 'sample-product.jpg', { type: blob.type || 'image/jpeg' })]);
+  } catch {
+    toast('Sample image unavailable — please add your own photo', true);
+    btn.disabled = false;
+  }
+});
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (!isProcessing) dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
@@ -1102,7 +1237,8 @@ function updateDropZone() {
     content.innerHTML = '<p class="drop-text">+ Add more images</p>';
   } else {
     dropZone.classList.remove('compact');
-    content.innerHTML = '<div class="drop-icon">+</div><p class="drop-text">Drop your product images here or <span>browse</span></p>';
+    content.innerHTML = '<div class="drop-icon">+</div><p class="drop-text">Drop your product images here or <span>browse</span></p>'
+      + '<button type="button" class="drop-sample">No product photo handy? Try a sample &#8594;</button>';
   }
 }
 
@@ -1282,6 +1418,14 @@ $$('.cd-preset').forEach(btn => {
 // ─── Batch Generate ───
 $('#generate-btn').addEventListener('click', () => {
   if (isProcessing) return;
+  /* Pré-vol de la clé, AVANT toute requête. Sans clé en anonyme (et sans
+   * moteur local), chaque soumission part vers un refus certain : 3 retries
+   * par carte, relance de lot, ~15 s de faux spinner — pour apprendre au
+   * visiteur ce qu'une phrase sous la barre de clé lui dit tout de suite. */
+  if (window.IS_ANON && !window.ENGINE_LOCAL && !Auth.getProviderKey()) {
+    demandProviderKey();
+    return;
+  }
   const pending = jobs.filter(j => j.status === 'queued');
   if (!pending.length) return;
   processAll(pending);
@@ -1455,6 +1599,16 @@ async function processAll(pending) {
           clearTimeout(tmo);
           genData = await genRes.json();
           if (genRes.status === 402) throw new Error(genData.message || genData.error || 'API error — check your API key');
+          /* Un 400 est DÉFINITIF : la requête elle-même est invalide, la
+           * renvoyer telle quelle reproduira le même refus. L'ancien garde ne
+           * reconnaissait que certains messages — les autres 400 partaient en
+           * 3 retries puis en relance de lot : ~15 s de faux spinner pour un
+           * verdict connu dès la première réponse. Posé en `refusal`, il court-
+           * circuite le catch ci-dessous ET la relance automatique du lot. */
+          if (genRes.status === 400) {
+            job.refusal = readRefusal(genRes, genData);
+            throw new Error(job.refusal.message);
+          }
           // Un 429 est un refus ASSUMÉ par le serveur, pas un incident : il dit
           // quelle limite a joué et dans combien de temps réessayer. Le réessayer
           // sur-le-champ consommait le quota qu'on venait de se voir refuser
@@ -1484,6 +1638,7 @@ async function processAll(pending) {
       job.status = 'error';
       job.error = job.refusal ? refusalLabel(job.refusal) : e.message;
       log(`${job.name}: ${job.error}`, 'error');
+      maybeFlagKeyError(job.error); // clé rejetée → la barre BYOK doit le dire
       // Le repeint manquait ici : une soumission refusée laissait la carte sur
       // son dernier état rendu, c'est-à-dire un rond qui tourne indéfiniment.
       // C'est ce silence-là qui a fait passer un lot de 5 ramené à 3.
@@ -1564,7 +1719,10 @@ async function processAll(pending) {
       if (job.recordId) pollParams.set('recordId', job.recordId);
       if (job.generationId) pollParams.set('generationId', job.generationId);
       const pollQs = pollParams.toString();
-      const resultUrl = await poll(`/api/status/image/${job.taskId}${pollQs ? '?' + pollQs : ''}`, 8000, 360000);
+      // La position de file remonte jusqu'à l'overlay de la carte (setQueueState) ;
+      // les routes de compte ne renvoient pas de position — le callback est inerte.
+      const resultUrl = await poll(`/api/status/image/${job.taskId}${pollQs ? '?' + pollQs : ''}`, 8000, 360000,
+        (data) => setQueueState(job, data));
       job.resultUrl = resultUrl;
       job.status = 'done';
       log(`${job.name}: complete`, 'success');
@@ -1572,6 +1730,7 @@ async function processAll(pending) {
       job.status = 'error';
       job.error = e.message;
       log(`${job.name}: ${e.message}`, 'error');
+      maybeFlagKeyError(e.message); // clé rejetée → la barre BYOK doit le dire
 
       if (job.generationId) {
         Auth.authFetch('/api/report-failure', {
@@ -1649,7 +1808,10 @@ async function runPool(items, fn, limit) {
 }
 
 // ─── Polling (with auth + robust error handling) ───
-function poll(url, interval = 8000, timeout = 360000) {
+// `onUpdate(data)` : appelé à chaque réponse intermédiaire (ni prête ni en
+// échec). C'est par là que la position dans la file remonte jusqu'à la carte —
+// elle finissait dans console.log, que personne n'ouvre pendant 30 min d'attente.
+function poll(url, interval = 8000, timeout = 360000, onUpdate = null) {
   return new Promise((resolve, reject) => {
     /* Le délai ne court que pendant le TRAVAIL, jamais pendant l'attente.
      *
@@ -1704,6 +1866,8 @@ function poll(url, interval = 8000, timeout = 360000) {
         if (data.state === 'queued') start += maintenant - derniereMesure;
         derniereMesure = maintenant;
 
+        if (onUpdate) try { onUpdate(data); } catch {} // l'UI ne casse jamais le sondage
+
         if (attempts <= 3 || attempts % 5 === 0) {
           const rang = data.position ? ` position=${data.position}` : '';
           console.log(`[poll] attempt ${attempts}: state=${data.state || 'unknown'} ready=${data.ready}${rang}`);
@@ -1751,6 +1915,9 @@ const OVERLAY_STATES = new Set(['uploading', 'generating', 'polishing', 'renderi
 const GEN_STEPS = ['Analyzing your product...', 'Composing the scene...', 'Lighting & shadows...', 'Refining details...', 'Final render...'];
 setInterval(() => {
   document.querySelectorAll('.result-card[data-status="generating"]').forEach(card => {
+    // En file serveur, l'overlay affiche la position — les étapes fictives
+    // (« Composing the scene... ») mentiraient sur un travail pas commencé.
+    if (card.dataset.serverState === 'queued') return;
     const start = Number(card.dataset.genStart || 0);
     if (!start) return;
     const idx = Math.min(Math.floor((Date.now() - start) / 12000), GEN_STEPS.length - 1);
@@ -1761,6 +1928,32 @@ setInterval(() => {
     }
   });
 }, 4000);
+
+/* File d'attente serveur visible sur la carte.
+ *
+ * La file anonyme peut faire patienter 30 min ; pendant ce temps la barre de
+ * progression perçue montait vers 93 % en 75 s — un mensonge. Tant que le
+ * serveur répond 'queued', l'attribut data-server-state gèle l'animation (CSS)
+ * et l'overlay affiche la position réelle. Quand l'état passe à 'processing',
+ * l'attribut tombe et l'animation démarre — de zéro, puisqu'elle n'a jamais
+ * couru. L'estimation reprend la règle serveur : ~90 s par job, 3 voies de
+ * front, soit ~30 s par rang. */
+function setQueueState(job, data) {
+  const el = document.getElementById(`card-${job.id}`);
+  if (!el) return;
+  const label = el.querySelector('.result-overlay span');
+  if (data.state === 'queued' && data.position) {
+    el.dataset.serverState = 'queued';
+    const mins = Math.max(1, Math.round(data.position * 0.5));
+    const txt = `In queue — position ${data.position} (~${mins} min). Your spot is held.`;
+    if (label && label.textContent !== txt) label.textContent = txt;
+  } else if (el.dataset.serverState) {
+    delete el.dataset.serverState;
+    // Le vrai travail commence MAINTENANT : les étapes tournantes repartent de là.
+    el.dataset.genStart = String(Date.now());
+    if (label) label.textContent = STATUS_LABELS[job.status] || 'Generating...';
+  }
+}
 
 // ── Liquid Glass light spill: tint the chrome with the client's own visuals ──
 // Samples the first finished result's dominant color into --spill (sidebar glow).
@@ -2175,7 +2368,14 @@ window.retryJob = async (id) => {
         j.uploadUrl = d.url;
       }
       j.status = 'generating'; updateCard(j);
-      const genBody = { imgUrl: j.uploadUrl, format };
+      /* Le retry doit produire la MÊME chose que le lot d'origine : la
+       * direction artistique en faisait partie et tombait ici — le visiteur
+       * récupérait un visuel « défaut studio » au lieu de celui qu'il avait
+       * décrit. Et une clé d'idempotence FRAÎCHE : réutiliser j.id ferait
+       * prendre ce retry délibéré pour un doublon du premier envoi refusé. */
+      const genBody = { imgUrl: j.uploadUrl, format, idempotencyKey: j.id + ':retry:' + crypto.randomUUID().slice(0, 8) };
+      const cd = getCreativeDirection();
+      if (cd) genBody.creativeDirection = cd;
       if (projectId) genBody.projectId = projectId;
       const cId = getCampaignId();
       if (cId) genBody.campaignId = cId;
@@ -2194,15 +2394,17 @@ window.retryJob = async (id) => {
       if (d2.recordId) rParams.set('recordId', d2.recordId);
       if (j.generationId) rParams.set('generationId', j.generationId);
       const rQs = rParams.toString();
-      j.resultUrl = await poll(`/api/status/image/${d2.taskId}${rQs ? '?' + rQs : ''}`, 8000, 360000);
+      j.resultUrl = await poll(`/api/status/image/${d2.taskId}${rQs ? '?' + rQs : ''}`, 8000, 360000,
+        (data) => setQueueState(j, data));
       j.status = 'done';
       log(`${j.name}: retry success`, 'success');
-    
+
     } catch (e) {
       j.status = 'error'; j.error = e.message;
       // Le message exact remonte : « retry failed » seul ne disait ni quelle
       // limite avait joué, ni dans combien de temps réessayer.
       log(`${j.name}: retry failed — ${e.message}`, 'error');
+      maybeFlagKeyError(e.message); // clé rejetée → la barre BYOK doit le dire
     }
     updateCard(j);
   }, 1);
