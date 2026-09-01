@@ -15,6 +15,8 @@ Or run it yourself: MIT, your own API keys, or **fully local with ComfyUI**.
 [![Release](https://img.shields.io/github/v/release/kanakytech/keou?style=flat-square&color=c8f060)](https://github.com/kanakytech/keou/releases)
 [![Try it](https://img.shields.io/badge/try%20it-studio.kanaky.xyz-c8f060?style=flat-square)](https://studio.kanaky.xyz/launch)
 
+<img src="https://studio.kanaky.xyz/showcase/demo.gif" width="680" alt="Keou Studio demo: one product photo becomes a commercial scene">
+
 <p>
   <img src="https://studio.kanaky.xyz/showcase/1.jpg" width="170" alt="Product render">
   <img src="https://studio.kanaky.xyz/showcase/2.jpg" width="170" alt="Product render">
