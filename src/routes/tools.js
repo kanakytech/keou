@@ -65,6 +65,10 @@ function friendlyToolError(e, fallback) {
   if (msg.includes('API 401') || msg.includes('API 403')) return 'API key is invalid — check your key in Dashboard → Settings';
   if (msg.includes('402') || msg.includes('insufficient') || msg.includes('exhausted')) return 'Credits exhausted on provider — top up';
   if (msg.includes('429') || msg.includes('rate limit')) return 'Rate limit reached — please wait a moment and try again';
+  // Agrandissement : le résultat dépasserait 20 000 px de côté (cas typique :
+  // ré-agrandir une image déjà agrandie). Le 422 brut ne dit pas quoi faire.
+  if (/exceeds the limit after scaling/i.test(msg)) return 'The result would exceed the provider\'s 20,000 px limit on the longest side — pick ×2 instead of ×4, or start from a smaller image.';
+  if (/max size|too large/i.test(msg)) return 'The source file is heavier than the 10 MB the provider accepts — start from a lighter file.';
   return fallback + (msg ? `: ${msg.slice(0, 150)}` : '');
 }
 

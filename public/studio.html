@@ -1015,6 +1015,10 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
              color var(--m-fast),transform var(--m-fast);
 }
 .tp-chip:hover{border-color:var(--s3-hover);color:var(--ink)}
+.tp-chip[disabled]{opacity:.38;cursor:not-allowed;text-decoration:line-through;transform:none}
+.tp-chip[disabled]:hover{border-color:var(--s3);color:var(--ink-muted)}
+.tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
+.tp-limit.over{color:#fda4af}
 .tp-chip:active{transform:scale(.95);transition-duration:.08s}
 .tp-chip.active{border-color:var(--tool-accent);color:var(--tool-accent);background:var(--tool-tint);animation:chipSelect .18s var(--m-ease)}
 .tp-chip[hidden]{display:none}
@@ -1708,8 +1712,9 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
         <button type="button" class="tp-chip active" data-v="2">&times;2</button>
         <button type="button" class="tp-chip" data-v="4">&times;4</button>
       </div>
+      <p class="tp-limit" data-tp-limit hidden></p>
       <button type="button" class="btn-primary full" data-tp-submit>Upscale this image</button>
-      <p class="tp-note">Sharp enlargement up to &times;4 &mdash; the provider does not go higher.</p>
+      <p class="tp-note">Sharp enlargement up to &times;4 &mdash; the provider caps the result at 20,000 px on the longest side.</p>
     </div>
   </section>
 
@@ -4536,6 +4541,83 @@ function imgFallback(el) {
     return out;
   }
 
+  /* Topaz refuse tout résultat dont le côté le plus long dépasse 20 000 px, et
+   * toute entrée de plus de 10 Mo. Avant, on ENVOYAIT quand même, et le
+   * visiteur recevait un « KIE API 422: The image exceeds the limit after
+   * scaling » — le cas typique : ré-agrandir une image déjà agrandie. On
+   * mesure donc la source ici, on éteint les facteurs qui dépasseraient, et
+   * on affiche ce que chaque facteur donnerait. Rien ne part vers un refus
+   * certain. (Règle vérifiée contre l'API le 02/09/2026 : 4096 px × 4 passe,
+   * au-delà de 20 000 px de côté c'est refusé à la soumission.) */
+  var TOPAZ_MAX_SIDE = 20000;
+  var TOPAZ_MAX_BYTES = 10 * 1024 * 1024;
+  var upscaleDims = {};   // url → {w,h}
+
+  function probeUpscaleLimits() {
+    var panel = panelOf('upscale');
+    if (!panel) return;
+    var st = state.upscale;
+    var chips = panel.querySelectorAll('[data-tp-factors] .tp-chip');
+    var hint = q(panel, '[data-tp-limit]');
+    var submit = q(panel, '[data-tp-submit]');
+    function applique(w, h, bytes) {
+      var side = Math.max(w, h);
+      var tropLourd = bytes > TOPAZ_MAX_BYTES;
+      var restants = 0, actifCoupe = false;
+      chips.forEach(function (c) {
+        var f = Number(c.getAttribute('data-v'));
+        var out = side * f;
+        var trop = out > TOPAZ_MAX_SIDE || tropLourd;
+        c.disabled = trop;
+        c.title = trop ? '' : (out.toLocaleString() + ' px');
+        if (trop && c.classList.contains('active')) { c.classList.remove('active'); actifCoupe = true; }
+        if (!trop) restants++;
+      });
+      // Si l'actif est tombé, on prend le plus grand facteur encore permis.
+      if (actifCoupe && restants) {
+        var ok = Array.prototype.filter.call(chips, function (c) { return !c.disabled; });
+        ok[ok.length - 1].classList.add('active');
+      }
+      if (hint) {
+        if (tropLourd) {
+          hint.textContent = 'This file is ' + (bytes / 1048576).toFixed(1) + ' MB — the provider accepts up to 10 MB. Start from a lighter file.';
+          hint.classList.add('over'); hint.removeAttribute('hidden');
+        } else if (!restants) {
+          hint.textContent = 'This image is already ' + side.toLocaleString() + ' px — even ×2 would exceed the 20,000 px limit. It cannot be enlarged further.';
+          hint.classList.add('over'); hint.removeAttribute('hidden');
+        } else {
+          var parts = [];
+          chips.forEach(function (c) {
+            var f = Number(c.getAttribute('data-v'));
+            parts.push('×' + f + ' → ' + (c.disabled ? 'over the limit' : (side * f).toLocaleString() + ' px'));
+          });
+          hint.textContent = 'Source ' + w.toLocaleString() + ' × ' + h.toLocaleString() + ' px · ' + parts.join(' · ');
+          hint.classList.remove('over'); hint.removeAttribute('hidden');
+        }
+      }
+      if (submit) submit.disabled = !restants;
+    }
+    if (!st.sel) {
+      chips.forEach(function (c) { c.disabled = false; c.title = ''; });
+      if (hint) hint.setAttribute('hidden', '');
+      if (submit) submit.disabled = false;
+      return;
+    }
+    var up = st.uploads.filter(function (u) { return u.url === st.sel; })[0];
+    var bytes = up && up.bytes ? up.bytes : 0;
+    var d = upscaleDims[st.sel];
+    if (d) { applique(d.w, d.h, bytes); return; }
+    var im = new Image();
+    im.onload = function () {
+      upscaleDims[st.sel] = { w: im.naturalWidth, h: im.naturalHeight };
+      // La sélection a pu changer pendant le chargement : on ne peint que si
+      // c'est toujours elle.
+      if (state.upscale.sel === im.src || state.upscale.sel === im.getAttribute('src')) applique(im.naturalWidth, im.naturalHeight, bytes);
+    };
+    im.onerror = function () { chips.forEach(function (c) { c.disabled = false; }); if (hint) hint.setAttribute('hidden', ''); };
+    im.src = st.sel;
+  }
+
   function refreshThumbs(tool) {
     var panel = panelOf(tool);
     var box = q(panel, '[data-tp-thumbs]');
@@ -4573,9 +4655,11 @@ function imgFallback(el) {
         st.sel = s.url; st.selMedia = s.media;
         box.querySelectorAll('.tp-thumb').forEach(function (t) { t.classList.remove('sel'); });
         b.classList.add('sel');
+        if (tool === 'upscale') probeUpscaleLimits();
       });
       box.appendChild(b);
     });
+    if (tool === 'upscale') probeUpscaleLimits();
   }
 
   // ── Upload / sample vers R2 (même chemin que le studio : POST /api/upload) ──
@@ -4619,7 +4703,7 @@ function imgFallback(el) {
       var res = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
       var data = await res.json();
       if (!res.ok || data.error || !data.url) throw new Error(data.error || 'Upload failed');
-      state[tool].uploads.unshift({ url: data.url, media: type });
+      state[tool].uploads.unshift({ url: data.url, media: type, bytes: blob.size || 0 });
       state[tool].sel = data.url;
       state[tool].selMedia = type;
       refreshThumbs(tool);
@@ -4634,7 +4718,7 @@ function imgFallback(el) {
     if (!group) return;
     group.addEventListener('click', function (e) {
       var chip = e.target.closest('.tp-chip');
-      if (!chip || chip.hasAttribute('data-tp-audio')) return;
+      if (!chip || chip.disabled || chip.hasAttribute('data-tp-audio')) return;
       group.querySelectorAll('.tp-chip').forEach(function (c) { c.classList.remove('active'); });
       chip.classList.add('active');
     });
@@ -4927,7 +5011,12 @@ function imgFallback(el) {
 
     wireSubmit('upscale', function (panel, st) {
       if (!needSource(st)) return null;
-      var f = chipValue(q(panel, '[data-tp-factors]')) || '2';
+      var f = chipValue(q(panel, '[data-tp-factors]'));
+      if (!f) { toast('This image cannot be enlarged further — the result would exceed the provider\'s 20,000 px limit', true); return null; }
+      var dd = upscaleDims[st.sel];
+      if (dd && Math.max(dd.w, dd.h) * Number(f) > TOPAZ_MAX_SIDE) {
+        toast('×' + f + ' would exceed the 20,000 px limit — pick a smaller factor', true); return null;
+      }
       return { route: '/api/tools/image-upscale', statusType: 'img-upscale', interval: 8000, timeout: 300000,
         media: 'image', body: { imageUrl: st.sel, upscaleFactor: f } };
     });

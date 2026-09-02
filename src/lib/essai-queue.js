@@ -289,6 +289,15 @@ function safeErrorMessage(err) {
     if (estPassagere(propre)) {
       return `The model provider is having trouble right now (${propre}) — we already retried once. Try again in a few minutes.`;
     }
+    /* Le refus le plus fréquent de l'agrandissement : le résultat dépasserait
+     * 20 000 px de côté (typiquement en ré-agrandissant une image déjà
+     * agrandie). Le code 422 brut ne dit pas quoi faire ; ceci le dit. */
+    if (/exceeds the limit after scaling/i.test(propre)) {
+      return 'The result would exceed the provider\'s 20,000 px limit on the longest side — pick ×2 instead of ×4, or start from a smaller image.';
+    }
+    if (/max size|too large|exceeds.*(size|MB)/i.test(propre)) {
+      return 'The source file is heavier than the 10 MB the provider accepts — start from a lighter file.';
+    }
     return `Provider refused the request: ${propre}`;
   }
   return 'Generation failed — please try again in a moment';
