@@ -420,7 +420,12 @@ async function createProviderTask(job) {
       // qu'il vient de créer. La vidéo a son propre kind ci-dessous.
       return kie.upscaleImage(job.apiKey, {
         imageUrl: job.imageUrl,
-        upscaleFactor: job.upscaleFactor === '8' ? '8' : '4',
+        /* Le facteur DEMANDÉ, et seulement lui. La ligne d'avant ne connaissait
+         * que « 8 ou 4 » : un visiteur qui choisissait ×2 recevait — et
+         * payait — un ×4, et le contrôle des 20 000 px côté studio raisonnait
+         * sur un facteur que le serveur n'envoyait pas. Vu le 03/09/2026 :
+         * 640 px demandé en ×2, 2 560 px rendus. facteurTopaz() borne à 1/2/4. */
+        upscaleFactor: ['1', '2', '4'].includes(String(job.upscaleFactor)) ? String(job.upscaleFactor) : '4',
       });
     case 'vid-upscale':
       // Topaz Video sur KIE : mêmes facteurs que le compte
