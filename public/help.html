@@ -24,23 +24,38 @@
 .help-nav-back{
   display:flex;align-items:center;gap:8px;padding:8px 20px;margin:0 12px 20px;
   font-size:12px;font-weight:600;color:var(--ink-muted);text-decoration:none;
-  border:1px solid var(--border);border-radius:8px;transition:all .15s;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  transition:background var(--m-fast),color var(--m-fast),border-color var(--m-fast),transform var(--m-fast);
 }
-.help-nav-back:hover{background:var(--surface-2);color:var(--ink)}
-.help-nav-back svg{width:14px;height:14px;flex-shrink:0}
+.help-nav-back:hover{background:var(--surface-2);color:var(--ink);border-color:var(--border-strong)}
+.help-nav-back:hover svg{transform:translateX(-2px)}
+.help-nav-back svg{width:14px;height:14px;flex-shrink:0;transition:transform var(--m-fast)}
 .help-nav-title{
   font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
   color:var(--ink-faint);padding:0 20px;margin-bottom:12px;
 }
 .help-nav a.help-nav-link{
+  position:relative;
   display:flex;align-items:center;gap:10px;padding:8px 20px;
   font-size:12px;font-weight:500;color:var(--ink-muted);text-decoration:none;
-  border-left:2px solid transparent;transition:all .15s;
+  transition:color var(--m-fast),background var(--m-fast);
 }
 .help-nav a.help-nav-link:hover{color:var(--ink);background:rgba(255,255,255,.03)}
-.help-nav a.help-nav-link.active{color:var(--ink);border-left-color:var(--ink);background:rgba(255,255,255,.04);font-weight:600}
-.help-nav a.help-nav-link svg{width:15px;height:15px;flex-shrink:0;opacity:.5}
+.help-nav a.help-nav-link.active{color:var(--ink);background:rgba(255,255,255,.04);font-weight:600}
+.help-nav a.help-nav-link svg{width:15px;height:15px;flex-shrink:0;opacity:.5;transition:opacity var(--m-fast)}
 .help-nav a.help-nav-link.active svg{opacity:1}
+.help-nav a.help-nav-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;color:var(--ink)}
+/* Le liseré actif s'ouvre depuis son centre au lieu de s'allumer d'un coup :
+   le passage d'une section à l'autre se lit comme un transfert, pas comme deux
+   éclairages sans rapport. Dessiné en ::before pour ne jamais décaler le
+   texte — un bord qui change d'épaisseur ferait sauter toute la colonne. */
+.help-nav a.help-nav-link::before{
+  content:'';position:absolute;left:0;top:4px;bottom:4px;width:2px;
+  background:var(--ink);border-radius:0 2px 2px 0;
+  transform:scaleY(0);transform-origin:center;
+  transition:transform .28s var(--m-ease);
+}
+.help-nav a.help-nav-link.active::before{transform:scaleY(1)}
 
 /* ── Content area ── */
 .help-content{flex:1;max-width:700px;padding:40px 48px 80px;margin:0 auto}
@@ -64,13 +79,17 @@
 
 /* ── Cards ── */
 .help-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 16px}
+/* Rayons alignés sur le studio : --radius-sm (12px) pour les cartes compactes,
+   au lieu du 10px isolé qui traînait ici. */
 .help-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:14px 16px;transition:border-color .15s;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px 16px;
+  transition:border-color var(--m-fast),background var(--m-fast),transform .22s var(--m-ease);
 }
-.help-card:hover{border-color:var(--ink-faint)}
+.help-card:hover{border-color:var(--border-strong);background:var(--surface-2);transform:translateY(-1px)}
 .help-card-label{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;display:flex;align-items:center;gap:6px}
-.help-card-label svg{width:14px;height:14px;color:var(--ink-muted)}
+.help-card-label svg{width:14px;height:14px;color:var(--ink-muted);transition:color var(--m-fast)}
+.help-card:hover .help-card-label svg{color:var(--accent)}
 .help-card p{margin:0;font-size:11px;color:var(--ink-faint);line-height:1.5}
 .help-card a{color:var(--ink-muted);font-weight:500;text-decoration:none}
 .help-card a:hover{color:var(--ink)}
@@ -79,10 +98,12 @@
 .help-steps{display:flex;flex-direction:column;gap:10px;margin:12px 0 16px}
 .help-step{
   display:flex;gap:14px;align-items:flex-start;
-  background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;
+  transition:border-color var(--m-fast),background var(--m-fast);
 }
+.help-step:hover{border-color:var(--border-strong);background:var(--surface-2)}
 .help-step-num{
-  width:24px;height:24px;border-radius:6px;background:var(--ink);color:var(--bg);
+  width:24px;height:24px;border-radius:7px;background:var(--ink);color:var(--bg);
   display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;
 }
 .help-step-text{font-size:12px;color:var(--ink-muted);line-height:1.6}
@@ -93,21 +114,40 @@
 .help-table th{text-align:left;font-weight:600;color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px;font-size:10px}
 .help-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--ink-muted)}
 .help-table td:first-child{color:var(--ink);font-weight:500}
-.help-table tr:hover td{background:rgba(255,255,255,.02)}
+.help-table td{transition:background var(--m-fast)}
+.help-table tr:hover td{background:rgba(255,255,255,.03)}
 
 /* ── Tip box ── */
 .help-tip{
-  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px;
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:var(--radius-xs);
   padding:12px 14px;margin:12px 0;font-size:12px;color:var(--ink-muted);line-height:1.6;
   display:flex;gap:10px;align-items:flex-start;
 }
 .help-tip svg{width:16px;height:16px;color:#22c55e;flex-shrink:0;margin-top:1px}
+
+/* ── Révélation au scroll ──
+   Le bloc n'a pas d'état caché propre : ce sont ses enfants qui arrivent l'un
+   après l'autre. Les primitives (.m-reveal, .m-press) vivent dans
+   shared/styles.css — on n'ajoute ici que la cascade. */
+.js-reveal .m-reveal.m-cascade{opacity:1;transform:none}
+.js-reveal .m-reveal.m-cascade>*{opacity:0;transform:translateY(12px);transition:opacity .48s var(--m-ease),transform .48s var(--m-ease)}
+.js-reveal .m-reveal.m-cascade.is-in>*{opacity:1;transform:none}
+.m-cascade>*:nth-child(2){transition-delay:45ms}
+.m-cascade>*:nth-child(3){transition-delay:90ms}
+.m-cascade>*:nth-child(4){transition-delay:135ms}
+.m-cascade>*:nth-child(5){transition-delay:180ms}
+.m-cascade>*:nth-child(6){transition-delay:225ms}
+.m-cascade>*:nth-child(n+7){transition-delay:270ms}
 
 /* ── Responsive ── */
 @media(max-width:800px){
   .help-nav{display:none}
   .help-content{padding:24px 20px 60px}
   .help-cards{grid-template-columns:1fr}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .m-reveal,.m-reveal>*{opacity:1!important;transform:none!important}
 }
 
 </style>
@@ -118,7 +158,7 @@
 
   <!-- ═══ Left nav ═══ -->
   <aside class="help-nav">
-    <a href="javascript:history.back()" class="help-nav-back">
+    <a href="javascript:history.back()" class="help-nav-back m-press">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Back
     </a>
@@ -156,13 +196,13 @@
   <!-- ═══ Content ═══ -->
   <main class="help-content">
 
-    <div class="help-hero">
+    <div class="help-hero m-enter">
       <h1>Getting Started</h1>
       <p>Everything you need to set up and use your Keou creative platform. Follow the steps below or jump to any section from the sidebar.</p>
     </div>
 
     <!-- 1. Setup -->
-    <section class="help-section" id="setup">
+    <section class="help-section m-reveal m-cascade" id="setup">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Initial Setup
@@ -189,7 +229,7 @@
     </section>
 
     <!-- 2. Providers -->
-    <section class="help-section" id="providers">
+    <section class="help-section m-reveal m-cascade" id="providers">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         AI Providers
@@ -235,7 +275,7 @@
     </section>
 
     <!-- 3. Studio -->
-    <section class="help-section" id="studio">
+    <section class="help-section m-reveal m-cascade" id="studio">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
         Studio
@@ -267,7 +307,7 @@
     </section>
 
     <!-- 4. Clients -->
-    <section class="help-section" id="clients">
+    <section class="help-section m-reveal m-cascade" id="clients">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Clients & Projects
@@ -282,7 +322,7 @@
     </section>
 
     <!-- 6. Library -->
-    <section class="help-section" id="library">
+    <section class="help-section m-reveal m-cascade" id="library">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Library
@@ -297,7 +337,7 @@
     </section>
 
     <!-- 7. Tools -->
-    <section class="help-section" id="tools">
+    <section class="help-section m-reveal m-cascade" id="tools">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
         Tools
@@ -315,7 +355,7 @@
     </section>
 
     <!-- 8. Team -->
-    <section class="help-section" id="team">
+    <section class="help-section m-reveal m-cascade" id="team">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Team Management
@@ -395,5 +435,6 @@ const observer = new IntersectionObserver(entries => {
 }, { rootMargin: '-20% 0px -60% 0px' });
 sections.forEach(s => observer.observe(s));
 </script>
+<script src="/shared/reveal.js" defer></script>
 </body>
 </html>

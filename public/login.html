@@ -22,14 +22,76 @@ body{opacity:0;transition:opacity .4s ease;background-image:radial-gradient(circ
   text-align:center;margin-top:32px;font-size:11px;color:var(--ink-faint);
   letter-spacing:.3px;animation:fadeIn .6s var(--ease-out) .5s both;
 }
+
+/* ── Champs ──
+   L'anneau d'accent au focus est déjà dans shared/styles.css ; on ajoute ce
+   qu'un formulaire de connexion doit dire en plus. */
+.auth-card .form-input{transition:border-color var(--m-fast),background var(--m-fast),box-shadow .2s var(--m-ease)}
+/* :user-invalid ne se déclenche qu'APRÈS que la personne a quitté le champ ou
+   soumis — contrairement à :invalid, qui rougirait dès la première lettre
+   tapée dans « Email ». Un moteur qui ne connaît pas le sélecteur ignore la
+   règle et rend simplement l'état neutre d'avant. */
+.auth-card .form-input:user-invalid{border-color:rgba(220,38,38,.55)}
+.auth-card .form-input:user-invalid:focus{box-shadow:0 0 0 3px rgba(220,38,38,.14)}
+
+/* ── Erreur ──
+   Le message était un texte rouge nu au milieu de la carte. Il devient un
+   bloc identifiable, avec un liseré qui dit d'où vient le refus. */
+.auth-card .form-error.show{
+  padding:9px 12px;border-radius:var(--radius-xs);
+  background:var(--error-soft);border:1px solid rgba(220,38,38,.28);
+  color:#f08b8b;max-height:120px;
+}
+
+/* ── Bouton ──
+   L'étiquette s'efface au lieu de disparaître d'un coup quand le spinner
+   prend sa place : le bouton garde exactement sa taille, seul son contenu
+   change d'état. */
+.auth-card .btn-primary{transition:background .25s var(--ease-out),transform .2s var(--ease-out),box-shadow .2s var(--ease-out),color .12s linear,opacity .2s var(--ease-out)}
+.auth-card .btn-primary.btn-loading{opacity:.92}
 .pw-wrap{position:relative}
-.pw-wrap .form-input{padding-right:40px}
-.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink-faint);font-size:16px;padding:2px;line-height:1;transition:color .2s}
-.pw-toggle:hover{color:var(--ink)}
-.auth-switch{display:none;gap:4px;margin:0 0 22px;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--surface-1,rgba(255,255,255,.02))}
+.pw-wrap .form-input{padding-right:44px}
+/* La cible tactile faisait 20 px : sous le minimum utilisable au pouce.
+   Le bouton grandit, le pictogramme ne bouge pas. */
+.pw-toggle{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:var(--radius-xs);
+  background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:0;line-height:1;
+  transition:color var(--m-fast),background var(--m-fast),transform var(--m-fast);
+}
+.pw-toggle:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.pw-toggle:active{transform:translateY(-50%) scale(.9);transition-duration:.08s}
+.pw-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:1px;box-shadow:none;color:var(--ink)}
+
+.auth-switch{position:relative;display:none;gap:4px;margin:0 0 22px;padding:4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-1,rgba(255,255,255,.02))}
 .auth-switch.visible{display:flex}
-.auth-switch button{flex:1;padding:9px 0;border:none;border-radius:9px;background:transparent;color:var(--ink-faint);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
-.auth-switch button.active{background:var(--accent);color:#fff}
+.auth-switch button{position:relative;z-index:1;flex:1;padding:9px 0;border:none;border-radius:9px;background:transparent;color:var(--ink-faint);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  transition:color var(--m-fast),background var(--m-fast)}
+.auth-switch button:hover{color:var(--ink-soft)}
+/* Repli sans :has() — la pastille n'existe pas, l'onglet actif se peint
+   lui-même. Le texte passe en encre foncée : #fff sur le vert Keou était
+   illisible (contraste ~1,6:1). */
+.auth-switch button.active{background:var(--accent);color:#050505}
+.auth-switch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:none}
+
+/* Pastille qui GLISSE d'un onglet à l'autre. Le parent sait quel onglet est
+   actif via :has() ; la pastille se déplace par transform, sans que le DOM ni
+   le script existants changent d'un octet. */
+@supports selector(:has(*)){
+  .auth-switch::before{
+    content:'';position:absolute;z-index:0;
+    /* Largeur exacte d'un onglet : la piste fait 4 px de marge de chaque côté
+       et 4 px de gouttière — soit (100% − 12)/2, écrit 50% − 6. Le saut est
+       donc sa propre largeur PLUS la gouttière, sinon la pastille rate sa
+       case de quatre pixels. */
+    top:4px;bottom:4px;left:4px;width:calc(50% - 6px);
+    border-radius:9px;background:var(--accent);
+    transition:transform .3s var(--m-ease);
+  }
+  .auth-switch:has(#tab-signup.active)::before{transform:translateX(calc(100% + 4px))}
+  .auth-switch button.active{background:transparent;color:#050505}
+}
 </style>
 <script src="/shared/i18n-fr.js"></script>
 <script src="/shared/i18n.js"></script>

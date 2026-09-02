@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { config } from './src/config.js';
@@ -112,13 +112,20 @@ app.use(helmet({
       mediaSrc: MEDIA_SOURCES,
       frameSrc: ["'self'", "https://streamable.com"],
       connectSrc: ["'self'", "https:", "wss:"],
+      // Helmet ajoute upgrade-insecure-requests d'office — WebKit/Safari
+      // l'applique même sur localhost (Chrome l'exempte) : en dev http, tous
+      // les assets basculaient en https → TLS error → page nue. Prod le garde.
+      ...(process.env.NODE_ENV === 'production' ? {} : { upgradeInsecureRequests: null }),
     },
   },
   // HSTS — Railway terminates TLS at its proxy; with `trust proxy` set, helmet
   // still emits the header on every response and the browser pins HTTPS for a
   // year. No `preload` (irreversible commitment) — submit to hstspreload.org
   // deliberately if ever wanted.
-  hsts: { maxAge: 31536000, includeSubDomains: true },
+  // Coupé hors production : WebKit/Safari honore HSTS même sur localhost
+  // (Chrome l'exempte) — un dev qui teste en http://localhost voyait Safari
+  // forcer https sur styles.css/auth.js → TLS error → page nue. Vécu le 01/09.
+  hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   crossOriginEmbedderPolicy: false, // Allow loading CDN images
 }));
@@ -147,10 +154,11 @@ app.use(express.static(join(__dirname, 'public'), {
   maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, // Cache static assets 1h in prod, no cache in dev
   etag: true,                    // ETag for conditional requests (304 Not Modified)
   lastModified: true,            // Last-Modified headers
-  // Only the community edition serves the marketing landing at "/". Enterprise
-  // (white-label client instances) and opensource fall through to the explicit
-  // root handler below (login page / studio).
-  index: config.edition === 'community' ? 'index.html' : false,
+  // Aucune édition ne sert de page d'index automatiquement : c'est la route
+  // explicite plus bas qui décide de ce qu'est la racine. Depuis le 02/09 la
+  // racine community est LE STUDIO, pas la page de présentation — un visiteur
+  // qui arrive doit tomber dans l'outil, pas devant une brochure.
+  index: false,
 }));
 
 // ─── Demo video redirect (presigned R2 URL, always fresh) ───
@@ -405,7 +413,14 @@ app.use('/api', requestContext);
  * parler avant elle. Même raisonnement pour les uploads : 20 photos × 3
  * tentatives = 60.
  */
-app.use('/api/auth', rateLimit(15, 60 * 1000, 'sign-in'));
+/* Le seau « sign-in » existe contre le brute-force de connexion. Depuis que la
+ * RACINE sert le studio anonyme, chaque chargement de page consommait 2 jetons
+ * (agency + refresh) : au 8e rechargement le studio rendait une page BLANCHE,
+ * parce que redirectToLogin() ne fait rien sur « / ». La lecture publique de
+ * l'édition n'a rien à faire dans ce seau. */
+app.use('/api/auth', (req, res, next) => (
+  req.method === 'GET' && req.path === '/agency'
+) ? next() : rateLimit(15, 60 * 1000, 'sign-in')(req, res, next));
 app.use('/api/upload', rateLimit(200, 60 * 1000, 'upload'));   // lots du studio : 30+ images
 app.use('/api/jarvis', rateLimit(30, 60 * 1000, 'assistant'));
 app.use('/api/share', rateLimit(20, 60 * 1000, 'share'));
@@ -532,6 +547,7 @@ app.use('/api/essai', essaiRoutes);
 const SEO_HOST = 'https://studio.kanaky.xyz';
 const SEO_PAGES = [
   ['/', 'weekly', '1.0'],
+  ['/about', 'weekly', '0.95'],
   ['/product-images.html', 'monthly', '0.9'],
   ['/video.html', 'monthly', '0.9'],
   ['/self-host.html', 'monthly', '0.9'],
@@ -641,8 +657,32 @@ app.use('/api', generateRoutes);
 // Le studio anonyme reste atteignable par /launch.
 // Community : produit public — la racine est la page d'accueil.
 app.get('/', (req, res) => {
-  const page = config.edition === 'community' ? 'index.html' : 'login.html';
-  res.sendFile(join(__dirname, 'public', page));
+  // Enterprise/opensource : la connexion, comme avant.
+  if (config.edition !== 'community') {
+    return res.sendFile(join(__dirname, 'public', 'login.html'));
+  }
+  // Community : le studio directement — c'est le produit, et un lien partagé
+  // (Show HN, AlternativeTo, README) doit ouvrir l'outil, pas une brochure.
+  // studio.html porte un `noindex` (juste : /studio.html est une copie et les
+  // instances white-label ne doivent pas être indexées). Servi à la RACINE
+  // publique, ce noindex sortirait l'URL du sitemap (priorité 1.0) de l'index.
+  // On le remplace à la volée par le canonical de la racine et une description,
+  // sans toucher au fichier — qui reste partagé par toutes les éditions.
+  const html = readFileSync(join(__dirname, 'public', 'studio.html'), 'utf8').replace(
+    '<meta name="robots" content="noindex">',
+    `<link rel="canonical" href="${SEO_HOST}/">\n<meta name="description" content="Keou Studio — free, open-source AI product images, cinematic video, voice and sound. No account: paste your own KIE.AI key and produce. Self-hostable under MIT.">`,
+  );
+  res.type('html').send(html);
+});
+
+// La page de présentation garde une adresse propre et indexable. Elle reste
+// servie telle quelle par express.static à /index.html ; /about est l'URL
+// canonique qu'on publie (sitemap, liens internes).
+app.get('/about', (req, res) => {
+  // Community seulement : une instance en marque blanche ne doit pas servir
+  // notre page de présentation avec notre marque et nos liens.
+  if (config.edition !== 'community') return res.status(404).end();
+  res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
 // État moteur pour le front (studio) : public mais minimal — pas de chemins,

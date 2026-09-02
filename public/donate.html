@@ -18,7 +18,38 @@
   --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
   --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
   --btc:#f7931a;
-  --radius:16px;
+  --radius:16px;--radius-sm:12px;
+  /* Grammaire de mouvement — identique à shared/styles.css et au studio.
+     Cette page ne charge pas la feuille partagée : les tokens sont redéclarés
+     ici à l'identique plutôt que réinventés. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
+}
+
+/* ═══ Primitives de mouvement partagées ═══ */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-press{transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast),box-shadow var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+/* L'état caché n'existe QUE si reveal.js a démarré (`js-reveal` sur <html>) :
+   sans JS, la page reste entièrement lisible. */
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+/* Cascade : le bloc ne bouge pas, ses enfants arrivent l'un après l'autre. */
+.js-reveal .m-reveal.m-cascade{opacity:1;transform:none}
+.js-reveal .m-reveal.m-cascade>*{opacity:0;transform:translateY(12px);transition:opacity .48s var(--m-ease),transform .48s var(--m-ease)}
+.js-reveal .m-reveal.m-cascade.is-in>*{opacity:1;transform:none}
+.m-cascade>*:nth-child(2){transition-delay:45ms}
+.m-cascade>*:nth-child(3){transition-delay:90ms}
+.m-cascade>*:nth-child(n+4){transition-delay:135ms}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;
+  }
+  .m-reveal,.m-reveal>*{opacity:1!important;transform:none!important}
 }
 body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
@@ -55,25 +86,55 @@ h1{font-size:clamp(30px,4.6vw,46px);font-weight:800;margin-bottom:16px}
 .qr{width:216px;height:216px;margin:0 auto 24px;padding:14px;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
 .qr img{width:100%;height:100%;display:block}
 .addr-row{display:flex;align-items:stretch;gap:8px;max-width:560px;margin:0 auto 12px}
-.addr{flex:1;font-family:'JetBrains Mono','Menlo',monospace;font-size:12.5px;letter-spacing:.02em;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;overflow-x:auto;white-space:nowrap;text-align:left;-webkit-overflow-scrolling:touch}
-.copy-btn{flex:none;display:inline-flex;align-items:center;gap:7px;padding:0 18px;border:none;border-radius:12px;background:var(--accent);color:#050505;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.addr{flex:1;font-family:'JetBrains Mono','Menlo',monospace;font-size:12.5px;letter-spacing:.02em;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;overflow-x:auto;white-space:nowrap;text-align:left;-webkit-overflow-scrolling:touch;scrollbar-width:thin;
+  transition:border-color var(--m-fast),background var(--m-fast)}
+.addr:hover{border-color:var(--border-strong);background:var(--surface-3)}
+.copy-btn{flex:none;display:inline-flex;align-items:center;gap:7px;padding:0 18px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#050505;font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  transition:background var(--m-fast),color var(--m-fast),transform var(--m-fast),box-shadow var(--m-fast)}
 .copy-btn:hover{background:#d6f57e}
-.copy-btn.copied{background:#1a7f37}
+.copy-btn:active{transform:scale(.97);transition-duration:.08s}
+.copy-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* Le vert de confirmation portait un texte quasi noir — illisible sur un fond
+   sombre. La confirmation doit se lire avant tout. */
+.copy-btn.copied{background:#1a7f37;color:#fff;box-shadow:0 0 0 3px rgba(26,127,55,.22)}
 .net-note{font-size:12px;color:var(--ink-faint);margin-bottom:0}
 .net-note b{color:var(--ink-soft)}
 
 .why{margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:left}
-.why-card{padding:22px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
+.why-card{padding:22px 20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);
+  transition:border-color var(--m-fast),background var(--m-fast),transform .22s var(--m-ease)}
+.why-card:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
 .why-card h3{font-size:14px;font-weight:700;margin-bottom:6px}
 .why-card p{font-size:12.5px;color:var(--ink-muted);line-height:1.65}
 @media (max-width:680px){.why{grid-template-columns:1fr}}
 
 .back{margin-top:46px;font-size:13.5px}
 .back a{color:var(--accent);text-decoration:none;font-weight:600}
+.back a:hover{text-decoration:underline;text-underline-offset:3px}
 
 footer{padding:32px;text-align:center;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--border)}
 footer a{color:var(--ink-soft);text-decoration:none;margin:0 8px}
 footer a:hover{color:var(--ink)}
+
+.lp-nav-link:focus-visible,.lp-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:100px}
+.back a:focus-visible,footer a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;text-decoration:none}
+.lp-nav-link:active{transform:scale(.97);transition:transform var(--m-fast)}
+
+/* ── En-tête sur téléphone ──
+   « Keou Studio » se cassait sur trois lignes à 375 px : l'en-tête montait à
+   97 px de haut et la marque passait sous ses propres liens. On ne retire
+   rien — on empêche la césure et on resserre l'échelle, l'en-tête retombe sur
+   une ligne franche. */
+@media (max-width:560px){
+  .lp-nav{padding:10px 14px;gap:10px}
+  .lp-brand{gap:8px;min-width:0}
+  .lp-brand img{height:26px}
+  .lp-brand-name{min-width:0}
+  .lp-brand-name strong{font-size:15px;white-space:nowrap}
+  .lp-brand-name span{font-size:9px;white-space:nowrap}
+  .lp-nav-links{gap:4px;flex:none}
+  .lp-nav-link{padding:7px 11px;font-size:12px;white-space:nowrap}
+}
 </style>
 <script src="/shared/i18n-fr.js"></script>
 <script src="/shared/i18n.js"></script>
@@ -103,7 +164,7 @@ footer a:hover{color:var(--ink)}
   <h1>Keep Keou free for everyone.</h1>
   <p class="sub">Keou is free, with every feature unlocked, and it will stay that way. No investors, no ads, no data mining — just servers to pay and features to build. If the platform saves you hours, a donation of any size helps it grow. Crypto only.</p>
 
-  <div class="donate-card">
+  <div class="donate-card m-reveal">
     <div class="coin">
       <span class="coin-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 5h5a3.25 3.25 0 0 1 0 6.5h-5zM8.5 11.5h5.8a3.25 3.25 0 0 1 0 6.5H8.5z"/><path d="M8.5 5V3.2M12.5 5V3.2M8.5 20.8V18M12.5 20.8V18M8.5 5v13"/></svg></span>
       <span><b>Bitcoin</b><span>BTC &middot; Bitcoin network only</span></span>
@@ -119,7 +180,7 @@ footer a:hover{color:var(--ink)}
     <p class="net-note">Send <b>BTC on the Bitcoin network only</b>. Funds sent as other assets or on other networks cannot be recovered. Always verify the first and last characters after pasting.</p>
   </div>
 
-  <div class="why">
+  <div class="why m-reveal m-cascade">
     <div class="why-card">
       <h3>Servers &amp; storage</h3>
       <p>Hosting, database and asset storage for every free account — donations pay the bill that keeps signup open.</p>
@@ -134,7 +195,7 @@ footer a:hover{color:var(--ink)}
     </div>
   </div>
 
-  <p class="back">Prefer to support with your business? <a href="/custom.html">a custom build</a> funds the project too.</p>
+  <p class="back m-reveal">Prefer to support with your business? <a href="/custom.html">a custom build</a> funds the project too.</p>
 </main>
 
 <footer>
@@ -174,6 +235,7 @@ document.getElementById('copy-btn').addEventListener('click', async () => {
   }
 });
 </script>
+<script src="/shared/reveal.js" defer></script>
 <script defer src="/shared/kanaky-badge.js"></script>
 </body>
 </html>

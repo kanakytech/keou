@@ -19,6 +19,39 @@
   --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
   --danger:#f0716a;
   --radius:16px;--radius-sm:12px;
+  /* Grammaire de mouvement — identique à shared/styles.css et au studio.
+     Cette page ne charge pas la feuille partagée : les tokens sont redéclarés
+     ici à l'identique plutôt que réinventés. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
+}
+
+/* ═══ Primitives de mouvement partagées ═══ */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-press{transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast),box-shadow var(--m-fast)}
+.m-press:active:not(:disabled){transform:scale(.985)}
+/* L'état caché n'existe QUE si reveal.js a démarré (`js-reveal` sur <html>) :
+   sans JS, la page reste entièrement lisible. */
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+/* Cascade : le bloc ne bouge pas, ses enfants arrivent l'un après l'autre. */
+.js-reveal .m-reveal.m-cascade{opacity:1;transform:none}
+.js-reveal .m-reveal.m-cascade>*{opacity:0;transform:translateY(12px);transition:opacity .48s var(--m-ease),transform .48s var(--m-ease)}
+.js-reveal .m-reveal.m-cascade.is-in>*{opacity:1;transform:none}
+.m-cascade>*:nth-child(2){transition-delay:45ms}
+.m-cascade>*:nth-child(3){transition-delay:90ms}
+.m-cascade>*:nth-child(4){transition-delay:135ms}
+.m-cascade>*:nth-child(5){transition-delay:180ms}
+.m-cascade>*:nth-child(n+6){transition-delay:225ms}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;
+  }
+  .m-reveal,.m-reveal>*{opacity:1!important;transform:none!important}
 }
 body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
@@ -60,17 +93,30 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .field{margin-bottom:18px}
 .field label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
 .field label .hint{font-weight:400;font-size:11.5px;color:var(--ink-faint)}
-.field input[type=password],.field input[type=text],.field textarea,.field select{width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
-.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--border-strong)}
+.field input[type=password],.field input[type=text],.field textarea,.field select{width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;
+  transition:border-color var(--m-fast),background var(--m-fast),box-shadow var(--m-fast)}
+.field input:hover,.field textarea:hover,.field select:hover{border-color:var(--border-strong)}
+/* Le champ actif se distingue par l'accent, pas seulement par un bord plus
+   clair : sur cette page on colle une clé d'API, savoir où l'on écrit compte. */
+.field input:focus,.field textarea:focus,.field select:focus{border-color:rgba(200,240,96,.5);background:rgba(255,255,255,.05);box-shadow:0 0 0 3px rgba(200,240,96,.12)}
 .field textarea{resize:vertical;min-height:88px}
 .field select{appearance:none;cursor:pointer}
 .key-row{display:flex;gap:8px}
 .key-row input{flex:1}
-.btn-ghost{padding:0 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-family:'Space Grotesk',sans-serif;font-size:12.5px;cursor:pointer;transition:all .2s}
-.btn-ghost:hover{color:var(--ink);border-color:var(--border-strong)}
+.btn-ghost{padding:0 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-family:'Space Grotesk',sans-serif;font-size:12.5px;cursor:pointer;
+  transition:color var(--m-fast),background var(--m-fast),border-color var(--m-fast),transform var(--m-fast)}
+.btn-ghost:hover{color:var(--ink);border-color:var(--border-strong);background:var(--surface-2)}
+.btn-ghost:active{transform:scale(.97);transition-duration:.08s}
+.btn-ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.consent-row input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .form-foot{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.btn-generate{padding:13px 28px;border-radius:100px;border:none;background:var(--accent);color:#050505;font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:9px;transition:all .25s}
-.btn-generate:hover:not(:disabled){background:#d6f57e;transform:translateY(-1px)}
+.btn-generate{padding:13px 28px;border-radius:100px;border:none;background:var(--accent);color:#050505;font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
+  transition:background var(--m-fast),opacity var(--m-fast),transform .22s var(--m-ease),box-shadow .22s var(--m-ease)}
+.btn-generate:hover:not(:disabled){background:#d6f57e;transform:translateY(-1px);box-shadow:0 8px 22px rgba(200,240,96,.18)}
+.btn-generate:active:not(:disabled){transform:translateY(0) scale(.97);box-shadow:none;transition-duration:.09s}
+.btn-generate:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.btn-generate svg{transition:transform var(--m-fast)}
+.btn-generate:hover:not(:disabled) svg{transform:translateX(2px)}
 .btn-generate:disabled{opacity:.45;cursor:not-allowed}
 .char-count{font-size:11.5px;color:var(--ink-faint)}
 
@@ -107,8 +153,13 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .trust-head p{font-size:13px;color:var(--ink-muted)}
 .trust-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 @media (max-width:640px){.trust-grid{grid-template-columns:1fr}}
-.trust-card{padding:20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
-.trust-card .t-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);margin-bottom:12px}
+.trust-card{padding:20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);
+  transition:border-color var(--m-fast),background var(--m-fast)}
+.trust-card:hover{border-color:var(--border-strong);background:var(--surface-3)}
+/* Rayon concentrique aligné sur le studio : --radius-sm pour la pastille. */
+.trust-card .t-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-sm);background:var(--accent-soft);color:var(--accent);margin-bottom:12px;
+  transition:background var(--m-fast)}
+.trust-card:hover .t-icon{background:rgba(200,240,96,.15)}
 .trust-card h3{font-size:14.5px;font-weight:700;margin-bottom:7px}
 .trust-card p{font-size:13px;color:var(--ink-muted);line-height:1.65}
 .trust-card p a{color:var(--accent);text-decoration:none}
@@ -124,24 +175,77 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 .gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 @media (max-width:760px){.gallery-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:480px){.gallery-grid{grid-template-columns:1fr}}
-.g-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);overflow:hidden;display:flex;flex-direction:column}
+/* ── Entrée en cascade de la grille ──
+   Les cartes sont construites en JS puis ajoutées à la file : une animation
+   CSS avec des délais par rang suffit, sans toucher une ligne du script. Le
+   décompte repart à chaque rechargement complet de la grille ; « Voir plus »
+   ajoute à la suite, et la cascade s'aplatit au-delà d'un écran pour ne jamais
+   faire attendre devant une création. */
+@keyframes gCardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.g-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);overflow:hidden;display:flex;flex-direction:column;
+  animation:gCardIn .26s var(--m-ease) both;
+  transition:border-color var(--m-fast),background var(--m-fast)}
+.g-card:nth-child(2){animation-delay:40ms}
+.g-card:nth-child(3){animation-delay:80ms}
+.g-card:nth-child(4){animation-delay:120ms}
+.g-card:nth-child(5){animation-delay:160ms}
+.g-card:nth-child(6){animation-delay:200ms}
+.g-card:nth-child(7){animation-delay:240ms}
+.g-card:nth-child(8){animation-delay:280ms}
+.g-card:nth-child(n+9){animation-delay:320ms}
+.g-card:hover{border-color:var(--border-strong);background:var(--surface-3)}
 .g-card .protected{border:none;border-radius:0;width:100%}
+/* La vignette respire dans son cadre. `overflow:hidden` sur la carte contient
+   l'agrandissement : rien ne pousse le voisin, la grille ne bouge pas d'un
+   pixel — une galerie qui se réarrange au survol est illisible. */
+.g-card .protected img,.g-card .protected video{transition:transform .45s var(--m-ease)}
+@media (hover:hover){
+  .g-card:hover .protected img,.g-card:hover .protected video{transform:scale(1.035)}
+}
 .g-card .protected img{width:100%;aspect-ratio:1/1;object-fit:cover}
 .g-card .protected video{width:100%;aspect-ratio:1/1;object-fit:cover}
 .g-meta{padding:12px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
 .g-prompt{font-size:12.5px;color:var(--ink-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;flex:1}
 .g-actions{display:flex;gap:8px;align-items:center}
-.btn-report,.btn-delete{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:100px;border:1px solid var(--border);background:transparent;font-family:'Space Grotesk',sans-serif;font-size:11.5px;cursor:pointer;transition:all .2s}
+.btn-report,.btn-delete{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:100px;border:1px solid var(--border);background:transparent;font-family:'Space Grotesk',sans-serif;font-size:11.5px;cursor:pointer;
+  transition:color var(--m-fast),background var(--m-fast),border-color var(--m-fast),transform var(--m-fast)}
+.btn-report:active:not(:disabled),.btn-delete:active:not(:disabled){transform:scale(.96);transition-duration:.08s}
+.btn-report:focus-visible,.btn-delete:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn-report{color:var(--ink-faint)}
 .btn-report:hover:not(:disabled){color:var(--ink-soft);border-color:var(--border-strong)}
 .btn-report:disabled{opacity:.5;cursor:default}
 .btn-delete{color:var(--danger);border-color:rgba(240,113,106,.3)}
-.btn-delete:hover{background:rgba(240,113,106,.1)}
+.btn-delete:hover{background:rgba(240,113,106,.1);border-color:rgba(240,113,106,.5)}
 .gallery-more{text-align:center;margin-top:24px}
 .gallery-empty{padding:36px;text-align:center;color:var(--ink-faint);font-size:13.5px;border:1px dashed var(--border);border-radius:var(--radius)}
 
 .lp-footer{border-top:1px solid var(--border);padding:30px 32px;text-align:center;color:var(--ink-faint);font-size:12.5px}
 .lp-footer a{color:var(--ink-muted)}
+.lp-footer a:hover{color:var(--ink)}
+
+.lp-nav-link{transition:color var(--m-fast),background var(--m-fast),transform var(--m-fast)}
+.lp-nav-link:active{transform:scale(.97)}
+.lp-nav-link:focus-visible,.lp-brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:100px}
+.sub a:focus-visible,.trust-card a:focus-visible,.lp-footer a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* Le résultat fraîchement généré arrive dans le flux, il ne surgit pas. */
+.status-card.visible{animation:kMotionEnter var(--m-enter) both}
+
+/* ── En-tête sur téléphone ──
+   « Keou Studio » se cassait sur trois lignes à 375 px : l'en-tête montait à
+   97 px de haut et la marque passait sous ses propres liens. On ne retire
+   rien — on empêche la césure et on resserre l'échelle, l'en-tête retombe sur
+   une ligne franche. */
+@media (max-width:560px){
+  .lp-nav{padding:10px 14px;gap:10px}
+  .lp-brand{gap:8px;min-width:0}
+  .lp-brand img{height:26px}
+  .lp-brand-name{min-width:0}
+  .lp-brand-name strong{font-size:15px;white-space:nowrap}
+  .lp-brand-name span{font-size:9px;white-space:nowrap}
+  .lp-nav-links{gap:4px;flex:none}
+  .lp-nav-link{padding:7px 11px;font-size:12px;white-space:nowrap}
+}
 </style>
 <script src="/shared/lightbox.js"></script>
 <script src="/shared/i18n-fr.js"></script>
@@ -167,7 +271,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
 
 <main class="wrap">
 
-  <header class="page-head">
+  <header class="page-head m-enter">
     <span class="eyebrow">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       Free, no account — your key, your credits
@@ -183,7 +287,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   </header>
 
   <!-- ═══ Bannière publique + consentement ═══ -->
-  <div class="public-banner">
+  <div class="public-banner m-reveal">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     <div>
       <p><b>Everything you create here is public.</b> Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.</p>
@@ -195,7 +299,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   </div>
 
   <!-- ═══ Formulaire ═══ -->
-  <section class="card">
+  <section class="card m-reveal">
     <div class="field">
       <label for="api-key">KIE.AI API key <span class="hint">your key stays in your browser (localStorage) and travels only for the length of the request</span></label>
       <div class="key-row">
@@ -246,11 +350,11 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
        - Stockage côté navigateur : localStorage « keou.providerKey »
          (public/shared/auth.js), effaçable via le bouton « Oublier ma clé ». -->
   <section class="trust">
-    <div class="trust-head">
+    <div class="trust-head m-reveal">
       <h2>Your key, kept safe</h2>
       <p>What we do with your API key — and above all what we never do with it.</p>
     </div>
-    <div class="trust-grid">
+    <div class="trust-grid m-reveal m-cascade">
       <div class="trust-card">
         <div class="t-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><circle cx="5.5" cy="6" r=".5"/></svg></div>
         <h3>Your key stays in your browser</h3>
@@ -279,7 +383,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   </section>
 
   <!-- ═══ Galerie communautaire ═══ -->
-  <div class="gallery-head">
+  <div class="gallery-head m-reveal">
     <h2>Community gallery</h2>
     <p>Everything created here, most recent first.</p>
   </div>
@@ -295,6 +399,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   Keou Studio — free platform, no account · The <a href="https://github.com/kanakytech/keou" rel="noopener">full source is public on GitHub</a>, MIT licensed · <a href="/custom.html">Custom builds</a> shaped around your workflow.
 </footer>
 
+<script src="/shared/reveal.js" defer></script>
 <script src="/shared/auth.js"></script>
 <script>
 (() => {

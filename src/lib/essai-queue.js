@@ -133,6 +133,10 @@ export const MEDIA_BY_KIND = Object.freeze({
   adapt:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
   upscale: Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
   video:   Object.freeze({ media: 'video', ext: 'mp4', mime: 'video/mp4',  watermark: true }),
+  // Agrandissement vidéo (Topaz Video) : la source EST une vidéo, la sortie
+  // aussi — distinct de `upscale` (image) pour que MEDIA_BY_KIND serve le bon
+  // type et pose le filigrane ffmpeg, pas sharp.
+  'vid-upscale': Object.freeze({ media: 'video', ext: 'mp4', mime: 'video/mp4', watermark: true }),
   tts:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
   sfx:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
 });
@@ -395,12 +399,19 @@ async function createProviderTask(job) {
         variant: job.variant,
       });
     case 'upscale':
-      // Un seul kind d'agrandissement, et il est image : Topaz vidéo rendrait
-      // un MP4 que MEDIA_BY_KIND n'attend pas ici, et le visiteur anonyme
-      // agrandit ce qu'il vient de créer, c'est-à-dire une image.
+      // Un seul kind d'agrandissement IMAGE : le visiteur anonyme agrandit ce
+      // qu'il vient de créer. La vidéo a son propre kind ci-dessous.
       return kie.upscaleImage(job.apiKey, {
         imageUrl: job.imageUrl,
         upscaleFactor: job.upscaleFactor === '8' ? '8' : '4',
+      });
+    case 'vid-upscale':
+      // Topaz Video sur KIE : mêmes facteurs que le compte
+      // (POST /api/tools/video-upscale). La source vient d'une vidéo générée
+      // dans la session ou fournie par le visiteur.
+      return kie.upscaleVideo(job.apiKey, {
+        videoUrl: job.videoUrl || job.imageUrl,
+        upscaleFactor: job.upscaleFactor === '2' ? '2' : '4',
       });
     case 'tts': {
       /* Pas de voix imposée : le fournisseur a la sienne, et « Rachel » est un
@@ -542,7 +553,11 @@ async function apposerFiligrane(raw, out) {
  */
 function shouldWatermark(job, out) {
   if (!out.watermark) return false;
-  if (job.kind === 'upscale' && isTrialResultUrl(job.imageUrl)) return false;
+  // Même règle pour l'agrandissement VIDÉO : la seule source que le studio
+  // propose est une vidéo de session, déjà filigranée — un second filigrane
+  // se superposerait au premier, étiré ×2/×4 par Topaz.
+  if ((job.kind === 'upscale' || job.kind === 'vid-upscale')
+      && isTrialResultUrl(job.videoUrl || job.imageUrl)) return false;
   return true;
 }
 
@@ -801,6 +816,8 @@ export function enqueue({
   style = null, speed = null, duration_seconds = null,
   // agrandissement
   upscaleFactor = null,
+  // agrandissement vidéo (Topaz Video) : source vidéo distincte de l'image
+  videoUrl = null,
 }) {
   // Les deux refus nomment la limite qui a joué et chiffrent l'attente. Un refus
   // muet est ce qui a fait perdre une heure à un visiteur persuadé que son lot
@@ -830,7 +847,7 @@ export function enqueue({
     id, prompt, format, apiKey, ip, kind, imageUrl, creativeDirection,
     videoModel, duration, resolution, mode, sound, aspectRatio, generateAudio, variant,
     text, voice, voiceModel, stability, similarity_boost, style, speed, duration_seconds,
-    upscaleFactor,
+    upscaleFactor, videoUrl,
   });
   // Rang d'arrivée, pas ordre de service : depuis que la file se sert au tour
   // par tour, ce nombre est une estimation haute pour l'UI, pas une promesse.

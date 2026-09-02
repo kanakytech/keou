@@ -21,7 +21,42 @@
   --ok:#16a34a;--ok-soft:rgba(22,163,74,.10);
   --radius:16px;--radius-sm:11px;
   --sidebar:270px;
+  /* Grammaire de mouvement — identique à shared/styles.css et au studio.
+     Cette page ne charge pas la feuille partagée : les tokens sont redéclarés
+     ici à l'identique plutôt que réinventés, pour que docs, studio et pages
+     produit bougent exactement de la même façon. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
 }
+
+/* ═══ Primitives de mouvement partagées ═══
+   N'animent que transform et opacity — composé par le GPU, aucun reflow. */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-press{transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast),box-shadow var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+
+/* Révélation au scroll. L'état caché n'existe QUE si reveal.js a démarré (il
+   pose `js-reveal` sur <html>) : sans JS, ou si le script échoue, toute la
+   documentation reste lisible. Une animation ne doit jamais pouvoir effacer
+   une page. */
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+
+/* Cascade : le bloc ne bouge pas, ses enfants arrivent l'un après l'autre.
+   45 ms d'écart — au-delà l'attente devient perceptible, et après six on
+   aplatit pour ne jamais faire patienter devant une grille. */
+.js-reveal .m-reveal.m-cascade{opacity:1;transform:none}
+.js-reveal .m-reveal.m-cascade>*{opacity:0;transform:translateY(12px);transition:opacity .48s var(--m-ease),transform .48s var(--m-ease)}
+.js-reveal .m-reveal.m-cascade.is-in>*{opacity:1;transform:none}
+.m-cascade>*:nth-child(2){transition-delay:45ms}
+.m-cascade>*:nth-child(3){transition-delay:90ms}
+.m-cascade>*:nth-child(4){transition-delay:135ms}
+.m-cascade>*:nth-child(5){transition-delay:180ms}
+.m-cascade>*:nth-child(6){transition-delay:225ms}
+.m-cascade>*:nth-child(n+7){transition-delay:270ms}
 html{scroll-behavior:smooth;scroll-padding-top:88px}
 body{font-family:'Space Grotesk',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.68;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;line-height:1.18;letter-spacing:-.022em;font-weight:700}
@@ -45,12 +80,16 @@ img{max-width:100%;display:block}
 .tb-brand b{font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
 .tb-brand span{font-size:9.5px;font-weight:600;color:var(--accent);letter-spacing:.7px;text-transform:uppercase;display:block;line-height:1}
 .tb-links{display:flex;gap:5px;align-items:center}
-.tb-link{padding:7px 13px;border-radius:100px;font-size:13px;font-weight:500;color:var(--ink-soft);transition:.2s;display:inline-flex;align-items:center;gap:7px}
+.tb-link{padding:7px 13px;border-radius:100px;font-size:13px;font-weight:500;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
 .tb-link:hover{color:var(--ink);background:var(--surface-2);text-decoration:none}
 .tb-link.primary{background:var(--accent);color:#050505;font-weight:600}
 .tb-link.primary:hover{background:#d6f57e}
 .tb-link svg{width:15px;height:15px}
+.tb-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px;color:var(--ink)}
+.tb-link.primary:focus-visible{outline-offset:3px}
 .menu-btn{display:none;background:var(--surface-2);border:1px solid var(--border);color:var(--ink);width:36px;height:36px;border-radius:9px;cursor:pointer;align-items:center;justify-content:center}
+.menu-btn:hover{border-color:var(--border-strong);background:var(--surface-3)}
+.menu-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .menu-btn svg{width:17px;height:17px}
 
 .shell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);max-width:1340px;margin:0 auto;padding-top:60px;gap:0}
@@ -60,10 +99,26 @@ img{max-width:100%;display:block}
 .sidenav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
 .sn-group{margin-bottom:24px}
 .sn-title{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink-faint);margin-bottom:9px;padding-left:11px}
-.sn-link{display:flex;align-items:center;gap:9px;padding:6.5px 11px;border-radius:8px;font-size:13.5px;color:var(--ink-muted);transition:.15s;border-left:2px solid transparent;margin-bottom:1px}
+.sn-link{display:flex;align-items:center;gap:9px;padding:6.5px 11px;border-radius:8px;font-size:13.5px;color:var(--ink-muted);
+  transition:color var(--m-fast),background var(--m-fast),border-color var(--m-fast);
+  border-left:2px solid transparent;margin-bottom:1px}
 .sn-link:hover{color:var(--ink);background:var(--surface);text-decoration:none}
 .sn-link.active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent)}
-.sn-link svg{width:14px;height:14px;flex-shrink:0;opacity:.8}
+.sn-link svg{width:14px;height:14px;flex-shrink:0;opacity:.8;transition:opacity var(--m-fast)}
+.sn-link.active svg{opacity:1}
+/* La navigation se parcourt aussi au clavier : sans anneau visible, on perd
+   sa place au premier Tab. */
+.sn-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;color:var(--ink)}
+
+/* ── Repère de section : il GLISSE au lieu de sauter ──
+   Un seul trait pour toute la colonne, déplacé par transform (jamais top :
+   composé par le GPU, aucun reflow). Il n'existe que si le script de bas de
+   page a démarré — `sn-marked` — sinon le liseré par lien reste la solution. */
+.sn-marker{position:absolute;top:0;left:20px;width:2px;border-radius:2px;background:var(--accent);
+  opacity:0;pointer-events:none;
+  transition:transform .34s var(--m-ease),height .34s var(--m-ease),opacity .2s var(--m-ease)}
+.sn-marker.on{opacity:1}
+.sidenav.sn-marked .sn-link.active{border-left-color:transparent}
 
 .content{padding:44px 52px 120px;min-width:0}
 .content section{scroll-margin-top:80px;margin-bottom:64px}
@@ -91,10 +146,16 @@ img{max-width:100%;display:block}
 .note p{font-size:14.5px}
 .note p:last-child{margin-bottom:0}
 
-pre{background:#0a0a0a;border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;overflow-x:auto;margin:14px 0;max-width:100%}
+/* Le bloc de code est une surface, pas un trou : un liseré de lumière en haut
+   lui donne la même épaisseur que les cartes du studio. */
+pre{background:#0a0a0a;border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;overflow-x:auto;margin:14px 0;max-width:100%;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  transition:border-color var(--m-fast)}
+pre:hover{border-color:var(--border-strong)}
 pre code{background:none;border:none;padding:0;font-size:13px;line-height:1.72;white-space:pre;color:#d7d7d3}
 pre::-webkit-scrollbar{height:6px}
 pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+pre{scrollbar-width:thin}
 .tok-c{color:rgba(240,240,236,.38)}
 .tok-k{color:var(--accent)}
 .tok-s{color:#9fd0e8}
@@ -103,9 +164,13 @@ pre::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
 .tw{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:var(--radius-sm);max-width:100%}
 table{width:100%;border-collapse:collapse;font-size:13.8px;min-width:520px}
 th{text-align:left;padding:11px 15px;background:var(--surface-2);color:var(--ink);font-weight:600;font-size:12.5px;letter-spacing:.2px;border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:11px 15px;border-bottom:1px solid var(--border);color:var(--ink-soft);vertical-align:top}
+td{padding:11px 15px;border-bottom:1px solid var(--border);color:var(--ink-soft);vertical-align:top;transition:background var(--m-fast)}
 tr:last-child td{border-bottom:none}
-tbody tr:hover td{background:rgba(255,255,255,.018)}
+tbody tr:hover td{background:rgba(255,255,255,.03)}
+/* Une table large déborde : le conteneur doit être le seul à défiler. */
+.tw{scrollbar-width:thin}
+.tw::-webkit-scrollbar{height:6px}
+.tw::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
 td code,th code{font-size:12.4px;white-space:nowrap}
 .req{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-line)}
 .opt{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:var(--surface-3);color:var(--ink-muted);border:1px solid var(--border)}
@@ -116,9 +181,13 @@ td code,th code{font-size:12.4px;white-space:nowrap}
 .verb.put{background:rgba(217,119,6,.14);color:#e8a854}
 
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:13px;margin:18px 0}
-.card{padding:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);transition:.22s}
+.card{padding:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);
+  transition:border-color var(--m-fast),background var(--m-fast),transform .24s var(--m-ease)}
 .card:hover{border-color:var(--border-strong);background:var(--surface-2);transform:translateY(-2px)}
-.card-ico{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.card:active{transform:translateY(-1px) scale(.995);transition-duration:.08s}
+.card-ico{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  transition:background var(--m-fast)}
+.card:hover .card-ico{background:rgba(200,240,96,.15)}
 .card-ico svg{width:17px;height:17px}
 .card h4{font-size:14.5px;margin:0 0 6px;color:var(--ink);font-weight:600}
 .card p{font-size:13px;color:var(--ink-muted);margin:0;line-height:1.6}
@@ -137,10 +206,16 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
 
 .pills{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;color:var(--ink-soft)}
-.pill svg{width:12px;height:12px;color:var(--accent)}
+.pill svg{width:12px;height:12px;color:var(--accent);transition:transform var(--m-fast)}
+a.pill:hover{border-color:var(--accent-line);background:var(--accent-soft);color:var(--ink);text-decoration:none}
+a.pill:hover svg{transform:translateX(2px)}
+a.pill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .doc-footer{border-top:1px solid var(--border);padding:30px 0 0;margin-top:70px;color:var(--ink-faint);font-size:13px}
 .doc-footer a{color:var(--ink-muted)}
+
+/* Un lien de contenu doit rester repérable au clavier sans casser la ligne. */
+.content a:focus-visible,.doc-footer a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;text-decoration:none}
 
 @media (max-width:1020px){
   .shell{grid-template-columns:1fr}
@@ -154,6 +229,28 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
 @media (max-width:640px){
   .tb-link.hide-sm{display:none}
   .content h2{font-size:22px}
+  /* « Keou Studio » se cassait en deux lignes dans une barre haute de 60 px :
+     la marque et son sous-titre s'entassaient. On resserre l'échelle et on
+     interdit la césure — la barre retrouve sa ligne. */
+  .topbar{padding:0 14px;gap:10px}
+  .tb-brand{gap:8px;min-width:0}
+  .tb-brand img{height:26px;width:26px}
+  .tb-brand b{font-size:14.5px;white-space:nowrap}
+  .tb-brand span{font-size:9px;white-space:nowrap}
+  .tb-link{padding:7px 12px;font-size:12.5px;white-space:nowrap}
+}
+
+/* ═══ Mouvement réduit ═══
+   Cette page ne charge pas shared/styles.css : le garde-fou global n'existe
+   pas ici, il faut le poser. reveal.js s'abstient déjà entièrement, mais les
+   animations d'entrée et les transitions doivent tomber aussi. */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;
+  }
+  .m-reveal,.m-reveal>*{opacity:1!important;transform:none!important}
 }
 </style>
 <script src="/shared/i18n-fr.js"></script>
@@ -219,7 +316,7 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
 
 <main class="content">
 
-<div class="doc-hero">
+<div class="doc-hero m-enter">
   <span class="eyebrow">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     MIT open source · every feature, nothing held back
@@ -228,7 +325,7 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
   <p>Everything needed to install, configure, deploy, secure and extend the studio. Written for someone who has never seen the codebase.</p>
 </div>
 
-<section id="first">
+<section id="first" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>Your first image in 60 seconds</h2>
   <ol class="steps">
     <li><h4>Open the studio</h4><p>The fastest path is the hosted studio: <a href="/launch"><b>studio.kanaky.xyz/launch</b></a> — no install, no account. Self-hosting instead? See <a href="#install">Install</a> first, the steps below are the same.</p></li>
@@ -248,7 +345,7 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
   </div>
 </section>
 
-<section id="what">
+<section id="what" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>What Keou is</h2>
   <p>Keou turns one raw product photograph into a finished commercial campaign: images, cinematic video, voice-over, sound design, and every delivery format your channels need. It is a full studio, not a wrapper around a generation endpoint.</p>
   <p>The thing that makes it useful for product work is that <b>the product itself is pixel-locked</b>. The scene around it is generated; the shape, text, labels and logos on the object are not redrawn. That is the difference between a usable packshot and an image that merely resembles your product.</p>
@@ -278,7 +375,7 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
   </div>
 </section>
 
-<section id="features">
+<section id="features" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>What it does</h2>
   <div class="cards">
     <div class="card">
@@ -349,7 +446,7 @@ figcaption{padding:11px 16px;font-size:12.5px;color:var(--ink-muted);border-top:
   </figure>
 </section>
 
-<section id="install">
+<section id="install" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>Install</h2>
 
   <h3>What you need</h3>
@@ -399,7 +496,7 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
 </section>
 
 
-<section id="architecture">
+<section id="architecture" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="M6 10v4a2 2 0 0 0 2 2h6"/></svg></span>Architecture</h2>
   <p>An Express server, a PostgreSQL database, an object store, and a background poller. No queue broker, no microservices, no build step for the frontend — the pages are plain HTML and vanilla JavaScript served statically.</p>
 
@@ -530,7 +627,7 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
   </table></div>
 </section>
 
-<section id="config">
+<section id="config" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M2 12h4m12 0h4M4.2 19.8 7 17m10-10 2.8-2.8"/></svg></span>Configuration</h2>
   <p>Copy <code>.env.example</code> to <code>.env</code>. Two values are mandatory; everything else has a working default.</p>
 
@@ -581,7 +678,7 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
   </table></div>
 </section>
 
-<section id="deploy">
+<section id="deploy" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg></span>Running it in production</h2>
 
   <h3>Before you expose it</h3>
@@ -606,7 +703,7 @@ docker run -p 3401:3401 --env-file .env keou</code></pre>
   </div>
 </section>
 
-<section id="security">
+<section id="security" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Keys &amp; security</h2>
 
   <h3>Where your provider key lives</h3>
@@ -648,7 +745,7 @@ curl -s -X POST https://your-host/api/keys \
   -d <span class="tok-s">'{"label":"ci-pipeline"}'</span></code></pre>
 </section>
 
-<section id="api">
+<section id="api" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>HTTP API</h2>
   <p>Everything is under <code>/api</code>. The generation routes sit directly on <code>/api</code> — <code>/api/video</code>, not <code>/api/generate/video</code>. Authenticated routes accept <code>Authorization: Bearer &lt;token&gt;</code> — either a session token from <code>/api/auth/login</code> or a long-lived key from <code>/api/keys</code>.</p>
 
@@ -724,7 +821,7 @@ curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generation
   </div>
 </section>
 
-<section id="assistant">
+<section id="assistant" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>The assistant</h2>
   <p>A chat agent with the entire toolset wired in as tools: it can generate, polish, remix, adapt, build packs, produce voice and sound, and file the results under the right client — from a sentence.</p>
   <p>It runs on <b>your own Anthropic key</b>, set either as <code>ANTHROPIC_API_KEY</code> or from <b>Settings → API Keys</b> inside the app. Without a key the chat returns a clear error and nothing else is affected.</p>
@@ -739,7 +836,7 @@ curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generation
   </table></div>
 </section>
 
-<section id="troubleshoot">
+<section id="troubleshoot" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Troubleshooting</h2>
   <div class="tw"><table>
     <thead><tr><th style="width:250px">Symptom</th><th>Cause and fix</th></tr></thead>
@@ -756,7 +853,7 @@ curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generation
   </table></div>
 </section>
 
-<section id="licence">
+<section id="licence" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Licence &amp; use</h2>
   <p>MIT. In plain terms: run it, modify it, self-host it, fork it, use it for client work, charge for that work, and keep the money. You do not owe us a licence fee, a revenue share, or a mention.</p>
   <p>Attribution is appreciated and not required.</p>
@@ -766,7 +863,7 @@ curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generation
   </div>
 </section>
 
-<section id="custom">
+<section id="custom" class="m-reveal m-cascade">
   <h2><span class="hicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>Custom builds</h2>
   <p>Generic software solves the generic eighty per cent. The remaining twenty — your naming rules, your catalogue schema, your approval chain — is where the hours actually go. Closing that gap is the work we sell, scoped with you rather than priced off a list.</p>
   <p>3D models, music, sound design, editing, VFX. Features that don't exist yet, integration with the systems you already run, deployment on your own ground, your own models and endpoints, and a handover meant to make you independent of us. You own what we write, under the same MIT terms.</p>
@@ -807,6 +904,48 @@ curl -s <span class="tok-s">"https://your-host/api/status/image/$TASK?generation
   scrim?.addEventListener('click', close);
   links.forEach(a => a.addEventListener('click', close));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+</script>
+<script src="/shared/reveal.js" defer></script>
+<script>
+/* ── Bloc ADDITIF : repère de section qui glisse ────────────────────────────
+ * N'entre dans aucune logique existante. Le suivi de section au-dessus pose et
+ * retire `active` comme avant ; ce bloc se contente d'OBSERVER cette classe et
+ * de déplacer un unique trait le long de la colonne, au lieu de laisser un
+ * liseré s'allumer ici et s'éteindre là.
+ *
+ * Il s'abstient entièrement si le navigateur n'a pas MutationObserver ou si
+ * l'utilisateur a demandé moins de mouvement — dans les deux cas le liseré
+ * par lien, resté en CSS, fait exactement son travail d'avant.
+ */
+(() => {
+  const calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nav = document.getElementById('sidenav');
+  if (!nav || calme || !('MutationObserver' in window)) return;
+
+  const marker = document.createElement('div');
+  marker.className = 'sn-marker';
+  nav.appendChild(marker);
+  nav.classList.add('sn-marked');
+
+  let rafId = 0;
+  const place = () => {
+    rafId = 0;
+    const actif = nav.querySelector('.sn-link.active');
+    if (!actif) { marker.classList.remove('on'); return; }
+    // offsetTop est relatif à .sidenav (positionné) : le repère suit donc le
+    // contenu quand la colonne défile, sans calcul de scroll.
+    marker.style.height = actif.offsetHeight + 'px';
+    marker.style.transform = 'translateY(' + actif.offsetTop + 'px)';
+    marker.classList.add('on');
+  };
+  const planifier = () => { if (!rafId) rafId = requestAnimationFrame(place); };
+
+  new MutationObserver(planifier).observe(nav, {
+    subtree: true, attributes: true, attributeFilter: ['class'],
+  });
+  window.addEventListener('resize', planifier, { passive: true });
+  planifier();
 })();
 </script>
 </body>

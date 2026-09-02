@@ -125,7 +125,10 @@ const AnonMode = (() => {
 
     // Generation operations → essai studio pipeline (public gallery output)
     if (method === 'POST' && ['/api/generate', '/api/polish', '/api/remix', '/api/adapt'].includes(u)) {
-      if (!hasConsent()) {
+      // Le clic sur Générer est le moment où le contrat devient réel : on le
+      // pose ici plutôt qu'à l'arrivée. Un refus rend le même 412 qu'avant,
+      // donc l'appelant n'a rien à savoir de ce changement.
+      if (!(await ensureConsent())) {
         return stub({ error: 'Consent required — everything created anonymously is public.' }, 412);
       }
       let body = {};
@@ -160,7 +163,10 @@ const AnonMode = (() => {
     // pas l'une de l'autre au premier réglage ajouté.
     const mediaTarget = method === 'POST' ? MEDIA_ROUTES[u] : undefined;
     if (mediaTarget) {
-      if (!hasConsent()) {
+      // Le clic sur Générer est le moment où le contrat devient réel : on le
+      // pose ici plutôt qu'à l'arrivée. Un refus rend le même 412 qu'avant,
+      // donc l'appelant n'a rien à savoir de ce changement.
+      if (!(await ensureConsent())) {
         return stub({ error: 'Consent required — everything created anonymously is public.' }, 412);
       }
       let body = {};
@@ -220,8 +226,16 @@ const AnonMode = (() => {
   }
 
   // ── Consent modal (blocking, first visit) ──
+  /* Le consentement ne s'affiche plus à l'arrivée mais au premier acte de
+   * création : quelqu'un qui découvre le studio doit pouvoir le regarder,
+   * charger une photo et choisir un format avant qu'on lui demande d'accepter
+   * quoi que ce soit. Le contrat est le même — il est simplement posé au
+   * moment où il devient réel, c'est-à-dire juste avant que quelque chose
+   * existe et devienne public. La promesse dit si le visiteur a accepté. */
   function showConsentModal() {
-    if (hasConsent() || document.getElementById('anon-consent-backdrop')) return;
+    if (hasConsent()) return Promise.resolve(true);
+    const deja = document.getElementById('anon-consent-backdrop');
+    if (deja && deja._promesse) return deja._promesse; // deux clics rapides = une seule modale
     const wrap = document.createElement('div');
     wrap.id = 'anon-consent-backdrop';
     /* Les deux conditions qui font renoncer se lisent AVANT le pavé de détail :
@@ -241,14 +255,60 @@ const AnonMode = (() => {
         <p class="anon-consent-alt">Need private client work, your library and downloads? <a href="/login.html">Create a free account</a> instead.</p>
         <div class="anon-consent-actions">
           <button type="button" id="anon-consent-accept">I understand — my creations will be public</button>
-          <a href="/" id="anon-consent-leave">Back to the site</a>
+          <button type="button" id="anon-consent-leave">Not yet</button>
         </div>
       </div>`;
     document.body.appendChild(wrap);
-    wrap.querySelector('#anon-consent-accept').addEventListener('click', () => {
-      storeConsent();
-      wrap.remove();
+    // La modale se déclare role=dialog aria-modal : le focus doit y entrer,
+    // y rester, et revenir sur le bouton qui l'a ouverte. Le fond ne défile
+    // plus tant qu'elle est là.
+    const ouvreur = document.activeElement;
+    const scrollAvant = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const promesse = new Promise((resolve) => {
+      // Échap = refus. Le listener est retiré dans fermer(), donc quelle que
+      // soit la voie de sortie (bouton, fond, Échap) — sinon chaque ouverture
+      // en laissait un de plus accroché à document.
+      const focusables = () => [...wrap.querySelectorAll('a[href],button:not([disabled])')];
+      /* Tab est piloté ENTIÈREMENT ici, jamais laissé au navigateur : WebKit
+       * n'inclut pas les liens dans son ordre de tabulation natif, si bien que
+       * « laisser passer » envoyait le focus sur body à un tour sur deux. On
+       * calcule donc nous-mêmes l'élément suivant, ce qui donne le même
+       * comportement sur les deux moteurs. */
+      const esc = (e) => {
+        if (e.key === 'Escape') { fermer(false); return; }
+        if (e.key !== 'Tab') return;
+        const f = focusables();
+        if (!f.length) return;
+        e.preventDefault();
+        const i = f.indexOf(document.activeElement);
+        const pas = e.shiftKey ? -1 : 1;
+        const suivant = i === -1 ? (e.shiftKey ? f.length - 1 : 0) : (i + pas + f.length) % f.length;
+        f[suivant].focus();
+      };
+      const fermer = (accepte) => {
+        document.removeEventListener('keydown', esc);
+        document.body.style.overflow = scrollAvant;
+        if (accepte) storeConsent();
+        wrap.remove();
+        if (ouvreur && ouvreur.isConnected && typeof ouvreur.focus === 'function') {
+          try { ouvreur.focus({ preventScroll: true }); } catch (e) {}
+        }
+        resolve(accepte);
+      };
+      wrap.querySelector('#anon-consent-accept').addEventListener('click', () => fermer(true));
+      wrap.querySelector('#anon-consent-leave').addEventListener('click', () => fermer(false));
+      wrap.addEventListener('click', (e) => { if (e.target === wrap) fermer(false); });
+      document.addEventListener('keydown', esc);
     });
+    wrap._promesse = promesse;
+    wrap.querySelector('#anon-consent-accept').focus();
+    return promesse;
+  }
+
+  /** Consentement acquis, ou demandé maintenant. Rend true si on peut créer. */
+  function ensureConsent() {
+    return hasConsent() ? Promise.resolve(true) : showConsentModal();
   }
 
   // ── Minimal sidebar (Nav.render needs a user — we have none) ──
@@ -473,11 +533,10 @@ const AnonMode = (() => {
     Auth.authFetch = anonAuthFetch;
     injectCss();
     blockDownloadShortcut();
-    showConsentModal();
     return true;
   }
 
-  return { tryInstall, renderNav, renderByokBar, isActive: () => _active };
+  return { tryInstall, renderNav, renderByokBar, ensureConsent, isActive: () => _active };
 })();
 
 window.AnonMode = AnonMode;

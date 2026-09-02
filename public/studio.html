@@ -13,44 +13,125 @@
 <link rel="stylesheet" href="/shared/styles.css">
 <style>
 /* ── Studio-specific styles ── */
+
+/* ═══ Topaz-grammar retheme — Keou tokens ═══
+   4 niveaux de surface (le "clean" vient de là, pas des ombres) :
+   s0 fond de page · s1 rail/cartes/modals · s2 chips/inputs/secondaires ·
+   s3 bordures 1px + hover. Accent UNIQUE : le vert Keou. */
+:root{
+  --s0:#0a0a0a;
+  --s1:#171717;
+  --s2:#212121;
+  --s3:#2b2b2b;
+  --s3-hover:#3a3a3a;
+  --accent:#c8f060;
+  --accent-hover:#d6f57e;
+  --accent-tint:rgba(200,240,96,.14);     /* fond d'élément sélectionné */
+  --accent-tint-soft:rgba(200,240,96,.12);/* fond d'icône active (rail) */
+  --accent-ink:#0a0a0a;                   /* texte posé sur l'accent plein */
+  /* Convergence des tokens partagés (styles.css) vers l'échelle Topaz */
+  --bg:var(--s0);
+  --ink:#f2f2f2;
+  --ink-soft:rgba(242,242,242,.72);
+  --ink-muted:rgba(242,242,242,.55);
+  --ink-faint:rgba(242,242,242,.38);
+  --surface:var(--s1);
+  --surface-2:var(--s2);
+  --surface-3:var(--s3);
+  --border:var(--s3);
+  --border-strong:var(--s3-hover);
+  --line:var(--s3);
+  /* Rayons : pilules 100px · boutons/inputs 12px · cartes 16 · modals 20 */
+  --r-pill:100px;
+  --r-btn:12px;
+  --r-input:10px;
+  --radius:16px;
+  --radius-sm:12px;
+  --radius-lg:20px;
+  /* Ombres quasi nulles — les niveaux de surface font le travail.
+     Seuls les modals (et le CTA flottant mobile) gardent une ombre. */
+  --shadow-sm:none;
+  --shadow-md:none;
+  --shadow-lg:none;
+  --shadow-xl:0 8px 24px rgba(0,0,0,.35);
+  --shadow-modal:0 8px 24px rgba(0,0,0,.35);
+  /* Le chrome "glass" partagé (rail, toast, nav mobile, modals) devient
+     des surfaces pleines s1 — grammaire Topaz, pas de verre. */
+  --glass-tint:var(--s1);
+  --glass-tint-strong:var(--s1);
+  --glass-edge-light:transparent;
+  --glass-edge-dark:var(--s3);
+  --glass-sat:100%;
+  --glass-bright:1;
+  /* Mouvement — rapide, discret (grammaire Topaz) */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-menu:.14s var(--m-ease);
+}
+
+/* Fond de page plat s0 : la grille de points et les halos se rangent
+   derrière une identité plus sobre (la lueur reste, très basse). */
+body{background:var(--s0);background-image:none}
+.ambient-bg::before{opacity:.5}
+
 .main{flex:1;max-width:960px;width:100%;margin:0 auto;padding:40px 24px 60px}
 .main.visible{animation:fadeInUp .45s var(--ease-out) both}
 
 /* ── Studio Header ── */
 .studio-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap}
-.studio-header h2{margin:0}
+.studio-header h2{margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em}
 .studio-controls{display:flex;align-items:center;gap:10px}
+
+/* ── Vague 2 : accueil centré façon Topaz — ANONYME UNIQUEMENT ──
+   Tout est scopé sur body.keou-anon, posée seulement quand le studio tourne
+   sans session. Les instances en marque blanche et tout utilisateur connecté
+   gardent l'en-tête « Production Engine » aligné à gauche : un push sur main
+   rebuild leurs déploiements, leur interface ne doit pas bouger sous eux. */
+.welcome-title,.welcome-sub{display:none}
+body.keou-anon .studio-title{display:none}
+body.keou-anon .welcome-title{display:block}
+body.keou-anon .welcome-sub{display:block}
+body.keou-anon .studio-header{
+  flex-direction:column;align-items:center;justify-content:flex-start;
+  text-align:center;gap:0;margin:16px 0 36px;
+}
+body.keou-anon .welcome-title{font-size:28px;font-weight:700;letter-spacing:-.02em}
+body.keou-anon .welcome-sub{margin:8px 0 0;font-size:14px;color:var(--ink-muted)}
+body.keou-anon .studio-controls{margin-top:16px;justify-content:center;flex-wrap:wrap}
+body.keou-anon .project-select{min-width:130px}
 .project-select{
-  padding:8px 14px;border:1.5px solid var(--border);border-radius:100px;
+  padding:8px 14px;border:1px solid var(--s3);border-radius:var(--r-btn);
   font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;
-  color:var(--ink);background:rgba(255,255,255,.04);cursor:pointer;
+  color:var(--ink);background:var(--s2);cursor:pointer;
   min-width:160px;outline:none;transition:border-color .2s;
 }
-.project-select:focus{border-color:rgba(255,255,255,.2)}
-.project-select option{background:#141414;color:#e5e5e5}
+.project-select:hover{border-color:var(--s3-hover)}
+.project-select:focus{border-color:var(--s3-hover)}
+.project-select option{background:var(--s2);color:#f2f2f2}
 .btn-assets{
   display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
-  border:1.5px solid var(--border);border-radius:100px;background:rgba(255,255,255,.04);
+  border:1px solid var(--s3);border-radius:var(--r-btn);background:var(--s2);
   color:var(--ink-muted);font-size:12px;font-weight:500;cursor:pointer;
   font-family:'Space Grotesk',sans-serif;transition:all .2s;text-decoration:none;
 }
-.btn-assets:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.btn-assets:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626}
 
 /* ── Drop Zone ── */
 .drop-zone{
-  border:2px dashed rgba(255,255,255,.12);border-radius:var(--radius);
+  border:1.5px dashed var(--s3);border-radius:var(--radius-lg);
   padding:56px 24px;text-align:center;cursor:pointer;
-  transition:all 0.3s var(--ease-out);background:rgba(255,255,255,.02);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:all 0.3s var(--ease-out);background:rgba(23,23,23,.8);
 }
-.drop-zone:hover,.drop-zone.dragover{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.04);transform:scale(1.005)}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:var(--s1)}
+.drop-zone.dragover{background:var(--accent-tint-soft);animation:dzBreathe 1.4s ease-in-out infinite}
+.drop-zone.dragover .drop-icon{transform:translateY(-3px);border-color:var(--accent);color:var(--accent);background:var(--accent-tint-soft)}
 .drop-zone.compact{padding:20px}
 .drop-icon{
-  width:48px;height:48px;border-radius:50%;background:var(--surface-2);border:1.5px solid var(--border);
+  width:48px;height:48px;border-radius:50%;background:var(--s2);border:1px solid var(--s3);
   display:flex;align-items:center;justify-content:center;margin:0 auto 16px;
   font-size:22px;color:var(--ink-muted);transition:all 0.25s ease;
 }
-.drop-zone:hover .drop-icon{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.drop-zone:hover .drop-icon{border-color:var(--accent);color:var(--accent);background:var(--accent-tint-soft)}
 .drop-text{font-size:14px;color:var(--ink-muted);font-weight:400}
 .drop-text span{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 /* "Tap to upload" only shows on touch devices, "Drop ... here or" only on desktop */
@@ -63,11 +144,10 @@
 
 /* ── Section Card ── */
 .section-card{
-  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);
-  padding:24px;margin-bottom:16px;transition:all 0.25s ease;
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  background:var(--s1);border:1px solid var(--s3);border-radius:var(--radius);
+  padding:24px;margin-bottom:16px;transition:border-color 0.25s ease;
 }
-.section-card:hover{border-color:var(--border-strong)}
+.section-card:hover{border-color:var(--s3-hover)}
 
 /* ── Queue ── */
 .queue-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -75,9 +155,10 @@
 .queue-grid{display:flex;flex-wrap:wrap;gap:8px}
 .queue-item{
   width:68px;height:68px;border-radius:12px;overflow:hidden;position:relative;
-  border:1px solid var(--border);flex-shrink:0;transition:all 0.2s ease;
+  border:1px solid var(--s3);flex-shrink:0;transition:all 0.2s ease;
+  animation:cardIn .22s var(--m-ease) both;
 }
-.queue-item:hover{border-color:rgba(255,255,255,.15);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.queue-item:hover{border-color:var(--s3-hover);transform:translateY(-1px)}
 .queue-item img{width:100%;height:100%;object-fit:cover;display:block}
 .queue-remove{
   position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;
@@ -89,15 +170,15 @@
 /* ── Format ── */
 .format-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
 .format-btn{
-  padding:16px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
-  background:transparent;color:var(--ink-muted);cursor:pointer;
+  padding:14px 8px;border:1px solid var(--s3);border-radius:var(--r-btn);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
   font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;
   transition:all .2s ease;text-align:center;
 }
-.format-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
-.format-btn.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.format-btn:hover{border-color:var(--s3-hover);color:var(--ink);transform:translateY(-1px)}
+.format-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
 .format-btn:active{transform:scale(0.95);transition-duration:.08s}
-.format-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.format-btn.active{animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
 .format-label{display:flex;align-items:center;justify-content:center;margin:0 auto 8px;opacity:.5}
 .format-btn.active .format-label{opacity:1}
 .format-label svg{display:block}
@@ -106,42 +187,42 @@
 /* ── Variant Selector ── */
 .variant-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
 .variant-btn{
-  padding:14px 8px;border:1.5px solid var(--border);border-radius:var(--radius);
-  background:transparent;color:var(--ink-muted);cursor:pointer;
+  padding:12px 8px;border:1px solid var(--s3);border-radius:var(--r-btn);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
   font-family:'Space Grotesk',sans-serif;transition:all .2s ease;text-align:center;
   display:flex;flex-direction:column;align-items:center;gap:6px;
 }
-.variant-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
-.variant-btn.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.variant-btn:hover{border-color:var(--s3-hover);color:var(--ink);transform:translateY(-1px)}
+.variant-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
 .variant-btn:active{transform:scale(0.95);transition-duration:.08s}
-.variant-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.variant-btn.active{animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
 .variant-btn svg{width:18px;height:18px;flex-shrink:0}
 .variant-label{font-size:12px;font-weight:600;letter-spacing:0.3px}
 
 /* ── Platform Presets ── */
-.platform-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.platform-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
 .platform-btn{
-  padding:14px 10px;border:1.5px solid var(--border);border-radius:var(--radius);
-  background:rgba(255,255,255,.02);color:var(--ink-muted);cursor:pointer;
+  padding:10px 8px;border:1px solid var(--s3);border-radius:var(--r-btn);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
   font-family:'Space Grotesk',sans-serif;transition:all .2s ease;text-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;gap:4px;
 }
-.platform-btn:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.04);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-.platform-btn.active{border-color:rgba(255,255,255,.18);color:var(--ink);background:rgba(255,255,255,.06)}
+.platform-btn:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626;transform:translateY(-1px)}
+.platform-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
 .platform-btn:active{transform:scale(0.95);transition-duration:.08s}
-.platform-btn.active{animation:tapBounce .3s var(--ease-spring)}
+.platform-btn.active{animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
 .platform-icon{width:22px;height:22px;opacity:.45;transition:opacity .2s}
 .platform-btn.active .platform-icon,.platform-btn:hover .platform-icon{opacity:1}
-.platform-label{font-size:12px;font-weight:600;line-height:1.2}
-.platform-meta{font-size:10px;color:var(--ink-faint);font-weight:500;letter-spacing:.3px}
+.platform-label{font-size:13px;font-weight:500;line-height:1.2}
+.platform-meta{font-size:11px;color:var(--ink-faint);font-weight:500;letter-spacing:.3px}
+.platform-btn.active .platform-meta{color:rgba(200,240,96,.65)}
 .platform-btn-custom{grid-column:1/-1}
 
 /* ── Estimator ── */
 .estimator{
   display:flex;align-items:center;justify-content:center;gap:24px;
-  padding:14px 20px;margin-bottom:12px;border-radius:var(--radius-sm,10px);
-  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  padding:14px 20px;margin-bottom:12px;border-radius:var(--r-btn);
+  background:var(--s1);border:1px solid var(--s3);
   animation:fadeInUp .3s var(--ease-out) both;
 }
 .estimator-row{display:flex;align-items:center;gap:8px}
@@ -156,10 +237,8 @@
 
 /* ── Progress ── */
 .progress-card{
-  background:rgba(255,255,255,.03);border:1px solid var(--glass-edge-dark);border-radius:var(--radius);
+  background:var(--s1);border:1px solid var(--s3);border-radius:var(--radius);
   padding:24px;text-align:center;margin-bottom:16px;
-  backdrop-filter:blur(var(--glass-blur-soft)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-soft)) saturate(var(--glass-sat));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
 }
 .batch-notice{
   font-size:13px;font-weight:500;padding:10px 14px;border-radius:8px;margin-bottom:14px;
@@ -167,8 +246,8 @@
 }
 .batch-notice.warn{background:rgba(234,179,8,.1);color:#fbbf24;border:1px solid rgba(234,179,8,.2)}
 .batch-notice.safe{background:rgba(34,197,94,.08);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
-.progress-bar{height:4px;background:var(--surface-3);border-radius:100px;overflow:hidden;margin-bottom:16px}
-.progress-fill{height:100%;background:var(--ink);border-radius:100px;width:100%;transform-origin:left;transform:scaleX(0);transition:transform .5s var(--ease-out);position:relative}
+.progress-bar{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;margin-bottom:16px}
+.progress-fill{height:100%;background:var(--accent);border-radius:100px;width:100%;transform-origin:left;transform:scaleX(0);transition:transform .5s var(--ease-out);position:relative}
 .progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);background-size:200% 100%;animation:shimmer 2s ease-in-out infinite}
 .progress-stats{display:flex;justify-content:space-between;align-items:center}
 #progress-text{font-size:13px;color:var(--ink-muted);font-weight:500}
@@ -178,11 +257,11 @@
 .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 
 /* ── Result Card ── */
-.result-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all 0.3s var(--ease-out);animation:fadeInUp .4s var(--ease-out) both}
-.result-card:hover{border-color:rgba(255,255,255,.12);transform:translateY(-3px);box-shadow:var(--shadow-lg)}
-.result-card.done{border-color:var(--border-strong)}
+.result-card{background:var(--s1);border:1px solid var(--s3);border-radius:var(--radius);overflow:hidden;transition:all 0.3s var(--ease-out);animation:cardIn .22s var(--m-ease) both}
+.result-card:hover{border-color:var(--s3-hover);transform:translateY(-1px)}
+.result-card.done{border-color:var(--s3-hover)}
 .result-card.error{border-color:var(--error)}
-.result-media-wrap{position:relative;background:var(--surface-2);aspect-ratio:1;overflow:hidden}
+.result-media-wrap{position:relative;background:var(--s2);aspect-ratio:1;overflow:hidden}
 .result-media-wrap img{width:100%;height:100%;object-fit:contain;display:block;transition:opacity .3s,transform .35s var(--ease-out)}
 .result-card:hover .result-media-wrap img{transform:scale(1.02)}
 .result-overlay{
@@ -196,7 +275,7 @@
 /* Per-card perceived progress — asymptotic: climbs fast, never hits 100%
    on its own (the real completion snaps it via the reveal). */
 .result-overlay .ov-progress{width:56%;height:3px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
-.result-overlay .ov-progress i{display:block;height:100%;border-radius:99px;background:#fff;transform-origin:left;transform:scaleX(0)}
+.result-overlay .ov-progress i{display:block;height:100%;border-radius:99px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
 .result-overlay.active .ov-progress i{animation:ovProgress 75s cubic-bezier(.05,.6,.13,.96) forwards}
 @keyframes ovProgress{0%{transform:scaleX(0)}10%{transform:scaleX(.38)}30%{transform:scaleX(.62)}60%{transform:scaleX(.8)}100%{transform:scaleX(.93)}}
 /* Liquid reveal — the glass dissolves off the finished visual:
@@ -214,8 +293,8 @@
   .result-overlay.active .ov-progress i{animation-duration:.01ms}
 }
 .result-status{
-  padding:10px 16px;font-size:12px;color:var(--ink-muted);font-weight:500;
-  border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;
+  padding:10px 16px;font-size:11px;color:var(--ink-muted);font-weight:500;
+  border-top:1px solid var(--s3);display:flex;align-items:center;gap:8px;
 }
 .status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .status-dot.queued{background:var(--border-strong)}
@@ -224,39 +303,39 @@
 .status-dot.error{background:var(--error)}
 .status-dot.polishing,.status-dot.rendering{background:var(--ink);animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.result-actions{display:flex;border-top:1px solid var(--border)}
+.result-actions{display:flex;border-top:1px solid var(--s3)}
 .action-btn{
   flex:1;padding:12px 8px;background:transparent;border:none;
-  border-right:1px solid var(--border);color:var(--ink-muted);
+  border-right:1px solid var(--s3);color:var(--ink-muted);
   font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;cursor:pointer;
   transition:all .2s ease;display:flex;align-items:center;justify-content:center;
   gap:6px;text-decoration:none;
 }
 .action-btn:last-child{border-right:none}
-.action-btn:hover{background:rgba(255,255,255,.04);color:var(--ink)}
+.action-btn:hover{background:var(--s2);color:var(--ink)}
 .action-btn:active{transform:scale(0.96);transition-duration:.08s}
 .action-btn.disabled{opacity:.3;pointer-events:none}
 
 /* ── Template Chips ── */
 .template-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .template-chip{
-  padding:6px 14px;border:1.5px solid var(--border);border-radius:100px;
-  background:transparent;color:var(--ink-muted);font-size:11px;font-weight:600;
+  padding:6px 14px;border:1px solid var(--s3);border-radius:var(--r-pill);
+  background:var(--s2);color:var(--ink-muted);font-size:11px;font-weight:600;
   font-family:'Space Grotesk',sans-serif;cursor:pointer;transition:all .2s var(--ease-out);
   letter-spacing:0.2px;
 }
-.template-chip:hover{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.04);transform:translateY(-1px)}
-.template-chip.active{border-color:rgba(255,255,255,.15);color:var(--ink);background:rgba(255,255,255,.06)}
+.template-chip:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626;transform:translateY(-1px)}
+.template-chip.active{border-color:var(--accent);color:var(--accent-ink);background:var(--accent);animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
 .template-chip:active{transform:scale(0.94);transition-duration:.06s}
 
 /* ── Creative Direction Presets ── */
-.cd-preset{padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--ink-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .15s}
-.cd-preset:hover{border-color:var(--ink-faint);color:var(--ink);background:var(--surface)}
-.cd-preset.active{border-color:var(--ink);color:var(--ink);background:var(--surface-2)}
+.cd-preset{padding:6px 12px;border-radius:var(--r-pill);border:1px solid var(--s3);background:var(--s2);color:var(--ink-muted);font-size:11px;font-weight:500;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .15s}
+.cd-preset:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626}
+.cd-preset.active{border-color:var(--accent);color:var(--accent-ink);background:var(--accent);animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
 /* ── Batch Bar ── */
 .batch-bar{
   display:flex;gap:8px;margin-bottom:16px;padding:14px 20px;
-  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--s1);border:1px solid var(--s3);border-radius:var(--radius);
   align-items:center;
 }
 .batch-bar .batch-info{flex:1;font-size:13px;color:var(--ink-muted);font-weight:500}
@@ -268,7 +347,7 @@
 .batch-bar .batch-shortfall.hidden{display:none}
 
 /* ── Activity Log ── */
-.log-section{margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
+.log-section{margin-top:40px;padding-top:32px;border-top:1px solid var(--s3)}
 .log-entry{display:flex;align-items:flex-start;gap:12px;padding:8px 0;font-size:12px;color:var(--ink-muted);position:relative;padding-left:20px}
 .log-entry::before{content:'';position:absolute;left:2px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.06)}
 .log-entry:first-child::before{top:8px}
@@ -359,7 +438,7 @@
     width:auto;z-index:90;
     min-height:54px;font-size:15px;
     box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06);
-    border-radius:14px;
+    border-radius:12px;
   }
   /* Hide the in-form Generate button on mobile when sticky version is showing —
      no, actually we KEEP it inline because position:fixed removes it from flow.
@@ -370,19 +449,24 @@
 /* "+ New client" action option + New Client modal styles now in shared/styles.css */
 
 
-/* ─── Opensource BYOK bar ─── */
-#byok-bar { max-width: 1200px; margin: 12px auto 0; padding: 0 24px; }
-#byok-bar .byok-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 12px; background: rgba(255,255,255,.03); font-size: 12px; color: var(--ink-muted, #9a9a9a); flex-wrap: wrap; }
-#byok-bar .byok-label { font-weight: 600; color: var(--ink, #eee); letter-spacing: .3px; }
-#byok-bar input { flex: 1; min-width: 180px; background: rgba(0,0,0,.25); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 8px; padding: 7px 10px; color: var(--ink, #eee); font-size: 12px; outline: none; }
-#byok-bar button { background: var(--accent, #c8f060); color: #050505; border: 0; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
-#byok-bar #byok-status.ok { color: #6fcf97; }
+/* ─── Opensource BYOK bar ───
+   Préfixe `body` : anon.js injecte à l'exécution un duplicata de ces règles
+   (pour tools.html) APRÈS ce bloc — la spécificité supérieure garantit que
+   le thème du studio gagne. */
+body #byok-bar { max-width: 1200px; margin: 12px auto 0; padding: 0 24px; }
+body #byok-bar .byok-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--s3); border-radius: 12px; background: var(--s1); font-size: 12px; color: var(--ink-muted); flex-wrap: wrap; }
+body #byok-bar .byok-label { font-weight: 600; color: var(--ink); letter-spacing: .3px; }
+body #byok-bar input { flex: 1; min-width: 180px; background: var(--s2); border: 1px solid var(--s3); border-radius: 10px; padding: 7px 10px; color: var(--ink); font-size: 12px; outline: none; transition: border-color .2s; }
+body #byok-bar input:focus { border-color: rgba(200,240,96,.5); }
+body #byok-bar button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s; }
+body #byok-bar button:hover { background: var(--accent-hover); }
+body #byok-bar #byok-status.ok { color: #6fcf97; }
 /* Clé rejetée par le fournisseur : la barre doit le dire, pas rester verte. */
-#byok-bar #byok-status.err { color: var(--error, #f87171); }
-#byok-bar .byok-get { color: var(--ink-muted, #9a9a9a); text-decoration: none; border-bottom: 1px dotted currentColor; }
+body #byok-bar #byok-status.err { color: var(--error, #f87171); }
+body #byok-bar .byok-get { color: var(--ink-muted); text-decoration: none; border-bottom: 1px dotted currentColor; }
 /* Divulgation : qui facture, où vit la clé, et que le lien est affilié. */
-#byok-bar .byok-note { margin: 6px 2px 0; font-size: 11px; color: var(--ink-faint, #8a8a8a); line-height: 1.5; }
-#byok-bar .byok-ref { font-size: 10.5px; color: var(--ink-faint, #8a8a8a); }
+body #byok-bar .byok-note { margin: 6px 2px 0; font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
+body #byok-bar .byok-ref { font-size: 10.5px; color: var(--ink-faint); }
 /* Flash de bordure quand on renvoie le visiteur vers la barre (Generate sans clé). */
 #byok-bar.byok-flash .byok-inner { animation: byokFlash 1.1s ease; }
 @keyframes byokFlash { 0%, 55% { border-color: var(--error, #f87171); box-shadow: 0 0 0 3px rgba(248,113,113,.22); } 100% { box-shadow: none; } }
@@ -404,6 +488,606 @@
 #boot-loader { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 #boot-loader .boot-spin { width: 26px; height: 26px; border: 2.5px solid rgba(255,255,255,.08); border-top-color: var(--ink-muted, #888); border-radius: 50%; animation: bootSpin .8s linear infinite; }
 @keyframes bootSpin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════
+   Topaz-grammar retheme — composants partagés
+   (surcharges locales au studio ; le markup et
+   les classes des scripts partagés sont intacts)
+   ═══════════════════════════════════════════ */
+
+/* ── Rail gauche : s1 plein, séparation s3, état actif teinté vert ── */
+.app-sidebar{
+  background:var(--s1);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  border-right:1px solid var(--s3);
+  box-shadow:none;
+}
+.app-sidebar-item{border-radius:12px}
+.app-sidebar-item:hover{color:var(--ink);background:var(--s2)}
+.app-sidebar-item.active{color:var(--accent);background:var(--accent-tint-soft)}
+.app-sidebar-bottom{border-top:1px solid var(--s3)}
+.app-sidebar-avatar{background:var(--s2);border:1px solid var(--s3)}
+.app-sidebar-avatar:hover{background:#262626;border-color:var(--s3-hover)}
+.app-sidebar-dropdown{
+  background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;
+  border:1px solid var(--s3);box-shadow:var(--shadow-modal);
+}
+.app-sidebar-item::after{background:var(--s2);border:1px solid var(--s3);box-shadow:none}
+.nav-dropdown-item:hover{background:var(--s2)}
+.nav-dropdown-divider{background:var(--s3)}
+
+/* Nav basse mobile : même logique d'état actif */
+.mobile-bottom-nav{background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;border-top:1px solid var(--s3);box-shadow:none}
+.mobile-bottom-nav-item.active{color:var(--accent)}
+.mobile-more-sheet{background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;border-color:var(--s3);box-shadow:var(--shadow-modal)}
+.mobile-more-divider{background:var(--s3)}
+
+/* ── Labels de section : UPPERCASE 10.5px, .08em, muted (échelle Topaz) ── */
+.section-label{
+  font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-muted);margin-bottom:12px;
+}
+
+/* ── CTA principal (Generate) : plein vert, radius 12, weight 600 ── */
+#generate-btn{
+  border-radius:var(--r-btn);
+  background:var(--accent);color:var(--accent-ink);
+  font-weight:600;
+}
+#generate-btn:hover{background:var(--accent-hover);box-shadow:none}
+.btn-primary{border-radius:var(--r-btn);color:var(--accent-ink)}
+.btn-primary:hover{box-shadow:none}
+
+/* ── Boutons secondaires : s2, bordure s3, radius 12 ── */
+.btn-secondary{
+  background:var(--s2);border:1px solid var(--s3);border-radius:var(--r-btn);
+  color:var(--ink);
+}
+.btn-secondary:hover{background:#262626;border-color:var(--s3-hover)}
+
+/* ── Inputs (textarea direction créative incluse) : s2, s3, focus vert doux ── */
+.form-input{
+  background:var(--s2);border:1px solid var(--s3);border-radius:var(--r-btn);
+}
+.form-input:hover{border-color:var(--s3-hover)}
+.form-input:focus{border-color:rgba(200,240,96,.5);box-shadow:0 0 0 3px rgba(200,240,96,.12)}
+select.form-input option{background:var(--s2);color:#f2f2f2}
+
+/* ── Modals kc (New Client, Export pack) : s1 plein, radius 20,
+     seule ombre autorisée, actions collées en bas ── */
+.kc-modal{
+  background:var(--s1);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  border:1px solid var(--s3);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-modal);
+}
+.kc-modal-title{font-size:14px;font-weight:600;letter-spacing:.01em}
+.kc-modal-field input,.kc-modal-field select{
+  background:var(--s2);border:1px solid var(--s3);border-radius:var(--r-input);
+}
+.kc-modal-field input:focus,.kc-modal-field select:focus{border-color:rgba(200,240,96,.5)}
+.kc-modal-actions{border-top:1px solid var(--s3);padding-top:16px;margin-top:22px}
+.kc-modal-btn{border-radius:var(--r-btn)}
+.kc-modal-btn.secondary{background:var(--s2);color:var(--ink-muted);border:1px solid var(--s3)}
+.kc-modal-btn.secondary:hover{color:var(--ink);border-color:var(--s3-hover)}
+.kc-modal-btn.primary{background:var(--accent);color:var(--accent-ink)}
+.kc-modal-btn.primary:hover{background:var(--accent-hover);opacity:1}
+
+/* Cartes de pack (markup généré en JS avec styles inline — :has + !important
+   est le seul levier CSS pour peindre la sélection en vert sans toucher au JS) */
+#pack-list .pack-card{background:var(--s2)!important;border-color:var(--s3)!important}
+#pack-list .pack-card:hover{border-color:var(--s3-hover)!important}
+#pack-list .pack-card:has(input:checked){border-color:var(--accent)!important;background:var(--accent-tint)!important}
+#pack-list .pack-card input[type="radio"]{accent-color:var(--accent)!important}
+#export-pack-progress #pack-progress-bar{background:var(--accent)!important}
+
+/* ── Modal de consentement anonyme (rendu par anon.js, styles injectés
+     APRÈS ce bloc → l'id du backdrop assure la spécificité) ── */
+#anon-consent-backdrop .anon-consent-card{
+  background:var(--s1);border:1px solid var(--s3);border-radius:16px;
+  box-shadow:var(--shadow-modal);color:var(--ink);
+}
+#anon-consent-backdrop .anon-consent-card h3{
+  font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-muted);margin:0 0 16px;padding-bottom:12px;
+  border-bottom:1px solid var(--s3);
+}
+#anon-consent-backdrop .anon-consent-points{color:var(--ink-soft)}
+#anon-consent-backdrop .anon-consent-points b{color:var(--ink)}
+#anon-consent-backdrop .anon-consent-card p{color:var(--ink-muted)}
+#anon-consent-backdrop .anon-consent-card a{color:var(--ink)}
+#anon-consent-backdrop .anon-consent-actions{
+  border-top:1px solid var(--s3);padding-top:14px;margin-top:18px;
+}
+#anon-consent-backdrop #anon-consent-accept{
+  background:var(--accent);color:var(--accent-ink);
+  border:none;border-radius:var(--r-btn);font-weight:600;
+  padding:11px 16px;cursor:pointer;
+}
+#anon-consent-backdrop #anon-consent-accept:hover{background:var(--accent-hover)}
+
+/* ── Toast : surface pleine s2 ── */
+.toast{background:var(--s2);-webkit-backdrop-filter:none;backdrop-filter:none;border:1px solid var(--s3);box-shadow:var(--shadow-modal)}
+
+/* ── Footer : séparation s3 ── */
+.footer{border-top:1px solid var(--s3)}
+
+/* ── Fils discrets du log / bordures diverses restées en blanc-alpha ── */
+.log-entry::before{background:var(--s3)}
+.log-dot{background:var(--s3)}
+
+/* ═══════════════════════════════════════════
+   Topaz-grammar retheme — passe 2 : MOUVEMENT
+   Rapide, discret, jamais tape-à-l'œil.
+   Aucun JS : tout s'accroche aux classes que le
+   code existant pose déjà (.active, .open, .hidden,
+   .dragover) et aux insertions dans les grilles.
+   ═══════════════════════════════════════════ */
+
+/* ── Keyframes ── */
+@keyframes chipSelect{0%{transform:scale(1)}45%{transform:scale(1.02)}100%{transform:scale(1)}}
+@keyframes chipGlow{0%{box-shadow:0 0 0 0 rgba(200,240,96,0)}35%{box-shadow:0 0 0 3px rgba(200,240,96,.22)}100%{box-shadow:0 0 0 0 rgba(200,240,96,0)}}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dzBreathe{
+  0%,100%{border-color:var(--accent);box-shadow:0 0 0 0 rgba(200,240,96,0)}
+  50%{border-color:var(--accent-hover);box-shadow:0 0 0 4px rgba(200,240,96,.12)}
+}
+
+/* ── Transitions globales : tout l'interactif répond en 150ms ──
+   (background/bordure/couleur/transform/ombre — la bordure verte
+   d'une sélection « s'allume » en fondu par cette même transition) */
+.platform-btn,.format-btn,.variant-btn,.template-chip,.cd-preset,
+.action-btn,.btn-secondary,.btn-primary,.btn-assets,.project-select,
+.queue-item,.result-card,.section-card,.drop-zone,.drop-icon,
+.form-input,.kc-modal-btn,.kc-modal-field input,.kc-modal-field select,
+.app-sidebar-item,.nav-dropdown-item,.mobile-bottom-nav-item,
+.drop-sample,.log-toggle,#generate-btn,
+body #byok-bar input,body #byok-bar button,body #byok-bar .byok-get{
+  transition:background-color var(--m-fast),border-color var(--m-fast),
+             color var(--m-fast),transform var(--m-fast),
+             box-shadow var(--m-fast),opacity var(--m-fast);
+}
+
+/* ── CTA vert : hover légèrement plus lumineux, press qui tasse ── */
+#generate-btn{
+  transition:background-color var(--m-fast),border-color var(--m-fast),
+             color var(--m-fast),transform var(--m-fast),
+             box-shadow var(--m-fast),filter var(--m-fast);
+}
+#generate-btn:hover{background:var(--accent-hover);filter:brightness(1.03)}
+#generate-btn:active{transform:scale(.985);transition-duration:.08s}
+
+/* ── Accordéon « Add creative direction » : ouverture fluide ──
+   Le JS toggle la classe .hidden (display:none!important dans
+   styles.css). On la re-déclare ici en bloc mesurable : max-height
+   + opacité + visibility transitionnées — le JS reste intact. */
+#da-input-wrap{
+  display:block;overflow:hidden;
+  max-height:640px;opacity:1;visibility:visible;
+  transition:max-height .28s var(--m-ease),opacity .18s ease .06s,visibility 0s;
+}
+#da-input-wrap.hidden{
+  display:block!important;
+  max-height:0;opacity:0;visibility:hidden;
+  transition:max-height .22s var(--m-ease),opacity .12s ease,visibility 0s .22s;
+}
+
+/* ── Menus / dropdowns façon Topaz ──
+   Surface s1 · radius 14 · bordure s3 · ombre unique du thème ·
+   items hover s2 · entrée fade + scale(.98→1) + translateY(-4px→0)
+   en 140ms. Chaque menu garde son mécanisme existant (.open). */
+
+/* 1. Dropdown avatar du rail (nav.js → .app-sidebar-dropdown.open) */
+.app-sidebar-dropdown{
+  background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;
+  border:1px solid var(--s3);border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  transform:translateY(-4px) scale(.98);
+  transition:opacity var(--m-menu),transform var(--m-menu),visibility .14s linear;
+}
+.app-sidebar-dropdown.open{transform:translateY(0) scale(1)}
+.nav-dropdown-item{transition:background-color var(--m-fast),color var(--m-fast)}
+.nav-dropdown-item:hover{background:var(--s2)}
+
+/* 2. Sélecteur custom (select.js → .ks-select.open) — ses styles sont
+   injectés à l'exécution APRÈS ce bloc : le préfixe `body` (et la
+   classe doublée pour l'état ouvert) donnent la spécificité qui gagne. */
+body .ks-select .ks-select-trigger{
+  background:var(--s2);border:1px solid var(--s3);color:var(--ink);
+  border-radius:12px;
+  transition:background-color var(--m-fast),border-color var(--m-fast),color var(--m-fast),box-shadow var(--m-fast);
+}
+body .ks-select .ks-select-trigger:hover{border-color:var(--s3-hover)}
+body .ks-select.ks-select.open .ks-select-trigger{
+  border-color:var(--s3-hover);
+  box-shadow:0 0 0 3px rgba(200,240,96,.12);
+}
+body .ks-select.compact .ks-select-trigger{border-radius:12px}
+body .ks-select .ks-select-dropdown{
+  background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;
+  border:1px solid var(--s3);border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  transform:translateY(-4px) scale(.98);
+  transition:opacity var(--m-menu),transform var(--m-menu),visibility .14s linear;
+}
+body .ks-select.ks-select.open .ks-select-dropdown{transform:translateY(0) scale(1)}
+body .ks-select.compact .ks-select-dropdown{border-radius:14px}
+body .ks-select .ks-select-option{color:var(--ink-muted);transition:background-color .12s ease,color .12s ease}
+body .ks-select .ks-select-option:hover{background:var(--s2);color:var(--ink)}
+body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)}
+
+/* 3. Panneau de notifications (nav.js → .notif-panel.open) */
+.notif-panel{
+  background:var(--s1);-webkit-backdrop-filter:none;backdrop-filter:none;
+  border:1px solid var(--s3);border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  transform:translateY(-4px) scale(.98);
+  transition:opacity var(--m-menu),transform var(--m-menu),visibility .14s linear;
+}
+.notif-panel.open{transform:translateY(0) scale(1)}
+
+/* ═══════════════════════════════════════════
+   Vague 2 — composition épurée + pilules workflows
+   ═══════════════════════════════════════════ */
+
+/* Colonne principale resserrée, respiration accrue */
+.main{max-width:880px}
+#upload-section{margin-top:8px}
+.log-section{margin-top:56px;opacity:.85}
+.log-section .section-label{font-size:10px}
+.log-entry{font-size:11px}
+
+/* La dropzone est la pièce maîtresse */
+.drop-zone{padding:64px 28px}
+.drop-zone.compact{padding:20px}
+
+/* Quand la nouvelle UI pilules est montée, la grille source se retire
+   de la vue (elle reste dans le DOM : c'est elle qui porte la logique). */
+#format-section.wf-on #platform-grid{display:none}
+
+/* ── Rangée de pilules ── */
+.wf-row{position:relative;display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.wf-row[hidden]{display:none}
+.wf-pill,.wf-more{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 14px;border:1px solid var(--s3);border-radius:var(--r-pill);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:500;
+  white-space:nowrap;
+  transition:background-color var(--m-fast),border-color var(--m-fast),
+             color var(--m-fast),transform var(--m-fast),box-shadow var(--m-fast);
+}
+.wf-pill svg,.wf-more svg{width:15px;height:15px;flex-shrink:0;opacity:.6;transition:opacity var(--m-fast)}
+.wf-pill:hover,.wf-more:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626}
+.wf-pill:hover svg,.wf-more:hover svg{opacity:1}
+.wf-pill:active,.wf-more:active{transform:scale(.96);transition-duration:.08s}
+.wf-pill.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint);animation:chipSelect .18s var(--m-ease),chipGlow .32s ease-out}
+.wf-pill.active svg{opacity:1}
+.wf-more.active{border-color:var(--accent);color:var(--accent);background:var(--accent-tint)}
+.wf-more.active svg{opacity:1}
+.wf-more[aria-expanded="true"]{border-color:var(--s3-hover);color:var(--ink);background:#262626}
+
+/* ── Panneau « More » : même grammaire que les menus (s1/14/s3/ombre) ── */
+.wf-panel{
+  position:absolute;top:calc(100% + 8px);left:0;z-index:150;
+  width:min(340px,100%);
+  background:var(--s1);border:1px solid var(--s3);border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  padding:6px;
+  opacity:0;visibility:hidden;transform:translateY(-4px) scale(.98);
+  transform-origin:top left;
+  transition:opacity var(--m-menu),transform var(--m-menu),visibility .14s linear;
+  pointer-events:none;
+}
+.wf-row.open .wf-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1);pointer-events:auto}
+.wf-search-wrap{
+  display:flex;align-items:center;gap:8px;
+  margin:2px 2px 6px;padding:8px 12px;
+  background:var(--s2);border:1px solid var(--s3);border-radius:10px;
+  color:var(--ink-faint);
+  transition:border-color var(--m-fast);
+}
+.wf-search-wrap:focus-within{border-color:rgba(200,240,96,.5)}
+.wf-search{
+  flex:1;background:none;border:none;outline:none;min-width:0;
+  color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:13px;
+}
+.wf-search::placeholder{color:var(--ink-faint)}
+.wf-list{max-height:264px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.wf-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:9px;border:none;background:none;
+  color:var(--ink-muted);cursor:pointer;text-align:left;width:100%;
+  font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;
+  transition:background-color .12s ease,color .12s ease;
+}
+.wf-item svg{width:16px;height:16px;flex-shrink:0;opacity:.55}
+.wf-item:hover{background:var(--s2);color:var(--ink)}
+.wf-item:hover svg{opacity:1}
+.wf-item .wf-item-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-item .wf-item-meta{font-size:11px;color:var(--ink-faint);letter-spacing:.3px;flex-shrink:0}
+.wf-item.active{color:var(--accent);background:var(--accent-tint-soft)}
+.wf-item.active svg{opacity:1}
+.wf-item.active .wf-item-meta{color:rgba(200,240,96,.6)}
+.wf-item[hidden]{display:none}
+
+/* ── Mobile : pilules en scroll horizontal, panneau pleine largeur ── */
+@media(max-width:768px){
+  body.keou-anon .welcome-title{font-size:24px}
+  .wf-row{flex-wrap:nowrap}
+  .wf-pills{
+    display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    padding-bottom:2px;
+  }
+  .wf-pills::-webkit-scrollbar{display:none}
+  .wf-more{flex-shrink:0}
+  .wf-panel{width:100%;left:0;right:0}
+}
+
+/* ═══════════════════════════════════════════
+   Vague 3 — studio multi-outils
+   La pilule active porte SA couleur (pleine, texte sombre) ;
+   le panneau suit via main[data-tool] → --tool-accent.
+   Le CTA principal reste TOUJOURS lime (identité).
+   ═══════════════════════════════════════════ */
+
+/* ── Rangée d'outils ── */
+.tools-row{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  flex-wrap:nowrap;margin:0 0 32px;
+}
+.tools-row[hidden]{display:none}
+.tool-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 14px;border:1px solid var(--s3);border-radius:var(--r-pill);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:500;
+  white-space:nowrap;
+  transition:background-color var(--m-fast),border-color var(--m-fast),
+             color var(--m-fast),transform var(--m-fast),box-shadow var(--m-fast);
+}
+.tool-pill svg{width:15px;height:15px;flex-shrink:0;opacity:.6;transition:opacity var(--m-fast)}
+.tool-pill:hover{border-color:var(--s3-hover);color:var(--ink);background:#262626}
+.tool-pill:hover svg{opacity:1}
+.tool-pill:active{transform:scale(.96);transition-duration:.08s}
+.tool-pill.active{
+  background:var(--pill-accent,var(--accent));
+  border-color:var(--pill-accent,var(--accent));
+  color:#0a0a0a;
+  animation:chipSelect .18s var(--m-ease);
+}
+.tool-pill.active svg{opacity:1}
+
+/* ═══ Vague 4 — ligne unique + panneau cherchable (référence Topaz) ═══ */
+
+/* Halo discret sur la pilule active (leur pilule violette « brille ») */
+.tool-pill.active{
+  box-shadow:0 0 0 1px var(--pill-accent,var(--accent)),
+             0 6px 20px var(--pill-glow,rgba(200,240,96,.22));
+}
+/* Outils qui vivent dans le panneau : retirés de la LIGNE, jamais du DOM
+   (les 9 boutons restent la source de vérité du basculement). */
+.tool-pill.tp-off{display:none}
+
+/* Pilule « More + » : neutre, jamais colorée — l'outil actif est promu
+   dans la ligne, donc le nom et la couleur de l'actif restent visibles. */
+.tool-more{order:9}
+.tool-more span{letter-spacing:.01em}
+
+/* ── Panneau d'outils : centré à l'écran, fond assombri derrière ── */
+.tools-modal{
+  position:fixed;inset:0;z-index:400;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity var(--m-menu),visibility .14s linear;
+}
+.tools-modal[hidden]{display:none}
+.tools-modal.open{opacity:1;visibility:visible;pointer-events:auto}
+.tools-modal-backdrop{
+  position:absolute;inset:0;
+  background:rgba(6,6,6,.62);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.tools-modal-card{
+  position:relative;width:min(520px,100%);max-height:min(76vh,620px);
+  display:flex;flex-direction:column;
+  background:var(--s1);border:1px solid var(--s3);border-radius:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+  padding:8px;
+  transform:scale(.98);
+  transition:transform var(--m-menu);
+}
+.tools-modal.open .tools-modal-card{transform:scale(1)}
+
+.tools-search-wrap{
+  display:flex;align-items:center;gap:9px;
+  margin:2px 2px 8px;padding:10px 13px;
+  background:var(--s2);border:1px solid var(--s3);border-radius:10px;
+  color:var(--ink-faint);flex-shrink:0;
+  transition:border-color var(--m-fast);
+}
+.tools-search-wrap:focus-within{border-color:rgba(200,240,96,.5)}
+.tools-search{
+  flex:1;min-width:0;background:none;border:none;outline:none;
+  color:var(--ink);font-family:'Space Grotesk',sans-serif;font-size:13.5px;
+}
+.tools-search::placeholder{color:var(--ink-faint)}
+
+.tools-list{overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:2px}
+.tools-item{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:10px 12px;border:none;border-radius:10px;background:none;
+  cursor:pointer;text-align:left;font-family:'Space Grotesk',sans-serif;
+  transition:background-color .12s ease;
+}
+.tools-item[hidden]{display:none}
+.tools-item-icon{
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:34px;height:34px;border-radius:9px;
+  background:var(--s2);color:var(--ink-muted);
+  transition:background-color .12s ease,color .12s ease;
+}
+.tools-item-icon svg{width:17px;height:17px}
+.tools-item-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tools-item-name{font-size:15px;font-weight:600;color:var(--ink);line-height:1.25}
+.tools-item-sub{font-size:12px;color:var(--ink-muted);line-height:1.3}
+.tools-item:hover{background:var(--s2)}
+.tools-item:hover .tools-item-icon{color:var(--ink)}
+/* Ligne de l'outil ACTIF : teinte de SA couleur, picto coloré */
+.tools-item.active{background:color-mix(in srgb,var(--item-accent) 12%,transparent)}
+.tools-item.active .tools-item-icon{background:var(--item-glow);color:var(--item-accent)}
+.tools-item.active .tools-item-name{color:var(--item-accent)}
+/* Repli pour les moteurs sans color-mix : la teinte passe par --item-glow. */
+@supports not (background:color-mix(in srgb,#000 12%,transparent)){
+  .tools-item.active{background:var(--item-glow)}
+}
+.tools-empty{
+  /* --ink-faint (.38) donnait 3,33:1 sur --s1 : sous le seuil AA de 4,5. */
+  padding:18px 12px;text-align:center;font-size:12.5px;color:var(--ink-muted);
+}
+.tools-empty[hidden]{display:none}
+
+/* ── Accent d'outil : le panneau entier suit la pilule ── */
+#main-content{--tool-accent:#c8f060;--tool-tint:rgba(200,240,96,.14);--tool-tint-soft:rgba(200,240,96,.10)}
+#main-content[data-tool="polish"]{--tool-accent:#7dd3fc;--tool-tint:rgba(125,211,252,.14);--tool-tint-soft:rgba(125,211,252,.10)}
+#main-content[data-tool="remix"]{--tool-accent:#fda4af;--tool-tint:rgba(253,164,175,.14);--tool-tint-soft:rgba(253,164,175,.10)}
+#main-content[data-tool="adapt"]{--tool-accent:#fcd34d;--tool-tint:rgba(252,211,77,.14);--tool-tint-soft:rgba(252,211,77,.10)}
+#main-content[data-tool="video"]{--tool-accent:#22d3ee;--tool-tint:rgba(34,211,238,.14);--tool-tint-soft:rgba(34,211,238,.10)}
+#main-content[data-tool="upscale"]{--tool-accent:#c4b5fd;--tool-tint:rgba(196,181,253,.14);--tool-tint-soft:rgba(196,181,253,.10)}
+#main-content[data-tool="voice"]{--tool-accent:#f9a8d4;--tool-tint:rgba(249,168,212,.14);--tool-tint-soft:rgba(249,168,212,.10)}
+#main-content[data-tool="sfx"]{--tool-accent:#86efac;--tool-tint:rgba(134,239,172,.14);--tool-tint-soft:rgba(134,239,172,.10)}
+#main-content[data-tool="vidupscale"]{--tool-accent:#a5b4fc;--tool-tint:rgba(165,180,252,.14);--tool-tint-soft:rgba(165,180,252,.10)}
+
+/* ── Bascule de panneau : sortant 140ms, entrant 180ms — jamais de saut ── */
+.tool-panel{display:none}
+.tool-panel.active{display:block;animation:panelIn .18s var(--m-ease) both}
+.tool-panel.leaving{display:block;animation:panelOut .14s var(--m-ease) both}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes panelOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(6px)}}
+
+/* ── Composants des panneaux outils ── */
+.tp-card{margin-top:8px}
+.tp-card .form-input{margin-bottom:16px}
+.tp-hint{font-size:12px;color:var(--ink-faint);margin:-6px 0 16px}
+.tp-note{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.5}
+.tp-row{display:flex;gap:20px;flex-wrap:wrap}
+.tp-col{min-width:0}
+
+/* Sélecteur de source : vignettes de session + tuiles upload/sample */
+.tp-sources-row{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tp-thumbs{display:flex;gap:8px;flex-wrap:wrap;min-height:0}
+.tp-thumb{
+  width:56px;height:56px;border-radius:10px;overflow:hidden;position:relative;
+  border:1px solid var(--s3);background:var(--s2);cursor:pointer;padding:0;
+  transition:border-color var(--m-fast),transform var(--m-fast),box-shadow var(--m-fast);
+  flex-shrink:0;
+}
+.tp-thumb img,.tp-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.tp-thumb:hover{border-color:var(--s3-hover);transform:translateY(-1px)}
+.tp-thumb.sel{border-color:var(--tool-accent);box-shadow:0 0 0 2px var(--tool-tint)}
+.tp-thumb .tp-thumb-badge{
+  position:absolute;right:3px;bottom:3px;width:16px;height:16px;border-radius:5px;
+  background:rgba(10,10,10,.72);color:#f2f2f2;
+  display:flex;align-items:center;justify-content:center;
+}
+.tp-thumb .tp-thumb-badge svg{width:10px;height:10px}
+.tp-src-btn{
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  width:56px;height:56px;border-radius:10px;border:1px dashed var(--s3);
+  background:transparent;color:var(--ink-faint);cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:9.5px;font-weight:600;
+  letter-spacing:.02em;flex-shrink:0;
+  transition:border-color var(--m-fast),color var(--m-fast),background-color var(--m-fast);
+}
+.tp-src-btn:hover{border-color:var(--tool-accent);color:var(--tool-accent);background:var(--tool-tint-soft)}
+.tp-src-btn svg{width:16px;height:16px}
+.tp-src-btn.busy{opacity:.5;pointer-events:none}
+
+/* Chips de réglage : sélection à l'accent de L'OUTIL */
+.tp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tp-chip{
+  padding:7px 13px;border:1px solid var(--s3);border-radius:var(--r-btn);
+  background:var(--s2);color:var(--ink-muted);cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.02em;
+  transition:background-color var(--m-fast),border-color var(--m-fast),
+             color var(--m-fast),transform var(--m-fast);
+}
+.tp-chip:hover{border-color:var(--s3-hover);color:var(--ink)}
+.tp-chip:active{transform:scale(.95);transition-duration:.08s}
+.tp-chip.active{border-color:var(--tool-accent);color:var(--tool-accent);background:var(--tool-tint);animation:chipSelect .18s var(--m-ease)}
+.tp-chip[hidden]{display:none}
+
+/* Cartes-moteurs vidéo (à la Topaz : nom + meta) */
+.tp-engines{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:16px}
+.tp-engine{
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  padding:10px 12px;border:1px solid var(--s3);border-radius:var(--r-btn);
+  background:var(--s2);cursor:pointer;text-align:left;
+  font-family:'Space Grotesk',sans-serif;
+  transition:background-color var(--m-fast),border-color var(--m-fast),transform var(--m-fast);
+}
+.tp-engine:hover{border-color:var(--s3-hover);transform:translateY(-1px)}
+.tp-engine:active{transform:scale(.97);transition-duration:.08s}
+.tp-engine-name{font-size:12.5px;font-weight:600;color:var(--ink-muted);transition:color var(--m-fast)}
+.tp-engine-meta{font-size:10.5px;color:var(--ink-faint);letter-spacing:.02em}
+.tp-engine:hover .tp-engine-name{color:var(--ink)}
+.tp-engine.active{border-color:var(--tool-accent);background:var(--tool-tint);animation:chipSelect .18s var(--m-ease)}
+.tp-engine.active .tp-engine-name{color:var(--tool-accent)}
+.tp-engine.active .tp-engine-meta{color:var(--tool-accent);opacity:.65}
+
+/* Focus des champs : suit l'accent de l'outil */
+.tool-panel .form-input:focus{border-color:var(--tool-accent);box-shadow:0 0 0 3px var(--tool-tint-soft)}
+
+/* Cartes de résultat outils : lecteur audio inline */
+.w3-audio-wrap{
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;background:var(--s2);padding:20px;
+}
+.w3-audio-wrap svg{width:34px;height:34px;color:var(--ink-faint)}
+.w3-audio-wrap audio{width:100%;max-width:240px}
+.w3-video{width:100%;height:100%;object-fit:contain;display:block;background:var(--s2)}
+
+/* ── Mobile : rangée outils en scroll horizontal ── */
+@media(max-width:768px){
+  .tools-row{
+    justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    /* Un conteneur de défilement rogne à sa padding-box : on réserve la place
+       de l'anneau (1px) et du halo (6px + 20px de flou), puis on compense en
+       marge pour ne rien déplacer. */
+    padding:2px 2px 26px;margin:-2px -2px -2px;
+  }
+  .tools-row::-webkit-scrollbar{display:none}
+  /* Panneau d'outils → feuille pleine largeur ancrée en bas */
+  .tools-modal{align-items:flex-end;padding:0}
+  .tools-modal-card{
+    width:100%;max-width:100%;max-height:82vh;
+    border-radius:16px 16px 0 0;border-bottom:none;
+    transform:translateY(14px);
+    padding-bottom:calc(8px + env(safe-area-inset-bottom,0));
+  }
+  .tools-modal.open .tools-modal-card{transform:translateY(0)}
+  .tp-row{gap:12px}
+  .tp-engines{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Reduced motion : styles.css neutralise déjà durées d'animation et de
+   transition (0.01ms !important, sélecteur universel). On éteint en plus
+   les délais et la respiration de la dropzone, que ce filet ne couvre pas. */
+@media(prefers-reduced-motion:reduce){
+  #da-input-wrap,#da-input-wrap.hidden,
+  .app-sidebar-dropdown,body .ks-select .ks-select-dropdown,.notif-panel{
+    transition-delay:0s!important;
+  }
+  .drop-zone.dragover{animation:none}
+  .format-btn.active,.variant-btn.active,.platform-btn.active,
+  .template-chip.active,.cd-preset.active,.wf-pill.active,
+  .tool-pill.active,.tp-chip.active,.tp-engine.active{animation:none}
+  .wf-panel,.tools-modal,.tools-modal-card{transition-delay:0s!important}
+  .tool-panel.active,.tool-panel.leaving{animation:none}
+}
 </style>
 </head>
 <body>
@@ -493,9 +1177,13 @@
 
 <main class="main" id="main-content" style="display:none">
 
-  <!-- Studio Header with Project Selector -->
+  <!-- Studio Welcome (Vague 2) — accueil centré façon Topaz.
+       #provider-badge et les deux selects gardent id/classe/inline-style :
+       le bloc JS « Production engine badge » et anon.js s'y accrochent. -->
   <div class="studio-header">
-    <h2>Production Engine</h2>
+    <h2 class="studio-title">Production Engine</h2>
+    <h2 class="welcome-title">Ready to produce?</h2>
+    <p class="welcome-sub">One product photo in &mdash; a full campaign out.</p>
     <div class="studio-controls">
       <span class="provider-badge" id="provider-badge" style="font-size:10px;padding:3px 8px;border-radius:100px;border:1px solid var(--border);color:var(--ink-muted);font-weight:500;letter-spacing:.3px"></span>
       <select class="project-select" id="project-select">
@@ -506,6 +1194,138 @@
       </select>
     </div>
   </div>
+
+  <!-- Vague 3 — rangée d'outils (workflows façon Topaz). Chaque pilule porte
+       sa couleur d'accent ; le panneau actif suit via main[data-tool].
+       Dévoilée par le script « Vague 3 — tools » (mode anonyme) ; sans lui,
+       seule la pilule Create existe implicitement : le studio classique. -->
+  <div class="tools-row" id="tools-row" hidden>
+    <button type="button" class="tool-pill active" data-tool="create" style="--pill-accent:#c8f060;--pill-glow:rgba(200,240,96,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      <span>Create</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="polish" style="--pill-accent:#7dd3fc;--pill-glow:rgba(125,211,252,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+      <span>Polish</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="remix" style="--pill-accent:#fda4af;--pill-glow:rgba(253,164,175,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      <span>Remix</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="adapt" style="--pill-accent:#fcd34d;--pill-glow:rgba(252,211,77,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+      <span>Adapt</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="video" style="--pill-accent:#22d3ee;--pill-glow:rgba(34,211,238,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      <span>Video</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="upscale" style="--pill-accent:#c4b5fd;--pill-glow:rgba(196,181,253,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      <span>Upscale</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="voice" style="--pill-accent:#f9a8d4;--pill-glow:rgba(249,168,212,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      <span>Voice</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="sfx" style="--pill-accent:#86efac;--pill-glow:rgba(134,239,172,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      <span>SFX</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="vidupscale" style="--pill-accent:#a5b4fc;--pill-glow:rgba(165,180,252,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="13" y2="11"/><rect x="3" y="9" width="12" height="12" rx="2"/><polygon points="8 13 8 17 12 15"/></svg>
+      <span>Video Upscale</span>
+    </button>
+    <button type="button" class="tool-pill tool-more" id="tools-more" aria-haspopup="dialog" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>More</span>
+    </button>
+  </div>
+
+  <!-- Vague 4 — panneau d'outils cherchable, centré (référence Topaz).
+       Liste STATIQUE : c'est elle qui porte les libellés et sous-titres pour
+       le circuit i18n. Chaque ligne est une télécommande — elle forwarde le
+       clic à la pilule correspondante, seule source de vérité du basculement. -->
+  <div class="tools-modal" id="tools-modal" hidden>
+    <div class="tools-modal-backdrop" data-tools-close></div>
+    <div class="tools-modal-card" role="dialog" aria-modal="true" aria-label="Tools">
+      <div class="tools-search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="tools-search" class="tools-search" placeholder="Find a tool&hellip;" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="tools-list" id="tools-list">
+      <button type="button" class="tools-item" data-tool="create" style="--item-accent:#c8f060;--item-glow:rgba(200,240,96,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Create</span>
+          <span class="tools-item-sub">Product scenes from a photo</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="polish" style="--item-accent:#7dd3fc;--item-glow:rgba(125,211,252,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Polish</span>
+          <span class="tools-item-sub">Retouch without regenerating</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="remix" style="--item-accent:#fda4af;--item-glow:rgba(253,164,175,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Remix</span>
+          <span class="tools-item-sub">New direction, same product</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="adapt" style="--item-accent:#fcd34d;--item-glow:rgba(252,211,77,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Adapt</span>
+          <span class="tools-item-sub">Every format from one render</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="video" style="--item-accent:#22d3ee;--item-glow:rgba(34,211,238,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Video</span>
+          <span class="tools-item-sub">Cinematic product clips</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="upscale" style="--item-accent:#c4b5fd;--item-glow:rgba(196,181,253,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Upscale</span>
+          <span class="tools-item-sub">Print-ready resolution</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="voice" style="--item-accent:#f9a8d4;--item-glow:rgba(249,168,212,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Voice</span>
+          <span class="tools-item-sub">Narration from text</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="sfx" style="--item-accent:#86efac;--item-glow:rgba(134,239,172,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">SFX</span>
+          <span class="tools-item-sub">Sound design from a description</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="vidupscale" style="--item-accent:#a5b4fc;--item-glow:rgba(165,180,252,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="13" y2="11"/><rect x="3" y="9" width="12" height="12" rx="2"/><polygon points="8 13 8 17 12 15"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Video Upscale</span>
+          <span class="tools-item-sub">Sharpen a generated clip</span>
+        </span>
+      </button>
+      </div>
+      <p class="tools-empty" id="tools-empty" hidden>No tool matches</p>
+    </div>
+  </div>
+
+  <!-- Vague 3 — panneau Create : le flow existant complet, re-logé tel quel.
+       Le wrap n'ajoute qu'un contexte d'affichage ; tous les ids/classes
+       internes sont inchangés, le JS existant continue de piloter. -->
+  <div class="tool-panel active" id="tool-panel-create">
 
   <!-- Upload -->
   <section id="upload-section">
@@ -534,6 +1354,28 @@
 
     <!-- Platform Presets -->
     <p class="section-label">Platform</p>
+
+    <!-- Vague 2 — rangée de pilules workflows + panneau cherchable.
+         Télécommande PURE : les pilules et lignes sont clonées depuis la
+         grille #platform-grid ci-dessous (qui reste la seule source de
+         vérité, masquée quand cette UI est montée) et forwardent chaque
+         clic au bouton d'origine. Monté par le script « Vague 2 » en fin
+         de body ; si ce script ne tourne pas, la grille reste visible. -->
+    <div class="wf-row" id="wf-row" hidden>
+      <div class="wf-pills" id="wf-pills"></div>
+      <button type="button" class="wf-more" id="wf-more" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span class="wf-more-label">More</span>
+      </button>
+      <div class="wf-panel" id="wf-panel" hidden>
+        <div class="wf-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="wf-search" class="wf-search" placeholder="Search workflows&hellip;" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="wf-list" id="wf-list"></div>
+      </div>
+    </div>
+
     <div class="platform-grid" id="platform-grid">
       <button class="platform-btn" data-preset="instagram-post">
         <span class="platform-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></span>
@@ -686,6 +1528,258 @@
     <button class="btn-secondary btn-sm" id="download-all-btn">Save All</button>
   </div>
 
+  </div><!-- /tool-panel-create -->
+
+  <!-- ═══ Vague 3 — panneaux outils (mode anonyme, endpoints essai) ═══
+       Statique pour le circuit i18n ; le script « Vague 3 — tools » câble
+       sources, chips et soumissions. Chaque panneau suit l'accent de son
+       outil via main[data-tool] → \-\-tool-accent. -->
+
+  <!-- Polish -->
+  <section class="tool-panel" id="tool-panel-polish">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="tp-hint">Pick a result from this session, or add a photo.</p>
+      <button type="button" class="btn-primary full" data-tp-submit>Polish image</button>
+      <p class="tp-note">Professional retouch of the selected image &mdash; lighting, sharpness, clean finish.</p>
+    </div>
+  </section>
+
+  <!-- Remix -->
+  <section class="tool-panel" id="tool-panel-remix">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="section-label">Creative direction</p>
+      <textarea class="form-input" data-tp-prompt rows="2" maxlength="500" placeholder="Describe the new scene, style or mood&hellip;"></textarea>
+      <button type="button" class="btn-primary full" data-tp-submit>Remix image</button>
+      <p class="tp-note">Re-imagines the image around your prompt &mdash; same product, new world.</p>
+    </div>
+  </section>
+
+  <!-- Adapt -->
+  <section class="tool-panel" id="tool-panel-adapt">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="section-label">Target format</p>
+      <div class="tp-chips" data-tp-formats>
+        <button type="button" class="tp-chip active" data-v="1:1">1:1</button>
+        <button type="button" class="tp-chip" data-v="16:9">16:9</button>
+        <button type="button" class="tp-chip" data-v="9:16">9:16</button>
+        <button type="button" class="tp-chip" data-v="3:4">3:4</button>
+        <button type="button" class="tp-chip" data-v="4:3">4:3</button>
+        <button type="button" class="tp-chip" data-v="3:2">3:2</button>
+        <button type="button" class="tp-chip" data-v="2:3">2:3</button>
+      </div>
+      <button type="button" class="btn-primary full" data-tp-submit>Adapt format</button>
+      <p class="tp-note">Recomposes the visual for the target ratio &mdash; nothing squeezed, nothing cropped blindly.</p>
+    </div>
+  </section>
+
+  <!-- Video -->
+  <section class="tool-panel" id="tool-panel-video">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="section-label">Engine</p>
+      <div class="tp-engines" data-tp-engines>
+        <button type="button" class="tp-engine active" data-v="veo3_fast">
+          <span class="tp-engine-name">Veo 3.1 fast</span>
+          <span class="tp-engine-meta">native audio &middot; 4-8s</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="veo3_pro">
+          <span class="tp-engine-name">Veo 3.1 pro</span>
+          <span class="tp-engine-meta">max quality &middot; 4-8s</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="kling-2.6">
+          <span class="tp-engine-name">Kling 2.6</span>
+          <span class="tp-engine-meta">smooth motion &middot; 5-10s</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="kling-3.0">
+          <span class="tp-engine-name">Kling 3.0</span>
+          <span class="tp-engine-meta">cinematic &middot; 3-15s</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="seedance-2">
+          <span class="tp-engine-name">Seedance 2</span>
+          <span class="tp-engine-meta">realistic &middot; 4-15s</span>
+        </button>
+      </div>
+      <div class="tp-row">
+        <div class="tp-col">
+          <p class="section-label">Duration</p>
+          <div class="tp-chips" data-tp-durations>
+            <button type="button" class="tp-chip" data-v="3">3s</button>
+            <button type="button" class="tp-chip" data-v="4">4s</button>
+            <button type="button" class="tp-chip" data-v="5">5s</button>
+            <button type="button" class="tp-chip" data-v="6">6s</button>
+            <button type="button" class="tp-chip active" data-v="8">8s</button>
+            <button type="button" class="tp-chip" data-v="10">10s</button>
+            <button type="button" class="tp-chip" data-v="15">15s</button>
+          </div>
+        </div>
+        <div class="tp-col" data-tp-resolution-wrap hidden>
+          <p class="section-label">Resolution</p>
+          <div class="tp-chips" data-tp-resolutions>
+            <button type="button" class="tp-chip" data-v="480p">480p</button>
+            <button type="button" class="tp-chip active" data-v="720p">720p</button>
+          </div>
+        </div>
+        <div class="tp-col">
+          <p class="section-label">Format</p>
+          <div class="tp-chips" data-tp-ratios>
+            <button type="button" class="tp-chip active" data-v="1:1">1:1</button>
+            <button type="button" class="tp-chip" data-v="16:9">16:9</button>
+            <button type="button" class="tp-chip" data-v="9:16">9:16</button>
+          </div>
+        </div>
+        <div class="tp-col">
+          <p class="section-label">Audio</p>
+          <div class="tp-chips">
+            <button type="button" class="tp-chip" data-tp-audio>Audio track</button>
+          </div>
+        </div>
+      </div>
+      <p class="section-label">Creative direction</p>
+      <textarea class="form-input" data-tp-prompt rows="2" maxlength="500" placeholder="Optional &mdash; camera move, atmosphere, story beat&hellip;"></textarea>
+      <button type="button" class="btn-primary full" data-tp-submit>Generate Video</button>
+      <p class="tp-note">Animates the selected image &mdash; every second is billed on your key, start short.</p>
+    </div>
+  </section>
+
+  <!-- Upscale -->
+  <section class="tool-panel" id="tool-panel-upscale">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="section-label">Scale factor</p>
+      <div class="tp-chips" data-tp-factors>
+        <button type="button" class="tp-chip active" data-v="2">&times;2</button>
+        <button type="button" class="tp-chip" data-v="4">&times;4</button>
+      </div>
+      <button type="button" class="btn-primary full" data-tp-submit>Upscale this image</button>
+      <p class="tp-note">Sharp enlargement up to &times;4 &mdash; the provider does not go higher.</p>
+    </div>
+  </section>
+
+  <!-- Voice -->
+  <section class="tool-panel" id="tool-panel-voice">
+    <div class="section-card tp-card">
+      <p class="section-label">Script</p>
+      <textarea class="form-input" data-tp-text rows="3" maxlength="500" placeholder="Type the words to speak&hellip;"></textarea>
+      <p class="section-label">Voice</p>
+      <select class="form-input" data-tp-voice>
+        <option value="Rachel" selected>Rachel</option>
+        <option value="Aria">Aria</option>
+        <option value="Roger">Roger</option>
+        <option value="Sarah">Sarah</option>
+        <option value="George">George</option>
+        <option value="Laura">Laura</option>
+        <option value="Charlie">Charlie</option>
+        <option value="Charlotte">Charlotte</option>
+        <option value="Alice">Alice</option>
+        <option value="Brian">Brian</option>
+        <option value="Lily">Lily</option>
+        <option value="Daniel">Daniel</option>
+      </select>
+      <button type="button" class="btn-primary full" data-tp-submit>Generate Speech</button>
+      <p class="tp-note">AI voice-over &mdash; the audio result plays right here and lands in the public gallery.</p>
+    </div>
+  </section>
+
+  <!-- SFX -->
+  <section class="tool-panel" id="tool-panel-sfx">
+    <div class="section-card tp-card">
+      <p class="section-label">Sound description</p>
+      <textarea class="form-input" data-tp-text rows="3" maxlength="450" placeholder="Describe the sound &mdash; rain on a tin roof, crowd cheering, retro laser&hellip;"></textarea>
+      <p class="section-label">Duration</p>
+      <div class="tp-chips" data-tp-durations>
+        <button type="button" class="tp-chip active" data-v="">Auto</button>
+        <button type="button" class="tp-chip" data-v="2">2s</button>
+        <button type="button" class="tp-chip" data-v="5">5s</button>
+        <button type="button" class="tp-chip" data-v="10">10s</button>
+        <button type="button" class="tp-chip" data-v="22">22s</button>
+      </div>
+      <button type="button" class="btn-primary full" data-tp-submit>Generate sound</button>
+      <p class="tp-note">Sound effect from a text description &mdash; up to 22 seconds.</p>
+    </div>
+  </section>
+
+  <!-- Video Upscale -->
+  <section class="tool-panel" id="tool-panel-vidupscale">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Video</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+      </div>
+      <p class="tp-hint">Video upscaling starts from a video made in this session &mdash; render one with the Video tool first.</p>
+      <p class="section-label">Scale factor</p>
+      <div class="tp-chips" data-tp-factors>
+        <button type="button" class="tp-chip active" data-v="2">&times;2</button>
+        <button type="button" class="tp-chip" data-v="4">&times;4</button>
+      </div>
+      <button type="button" class="btn-primary full" data-tp-submit>Upscale this video</button>
+      <p class="tp-note">Topaz Video enlargement &mdash; &times;2 or &times;4, billed per second of footage.</p>
+    </div>
+  </section>
+
+  <!-- Vague 3 — résultats des outils : même grammaire de cartes, grille
+       jumelle au-dessus de la grille Create (que renderAllCards réécrit). -->
+  <section id="tool-results-section" class="hidden" style="margin-top:8px">
+    <div class="results-grid" id="tool-results-grid"></div>
+  </section>
+
   <!-- Results -->
   <section id="results-section" class="hidden" style="margin-top:8px">
     <div class="results-grid" id="results-grid"></div>
@@ -811,6 +1905,19 @@ function maybeFlagKeyError(msg) {
   let anon = false;
   const hasSession = await Auth.init();
   if (!hasSession && window.AnonMode) anon = await AnonMode.tryInstall();
+  /* À la racine, redirectToLogin() ne redirige nulle part (c'est déjà « / ») :
+     sans ce repli, un échec d'installation — typiquement un 429 depuis une IP
+     partagée — laissait une page entièrement blanche. */
+  if (!anon && !hasSession && location.pathname === '/') {
+    const zone = document.getElementById('main-content');
+    if (zone) {
+      zone.style.display = '';
+      zone.innerHTML = '<p style="max-width:520px;margin:80px auto;text-align:center;color:var(--ink-muted);line-height:1.7">'
+        + 'The studio is momentarily unreachable from this network. Wait a minute and reload, or '
+        + '<a href="/login.html" style="color:var(--accent)">sign in</a>.</p>';
+    }
+    return;
+  }
   if (!anon) {
     const ok = await Auth.guard();
     if (!ok) return;
@@ -1416,7 +2523,7 @@ $$('.cd-preset').forEach(btn => {
 });
 
 // ─── Batch Generate ───
-$('#generate-btn').addEventListener('click', () => {
+$('#generate-btn').addEventListener('click', async () => {
   if (isProcessing) return;
   /* Pré-vol de la clé, AVANT toute requête. Sans clé en anonyme (et sans
    * moteur local), chaque soumission part vers un refus certain : 3 retries
@@ -1425,6 +2532,15 @@ $('#generate-btn').addEventListener('click', () => {
   if (window.IS_ANON && !window.ENGINE_LOCAL && !Auth.getProviderKey()) {
     demandProviderKey();
     return;
+  }
+  /* Consentement demandé ICI, au clic, et pas à l'arrivée sur le studio :
+   * on laisse le visiteur regarder, déposer une photo et choisir un format
+   * avant de lui présenter le contrat. Il est posé AVANT tout état de
+   * chargement — la garde réseau d'anon.js reste le filet, mais si elle
+   * jouait seule le bouton passait en « Generating… » puis restait mort
+   * quand le visiteur refusait. */
+  if (window.IS_ANON && window.AnonMode && typeof AnonMode.ensureConsent === 'function') {
+    if (!(await AnonMode.ensureConsent())) return;
   }
   const pending = jobs.filter(j => j.status === 'queued');
   if (!pending.length) return;
@@ -3164,6 +4280,837 @@ function imgFallback(el) {
   wrap.innerHTML = Icons.sized(isVid ? 'video' : 'image', 32, 1.2);
   el.replaceWith(wrap);
 }
+</script>
+
+<script>
+/* ═══ Vague 2 — pills UI ═══
+   Télécommande de la grille Platform (#platform-grid). AUCUNE logique de
+   preset ici : chaque pilule et chaque ligne du panneau clone l'icône, le
+   libellé et la meta du bouton d'origine, lui FORWARDE le clic (btn.click())
+   et REFLÈTE son état .active via un MutationObserver. La grille reste la
+   seule source de vérité ; si ce script ne tourne pas, elle reste visible
+   (le CSS ne la masque que lorsque #format-section porte .wf-on).
+   Les clones sont traduits par le MutationObserver d'i18n.js comme tout
+   texte injecté ; « More » et le placeholder de recherche vivent dans le
+   HTML statique et suivent le circuit i18n normal. */
+(function () {
+  'use strict';
+  var grid = document.getElementById('platform-grid');
+  var row = document.getElementById('wf-row');
+  var pillsWrap = document.getElementById('wf-pills');
+  var more = document.getElementById('wf-more');
+  var panel = document.getElementById('wf-panel');
+  var list = document.getElementById('wf-list');
+  var search = document.getElementById('wf-search');
+  var section = document.getElementById('format-section');
+  if (!grid || !row || !pillsWrap || !more || !panel || !list || !search || !section) return;
+
+  var buttons = Array.prototype.slice.call(grid.querySelectorAll('.platform-btn[data-preset]'));
+  if (!buttons.length) return;
+
+  /* Pilules épinglées dans la rangée (les 4 principales + Custom, l'état
+     par défaut) ; le panneau « More » liste TOUS les presets. */
+  var PINNED = ['instagram-post', 'instagram-story', 'tiktok', 'facebook-ad', 'custom'];
+
+  function cloneIcon(btn) {
+    var svg = btn.querySelector('.platform-icon svg');
+    return svg ? svg.cloneNode(true) : null;
+  }
+  function labelOf(btn) {
+    var el = btn.querySelector('.platform-label');
+    return (el ? el.textContent : btn.dataset.preset) || '';
+  }
+  function metaOf(btn) {
+    var el = btn.querySelector('.platform-meta');
+    return el ? el.textContent : '';
+  }
+
+  var pills = {};
+  var items = {};
+
+  buttons.forEach(function (btn) {
+    var key = btn.dataset.preset;
+
+    var item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'wf-item';
+    item.dataset.wf = key;
+    var ic = cloneIcon(btn);
+    if (ic) item.appendChild(ic);
+    var name = document.createElement('span');
+    name.className = 'wf-item-name';
+    name.textContent = labelOf(btn);
+    item.appendChild(name);
+    var meta = metaOf(btn);
+    if (meta) {
+      var m = document.createElement('span');
+      m.className = 'wf-item-meta';
+      m.textContent = meta;
+      item.appendChild(m);
+    }
+    item.addEventListener('click', function () { btn.click(); closePanel(); });
+    list.appendChild(item);
+    items[key] = item;
+
+    if (PINNED.indexOf(key) !== -1) {
+      var pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'wf-pill';
+      pill.dataset.wf = key;
+      var ic2 = cloneIcon(btn);
+      if (ic2) pill.appendChild(ic2);
+      var lb = document.createElement('span');
+      lb.textContent = labelOf(btn);
+      pill.appendChild(lb);
+      pill.addEventListener('click', function () { btn.click(); });
+      pills[key] = pill;
+    }
+  });
+
+  PINNED.forEach(function (k) { if (pills[k]) pillsWrap.appendChild(pills[k]); });
+
+  function sync() {
+    var activeKey = null;
+    buttons.forEach(function (btn) {
+      if (btn.classList.contains('active')) activeKey = btn.dataset.preset;
+    });
+    Object.keys(pills).forEach(function (k) {
+      pills[k].classList.toggle('active', k === activeKey);
+    });
+    Object.keys(items).forEach(function (k) {
+      items[k].classList.toggle('active', k === activeKey);
+    });
+    /* Preset actif absent de la rangée (Pinterest, Product Page…) :
+       le bouton More s'allume pour le signaler. */
+    more.classList.toggle('active', !!activeKey && !pills[activeKey]);
+  }
+
+  var obs = new MutationObserver(sync);
+  buttons.forEach(function (btn) {
+    obs.observe(btn, { attributes: true, attributeFilter: ['class'] });
+  });
+
+  function openPanel() {
+    row.classList.add('open');
+    more.setAttribute('aria-expanded', 'true');
+    search.value = '';
+    filter('');
+    setTimeout(function () { try { search.focus({ preventScroll: true }); } catch (e) {} }, 150);
+  }
+  function closePanel() {
+    row.classList.remove('open');
+    more.setAttribute('aria-expanded', 'false');
+  }
+  more.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (row.classList.contains('open')) closePanel(); else openPanel();
+  });
+  document.addEventListener('click', function (e) {
+    if (row.classList.contains('open') && !panel.contains(e.target)
+      && e.target !== more && !more.contains(e.target)) closePanel();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePanel();
+  });
+
+  /* Filtre sur le texte AFFICHÉ : fonctionne en français comme en anglais. */
+  function filter(q) {
+    var needle = q.trim().toLowerCase();
+    Object.keys(items).forEach(function (k) {
+      var it = items[k];
+      var hit = !needle || it.textContent.toLowerCase().indexOf(needle) !== -1;
+      if (hit) it.removeAttribute('hidden'); else it.setAttribute('hidden', '');
+    });
+  }
+  search.addEventListener('input', function () { filter(search.value); });
+  search.addEventListener('click', function (e) { e.stopPropagation(); });
+
+  /* IS_ANON est posée après un `await` du garde d'authentification : une
+     garde synchrone en tête d'IIFE la lirait `undefined` et couperait les
+     pilules même en anonyme. On attend donc qu'elle soit décidée.
+     En connecté, rien n'est dévoilé : #wf-row reste [hidden], .wf-on n'est
+     pas posée, et la grille Platform d'origine reste celle des clients. */
+  var essais = 0;
+  (function armer() {
+    if (window.IS_ANON === undefined) {
+      if (++essais < 300) return setTimeout(armer, 100);
+      return;
+    }
+    if (!window.IS_ANON) return; // connecté : grille Platform inchangée
+    panel.removeAttribute('hidden');
+    row.removeAttribute('hidden');
+    section.classList.add('wf-on');
+    sync();
+  })();
+})();
+</script>
+
+<script>
+/* ═══ Vague 3 — tools ═══
+   Studio multi-outils (mode ANONYME uniquement — en mode connecté la rangée
+   reste masquée et l'interface actuelle joue, inchangée). Le panneau Create
+   est le flow existant re-logé : ce bloc n'en pilote que l'AFFICHAGE.
+   Les outils 2-9 appellent les endpoints essai par les MÊMES conventions que
+   le code existant : Auth.authFetch sur les routes de compte (l'adaptateur
+   anon.js les mappe vers /api/essai/studio/* avec X-Provider-Key, consent et
+   idempotencyKey), polling /api/status/<type>/<uuid>, pré-check de clé via
+   demandProviderKey() (flash de la barre BYOK). Seul le 9e outil appelle sa
+   route essai en direct : l'adaptateur mappe encore video-upscale sur
+   l'agrandissement image. AUCUNE ligne du JS existant n'est modifiée. */
+(function () {
+  'use strict';
+
+  var TOOL_KEYS = ['create', 'polish', 'remix', 'adapt', 'video', 'upscale', 'voice', 'sfx', 'vidupscale'];
+
+  /* Moteurs vidéo : identifiants EXACTS acceptés par la file
+     (src/lib/essai-queue.js VIDEO_MODELS + variantes Veo de la route). */
+  var ENGINES = {
+    veo3_fast: { videoModel: 'veo3', variant: 'veo3_fast', durations: [4, 6, 8], def: 8 },
+    veo3_pro: { videoModel: 'veo3', variant: 'veo3', durations: [4, 6, 8], def: 8 },
+    'kling-2.6': { videoModel: 'kling-2.6', durations: [5, 10], def: 5 },
+    'kling-3.0': { videoModel: 'kling-3.0', durations: [3, 4, 5, 6, 8, 10, 15], def: 8 },
+    'seedance-2': { videoModel: 'seedance-2', durations: [4, 5, 6, 8, 10, 15], def: 10, resolution: true },
+  };
+
+  var state = {};
+  TOOL_KEYS.forEach(function (k) { state[k] = { sel: null, selMedia: null, uploads: [] }; });
+  var current = 'create';
+  var animating = false;
+  var main, row;
+
+  function panelOf(key) { return document.getElementById('tool-panel-' + key); }
+  function q(el, s) { return el ? el.querySelector(s) : null; }
+
+  // ── Bascule d'outil : sortant 140ms, entrant 180ms ──
+  function switchTool(key) {
+    if (key === current || animating || !panelOf(key)) return;
+    animating = true;
+    var from = panelOf(current);
+    var to = panelOf(key);
+    row.querySelectorAll('.tool-pill').forEach(function (p) {
+      p.classList.toggle('active', p.dataset.tool === key);
+    });
+    main.setAttribute('data-tool', key);
+    from.classList.remove('active');
+    from.classList.add('leaving');
+    setTimeout(function () {
+      from.classList.remove('leaving');
+      to.classList.add('active');
+      current = key;
+      animating = false;
+      refreshThumbs(key);
+    }, 140);
+  }
+
+  // ── Sources : résultats de session (les deux grilles) + uploads du panneau ──
+  function sessionSources() {
+    var out = [];
+    document.querySelectorAll('#tool-results-grid .result-card[data-w3-url]').forEach(function (c) {
+      out.push({ url: c.getAttribute('data-w3-url'), media: c.getAttribute('data-w3-media') || 'image' });
+    });
+    document.querySelectorAll('#results-grid .result-card.done .result-media-wrap img').forEach(function (img) {
+      var u = img.getAttribute('src');
+      if (u) out.push({ url: u, media: 'image' });
+    });
+    return out;
+  }
+
+  function refreshThumbs(tool) {
+    var panel = panelOf(tool);
+    var box = q(panel, '[data-tp-thumbs]');
+    if (!box) return;
+    var st = state[tool];
+    var wantMedia = tool === 'vidupscale' ? 'video' : 'image';
+    var seen = {};
+    var list = [];
+    st.uploads.concat(sessionSources()).forEach(function (s) {
+      if (s.media !== wantMedia || !s.url || seen[s.url]) return;
+      seen[s.url] = true;
+      list.push(s);
+    });
+    if (st.sel && !seen[st.sel]) st.sel = null;
+    if (!st.sel && list.length) { st.sel = list[0].url; st.selMedia = list[0].media; }
+    box.textContent = '';
+    list.forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tp-thumb' + (s.url === st.sel ? ' sel' : '');
+      if (s.media === 'video') {
+        var v = document.createElement('video');
+        v.muted = true; v.preload = 'metadata'; v.src = s.url;
+        b.appendChild(v);
+        var badge = document.createElement('span');
+        badge.className = 'tp-thumb-badge';
+        badge.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
+        b.appendChild(badge);
+      } else {
+        var im = document.createElement('img');
+        im.alt = ''; im.loading = 'lazy'; im.src = s.url;
+        b.appendChild(im);
+      }
+      b.addEventListener('click', function () {
+        st.sel = s.url; st.selMedia = s.media;
+        box.querySelectorAll('.tp-thumb').forEach(function (t) { t.classList.remove('sel'); });
+        b.classList.add('sel');
+      });
+      box.appendChild(b);
+    });
+  }
+
+  // ── Upload / sample vers R2 (même chemin que le studio : POST /api/upload) ──
+  function wireUpload(tool) {
+    var panel = panelOf(tool);
+    var upBtn = q(panel, '[data-tp-upload]');
+    var sampleBtn = q(panel, '[data-tp-sample]');
+    if (upBtn) {
+      var fi = document.createElement('input');
+      fi.type = 'file'; fi.accept = 'image/*'; fi.hidden = true;
+      panel.appendChild(fi);
+      upBtn.addEventListener('click', function () { fi.click(); });
+      fi.addEventListener('change', function () {
+        if (fi.files && fi.files[0]) uploadBlob(tool, upBtn, fi.files[0], fi.files[0].name);
+        fi.value = '';
+      });
+    }
+    if (sampleBtn) {
+      sampleBtn.addEventListener('click', async function () {
+        sampleBtn.classList.add('busy');
+        try {
+          var r = await fetch('/showcase/1.jpg');
+          if (!r.ok) throw new Error('sample');
+          uploadBlob(tool, sampleBtn, await r.blob(), 'sample-product.jpg');
+        } catch (e) {
+          toast('Sample image unavailable — please add your own photo', true);
+        }
+        sampleBtn.classList.remove('busy');
+      });
+    }
+  }
+
+  async function uploadBlob(tool, btn, blob, name) {
+    btn.classList.add('busy');
+    try {
+      var fd = new FormData();
+      fd.append('image', blob, name || 'source.jpg');
+      var res = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
+      var data = await res.json();
+      if (!res.ok || data.error || !data.url) throw new Error(data.error || 'Upload failed');
+      state[tool].uploads.unshift({ url: data.url, media: 'image' });
+      state[tool].sel = data.url;
+      state[tool].selMedia = 'image';
+      refreshThumbs(tool);
+    } catch (e) {
+      toast(e.message, true);
+    }
+    btn.classList.remove('busy');
+  }
+
+  // ── Chips génériques (un seul actif par groupe) ──
+  function wireChips(group) {
+    if (!group) return;
+    group.addEventListener('click', function (e) {
+      var chip = e.target.closest('.tp-chip');
+      if (!chip || chip.hasAttribute('data-tp-audio')) return;
+      group.querySelectorAll('.tp-chip').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+    });
+  }
+  function chipValue(group) {
+    var a = group ? group.querySelector('.tp-chip.active:not([hidden])') : null;
+    return a ? a.getAttribute('data-v') : null;
+  }
+
+  // ── Cartes de résultat (grille jumelle, même grammaire visuelle) ──
+  function setCardState(card, s) {
+    var dot = card.querySelector('.status-dot');
+    var txt = card.querySelector('.status-text');
+    var ov = card.querySelector('.result-overlay span');
+    if (s === 'queued') {
+      card.dataset.serverState = 'queued';
+      if (txt) txt.textContent = 'Queued';
+      if (ov) ov.textContent = 'Queued';
+      if (dot) dot.className = 'status-dot queued';
+    } else {
+      delete card.dataset.serverState;
+      if (txt) txt.textContent = 'Generating...';
+      if (ov) ov.textContent = 'Generating...';
+      if (dot) dot.className = 'status-dot generating';
+    }
+  }
+
+  function addCard() {
+    var sec = document.getElementById('tool-results-section');
+    var grid = document.getElementById('tool-results-grid');
+    if (!sec || !grid) return null;
+    sec.classList.remove('hidden');
+    var card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = '<div class="result-media-wrap">'
+      + '<div class="result-overlay active"><div class="spinner"></div><span></span><div class="ov-progress"><i></i></div></div>'
+      + '</div>'
+      + '<div class="result-status"><span class="status-dot queued"></span><span class="status-text"></span></div>';
+    setCardState(card, 'queued');
+    grid.prepend(card);
+    return card;
+  }
+
+  function finishCard(card, url, media) {
+    if (!card) return;
+    var wrap = card.querySelector('.result-media-wrap');
+    wrap.textContent = '';
+    if (media === 'video') {
+      var v = document.createElement('video');
+      v.className = 'w3-video'; v.controls = true; v.playsInline = true; v.src = url;
+      wrap.appendChild(v);
+      wrap.style.aspectRatio = 'auto';
+    } else if (media === 'audio') {
+      var aw = document.createElement('div');
+      aw.className = 'w3-audio-wrap';
+      aw.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+      var au = document.createElement('audio');
+      au.controls = true; au.src = url;
+      aw.appendChild(au);
+      wrap.appendChild(aw);
+    } else {
+      var im = document.createElement('img');
+      im.src = url; im.alt = '';
+      wrap.appendChild(im);
+      wrap.style.cursor = 'pointer';
+      wrap.addEventListener('click', function () { window.open(url, '_blank', 'noopener'); });
+    }
+    card.classList.add('done', 'result-reveal');
+    card.setAttribute('data-w3-url', url);
+    card.setAttribute('data-w3-media', media);
+    var txt = card.querySelector('.status-text');
+    if (txt) txt.textContent = 'Done';
+    var dot = card.querySelector('.status-dot');
+    if (dot) dot.className = 'status-dot done';
+    var actions = document.createElement('div');
+    actions.className = 'result-actions';
+    var a = document.createElement('a');
+    a.className = 'action-btn';
+    a.href = '/essai.html';
+    a.textContent = 'Gallery';
+    actions.appendChild(a);
+    card.appendChild(actions);
+    delete card.dataset.serverState;
+    // L'overlay vivait DANS la media-wrap : réécrire la wrap l'a déjà retiré.
+    var ovDone = card.querySelector('.result-overlay');
+    if (ovDone) ovDone.classList.remove('active');
+  }
+
+  function failCard(card, msg) {
+    if (!card) return;
+    card.classList.add('error');
+    delete card.dataset.serverState;
+    var ovErr = card.querySelector('.result-overlay');
+    if (ovErr) ovErr.classList.remove('active');
+    var txt = card.querySelector('.status-text');
+    if (txt) txt.textContent = msg || 'The generation failed';
+    var dot = card.querySelector('.status-dot');
+    if (dot) dot.className = 'status-dot error';
+  }
+
+  // ── Polling — mêmes conventions que poll() du studio : le budget temps ne
+  //    court que pendant le TRAVAIL, jamais pendant l'attente en file. ──
+  function pollW3(url, interval, timeout, card) {
+    return new Promise(function (resolve, reject) {
+      var start = Date.now();
+      var tick = async function () {
+        if (Date.now() - start > timeout) {
+          return reject(new Error('Timed out — check the community gallery later'));
+        }
+        try {
+          var res = await Auth.authFetch(url);
+          if (res.ok) {
+            var d = await res.json();
+            if (d.ready && d.resultUrl) return resolve({ url: d.resultUrl, media: d.media });
+            if (d.failed || d.state === 'failed') return reject(new Error(d.error || 'The generation failed'));
+            if (d.state === 'queued') { start = Date.now(); setCardState(card, 'queued'); }
+            else setCardState(card, 'working');
+          }
+        } catch (e) { /* réseau : on retentera au tick suivant */ }
+        setTimeout(tick, interval);
+      };
+      setTimeout(tick, 2500);
+    });
+  }
+
+  // ── Soumission commune : pré-check clé, idempotence, carte, poll ──
+  async function run(tool, spec) {
+    if (!window.ENGINE_LOCAL && !Auth.getProviderKey()) {
+      if (typeof demandProviderKey === 'function') demandProviderKey();
+      return;
+    }
+    // Même pré-vol de consentement que le lot principal : aucune carte n'est
+    // créée tant que le visiteur n'a pas accepté.
+    if (window.IS_ANON && window.AnonMode && typeof AnonMode.ensureConsent === 'function') {
+      if (!(await AnonMode.ensureConsent())) return;
+    }
+    spec.body.idempotencyKey = 'w3-' + tool + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    var card = addCard();
+    try {
+      var res;
+      if (spec.direct) {
+        var hdrs = { 'Content-Type': 'application/json' };
+        var pk = Auth.getProviderKey();
+        if (pk) hdrs['X-Provider-Key'] = pk;
+        spec.body.consent = true;
+        res = await fetch(spec.route, { method: 'POST', credentials: 'same-origin', headers: hdrs, body: JSON.stringify(spec.body) });
+      } else {
+        res = await Auth.authFetch(spec.route, { method: 'POST', body: JSON.stringify(spec.body) });
+      }
+      var data = await res.json();
+      if (res.status === 402) throw new Error(data.message || data.error || 'API error — check your API key');
+      if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
+      var got = await pollW3('/api/status/' + spec.statusType + '/' + (data.taskId || data.id), spec.interval, spec.timeout, card);
+      finishCard(card, got.url, got.media || spec.media);
+      toast('Result ready');
+      refreshThumbs(current);
+    } catch (e) {
+      failCard(card, e.message);
+      toast(e.message, true);
+    }
+  }
+
+  // ── Spécifications par outil ──
+  function wireSubmit(tool, build) {
+    var panel = panelOf(tool);
+    var btn = q(panel, '[data-tp-submit]');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var spec = build(panel, state[tool]);
+      if (spec) run(tool, spec);
+    });
+  }
+
+  function needSource(st, video) {
+    if (st.sel) return true;
+    toast(video ? 'Pick a source video first' : 'Pick a source image first', true);
+    return false;
+  }
+
+  function mountTools() {
+    ['polish', 'remix', 'adapt', 'video', 'upscale'].forEach(wireUpload);
+    document.querySelectorAll('.tool-panel .tp-chips').forEach(wireChips);
+    document.querySelectorAll('.tp-engines').forEach(wireChips);
+
+    wireSubmit('polish', function (panel, st) {
+      if (!needSource(st)) return null;
+      return { route: '/api/polish', statusType: 'polish', interval: 6000, timeout: 300000,
+        media: 'image', body: { imageUrl: st.sel, ratio: '1:1' } };
+    });
+
+    wireSubmit('remix', function (panel, st) {
+      if (!needSource(st)) return null;
+      var p = (q(panel, '[data-tp-prompt]').value || '').trim();
+      if (p.length < 3) { toast('Describe the remix first', true); return null; }
+      return { route: '/api/remix', statusType: 'remix', interval: 6000, timeout: 300000,
+        media: 'image', body: { imageUrl: st.sel, remixPrompt: p, ratio: '1:1' } };
+    });
+
+    wireSubmit('adapt', function (panel, st) {
+      if (!needSource(st)) return null;
+      var fmt = chipValue(q(panel, '[data-tp-formats]')) || '1:1';
+      return { route: '/api/adapt', statusType: 'adapt', interval: 6000, timeout: 300000,
+        media: 'image', body: { imageUrl: st.sel, ratio: fmt } };
+    });
+
+    // Vidéo : moteurs → durées permises + résolution Seedance
+    var vPanel = panelOf('video');
+    var vEngines = q(vPanel, '[data-tp-engines]');
+    var vDur = q(vPanel, '[data-tp-durations]');
+    var vResWrap = q(vPanel, '[data-tp-resolution-wrap]');
+    var vAudio = q(vPanel, '[data-tp-audio]');
+    function applyEngine() {
+      var key = chipValue(vEngines) || vEngines.querySelector('.tp-engine.active').getAttribute('data-v');
+      var eng = ENGINES[key] || ENGINES.veo3_fast;
+      vDur.querySelectorAll('.tp-chip').forEach(function (c) {
+        var ok = eng.durations.indexOf(Number(c.getAttribute('data-v'))) !== -1;
+        if (ok) c.removeAttribute('hidden'); else c.setAttribute('hidden', '');
+      });
+      if (!vDur.querySelector('.tp-chip.active:not([hidden])')) {
+        vDur.querySelectorAll('.tp-chip').forEach(function (c) { c.classList.remove('active'); });
+        var d = vDur.querySelector('.tp-chip[data-v="' + eng.def + '"]');
+        if (d) d.classList.add('active');
+      }
+      if (vResWrap) { if (eng.resolution) vResWrap.removeAttribute('hidden'); else vResWrap.setAttribute('hidden', ''); }
+    }
+    vEngines.addEventListener('click', function (e) {
+      var b = e.target.closest('.tp-engine');
+      if (!b) return;
+      vEngines.querySelectorAll('.tp-engine').forEach(function (c) { c.classList.remove('active'); });
+      b.classList.add('active');
+      applyEngine();
+    });
+    if (vAudio) vAudio.addEventListener('click', function () { vAudio.classList.toggle('active'); });
+    applyEngine();
+
+    wireSubmit('video', function (panel, st) {
+      if (!needSource(st)) return null;
+      var engKey = vEngines.querySelector('.tp-engine.active').getAttribute('data-v');
+      var eng = ENGINES[engKey] || ENGINES.veo3_fast;
+      var dur = chipValue(vDur) || String(eng.def);
+      var ratio = chipValue(q(panel, '[data-tp-ratios]')) || '1:1';
+      var audio = vAudio && vAudio.classList.contains('active');
+      var body = {
+        imageUrl: st.sel, aspectRatio: ratio, format: ratio,
+        videoModel: eng.videoModel, duration: String(dur),
+        sound: audio === true, generateAudio: audio === true,
+      };
+      if (eng.variant) body.variant = eng.variant;
+      if (eng.resolution) body.resolution = chipValue(q(panel, '[data-tp-resolutions]')) || '720p';
+      var cd = (q(panel, '[data-tp-prompt]').value || '').trim();
+      if (cd) body.creativeDirection = cd;
+      return { route: '/api/video', statusType: 'video', interval: 15000, timeout: 600000,
+        media: 'video', body: body };
+    });
+
+    wireSubmit('upscale', function (panel, st) {
+      if (!needSource(st)) return null;
+      var f = chipValue(q(panel, '[data-tp-factors]')) || '2';
+      return { route: '/api/tools/image-upscale', statusType: 'img-upscale', interval: 8000, timeout: 300000,
+        media: 'image', body: { imageUrl: st.sel, upscaleFactor: f } };
+    });
+
+    wireSubmit('voice', function (panel) {
+      var t = (q(panel, '[data-tp-text]').value || '').trim();
+      if (!t) { toast('Enter the text to speak first', true); return null; }
+      var voice = q(panel, '[data-tp-voice]').value || 'Rachel';
+      return { route: '/api/tools/tts', statusType: 'tts', interval: 6000, timeout: 240000,
+        media: 'audio', body: { text: t, voice: voice } };
+    });
+
+    wireSubmit('sfx', function (panel) {
+      var t = (q(panel, '[data-tp-text]').value || '').trim();
+      if (!t) { toast('Describe the sound first', true); return null; }
+      var body = { text: t };
+      var d = chipValue(q(panel, '[data-tp-durations]'));
+      if (d) body.duration_seconds = Number(d);
+      return { route: '/api/tools/sfx', statusType: 'sfx', interval: 6000, timeout: 240000,
+        media: 'audio', body: body };
+    });
+
+    // 9e outil : la route essai en DIRECT (l'adaptateur anonyme mappe encore
+    // /api/tools/video-upscale sur l'agrandissement image — on ne passe pas
+    // par lui). sourceId quand la source est un rendu de session, sinon URL.
+    wireSubmit('vidupscale', function (panel, st) {
+      if (!needSource(st, true)) return null;
+      var f = chipValue(q(panel, '[data-tp-factors]')) || '2';
+      var body = { upscaleFactor: f };
+      var m = String(st.sel).match(/\/api\/essai\/image\/([0-9a-f-]{36})/i);
+      if (m) body.sourceId = m[1]; else body.videoUrl = st.sel;
+      return { route: '/api/essai/studio/video-upscale', direct: true, statusType: 'vid-upscale',
+        interval: 15000, timeout: 600000, media: 'video', body: body };
+    });
+  }
+
+  // ── Boot : attendre le garde d'auth (IS_ANON posé par le flux existant) ──
+  var tries = 0;
+  function boot() {
+    if (window.IS_ANON === undefined) {
+      if (++tries < 300) return setTimeout(boot, 100);
+      return;
+    }
+    if (!window.IS_ANON) return; // connecté : interface actuelle, rangée masquée
+    main = document.getElementById('main-content');
+    row = document.getElementById('tools-row');
+    if (!main || !row || !panelOf('create')) return;
+    main.setAttribute('data-tool', 'create');
+    row.removeAttribute('hidden');
+    row.addEventListener('click', function (e) {
+      var pill = e.target.closest('.tool-pill');
+      if (pill) switchTool(pill.dataset.tool);
+    });
+    mountTools();
+  }
+  boot();
+})();
+</script>
+
+<script>
+/* ═══ Vague 4 — tool switcher ═══
+   UNE ligne de pilules + « More » qui ouvre le panneau cherchable centré
+   (référence Topaz). Télécommande PURE : les 9 boutons .tool-pill restent la
+   seule source de vérité du basculement — ce bloc ne fait que (1) décider
+   lesquels sont VISIBLES dans la ligne, (2) forwarder le clic d'une ligne du
+   panneau à sa pilule, (3) refléter l'état actif. Le basculement lui-même
+   reste au bloc « Vague 3 — tools », et les gardes de consentement ne sont
+   pas touchées.
+
+   Pilule active hors-ligne : PROMOTION. L'outil actif absent des pilules
+   épinglées prend la place de la dernière (Upscale) — son nom ET sa couleur
+   restent donc toujours lisibles, ce qu'un « More » simplement coloré ne
+   permettrait pas (il faudrait ouvrir le panneau pour savoir où l'on est). */
+(function () {
+  'use strict';
+
+  var PINNED = ['create', 'polish', 'video'];  // toujours visibles
+  var SLOT = 'upscale';                        // 4e pilule par défaut
+
+  var row, modal, card, more, search, list, empty;
+  var pills = [], items = [];
+
+  function norm(t) {
+    return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function activeKey() {
+    var a = row.querySelector('.tool-pill.active[data-tool]');
+    return a ? a.getAttribute('data-tool') : 'create';
+  }
+
+  // ── Composition de la ligne + reflet de l'actif dans le panneau ──
+  function layout() {
+    var act = activeKey();
+    var slot = PINNED.indexOf(act) === -1 ? act : SLOT;
+    var visible = PINNED.concat([slot]);
+    pills.forEach(function (p) {
+      var i = visible.indexOf(p.getAttribute('data-tool'));
+      p.classList.toggle('tp-off', i === -1);
+      if (i !== -1) p.style.order = String(i + 1);
+    });
+    items.forEach(function (it) {
+      it.classList.toggle('active', it.getAttribute('data-tool') === act);
+    });
+    /* À 375 la rangée défile : après recomposition la pilule active pouvait
+       se retrouver hors écran. Défilement horizontal seulement — un
+       scrollIntoView ferait sauter la page verticalement. */
+    var a = row.querySelector('.tool-pill.active[data-tool]');
+    if (a && row.scrollWidth > row.clientWidth + 1) {
+      var g = a.offsetLeft - row.offsetLeft, d = g + a.offsetWidth;
+      if (g < row.scrollLeft) row.scrollLeft = Math.max(0, g - 8);
+      else if (d > row.scrollLeft + row.clientWidth) row.scrollLeft = d - row.clientWidth + 8;
+    }
+  }
+
+  /* Le panneau se déclare role=dialog aria-modal : il doit alors tenir la
+     promesse d'un dialogue — le focus y entre, y reste, et revient d'où il
+     venait. Sans cela, Tab parcourt la page assombrie derrière. */
+  var scrollAvant = '';
+  function focusables() {
+    return [search].concat(items.filter(function (it) { return !it.hasAttribute('hidden'); }));
+  }
+  function openPanel() {
+    modal.classList.add('open');
+    more.setAttribute('aria-expanded', 'true');
+    scrollAvant = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';   // le fond ne défile plus
+    search.value = '';
+    filter('');
+    setTimeout(function () { try { search.focus({ preventScroll: true }); } catch (e) {} }, 150);
+  }
+  function closePanel() {
+    modal.classList.remove('open');
+    more.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = scrollAvant;
+    try { more.focus({ preventScroll: true }); } catch (e) {}
+  }
+
+  /* Filtre sur le nom ET le sous-titre, insensible à la casse et aux accents :
+     il lit le texte AFFICHÉ, donc il marche en français comme en anglais. */
+  function filter(qs) {
+    var needle = norm(qs).trim();
+    var shown = 0;
+    items.forEach(function (it) {
+      var hay = norm(it.textContent);
+      var hit = !needle || hay.indexOf(needle) !== -1;
+      if (hit) { it.removeAttribute('hidden'); shown++; } else it.setAttribute('hidden', '');
+    });
+    if (empty) { if (shown) empty.setAttribute('hidden', ''); else empty.removeAttribute('hidden'); }
+  }
+
+  var tries = 0;
+  function boot() {
+    if (window.IS_ANON === undefined) {
+      if (++tries < 300) return setTimeout(boot, 100);
+      return;
+    }
+    if (!window.IS_ANON) return; // connecté : interface actuelle, rien à changer
+    row = document.getElementById('tools-row');
+    modal = document.getElementById('tools-modal');
+    more = document.getElementById('tools-more');
+    search = document.getElementById('tools-search');
+    list = document.getElementById('tools-list');
+    empty = document.getElementById('tools-empty');
+    if (!row || !modal || !more || !search || !list) return;
+    card = modal.querySelector('.tools-modal-card');
+
+    /* Le panneau doit se centrer sur l'ÉCRAN, pas sur le contenu.
+     * .app-content porte l'animation d'entrée `pageIn` en fill `both` : le
+     * transform final reste appliqué, et un ancêtre transformé devient le bloc
+     * conteneur de ses descendants position:fixed. Rangé là, `inset:0` couvrait
+     * la hauteur du DOCUMENT — le panneau apparaissait décalé de la largeur du
+     * rail et centré trop bas. anon.js range déjà ses propres surfaces fixes
+     * hors du wrap pour cette raison ; on fait pareil. renderNav() a déjà
+     * construit le wrap quand ce boot s'exécute (même tâche que IS_ANON). */
+    if (modal.parentNode !== document.body) document.body.appendChild(modal);
+
+    pills = Array.prototype.slice.call(row.querySelectorAll('.tool-pill[data-tool]'));
+    items = Array.prototype.slice.call(list.querySelectorAll('.tools-item[data-tool]'));
+    if (!pills.length || !items.length) return;
+
+    // Chaque ligne forwarde son clic à la pilule d'origine — aucune logique
+    // de basculement dupliquée ici.
+    items.forEach(function (it) {
+      it.addEventListener('click', function () {
+        var key = it.getAttribute('data-tool');
+        var pill = row.querySelector('.tool-pill[data-tool="' + key + '"]');
+        if (pill) pill.click();
+        closePanel();
+      });
+    });
+
+    more.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (modal.classList.contains('open')) closePanel(); else openPanel();
+    });
+    modal.addEventListener('click', function (e) {
+      if (e.target.hasAttribute('data-tools-close')) closePanel();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) closePanel();
+    });
+    search.addEventListener('input', function () { filter(search.value); });
+
+    /* Le panneau se déclare role=dialog aria-modal : il doit alors tenir la
+       promesse d'un dialogue — le focus y entre, y reste, et revient sur la
+       pilule. Posé ICI et non au niveau du module : en connecté le montage
+       retourne plus haut et `card` n'existe pas. */
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        // Tab piloté entièrement ici : WebKit a un ordre de tabulation natif
+        // différent, laisser passer ferait sortir le focus du dialogue.
+        var f = focusables();
+        if (!f.length) return;
+        e.preventDefault();
+        var i = f.indexOf(document.activeElement);
+        var pas = e.shiftKey ? -1 : 1;
+        var suivant = i === -1 ? (e.shiftKey ? f.length - 1 : 0) : (i + pas + f.length) % f.length;
+        f[suivant].focus();
+        return;
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var f2 = focusables();
+      var i = f2.indexOf(document.activeElement);
+      e.preventDefault();
+      if (e.key === 'ArrowDown') { if (i < f2.length - 1) f2[i + 1].focus(); }
+      else if (i > 0) f2[i - 1].focus();
+    });
+    search.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var premier = items.filter(function (it) { return !it.hasAttribute('hidden'); })[0];
+      if (premier) { e.preventDefault(); premier.click(); }
+    });
+
+    // L'état actif est posé par le bloc Vague 3 sur les pilules : on le suit.
+    var obs = new MutationObserver(layout);
+    pills.forEach(function (p) { obs.observe(p, { attributes: true, attributeFilter: ['class'] }); });
+
+    modal.removeAttribute('hidden');
+    layout();
+  }
+  boot();
+})();
 </script>
 
 </body>

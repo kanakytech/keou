@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Keou — the open-source creative production engine. Product images, cinematic video, voice, sound and multi-format packs. Every feature, MIT licensed, free online and self-hostable. Custom builds on request.">
-<link rel="canonical" href="https://studio.kanaky.xyz/">
+<link rel="canonical" href="https://studio.kanaky.xyz/about">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Keou Studio — Open-Source Creative Production Engine">
 <meta property="og:description" content="Product images, cinematic video, voice and sound. MIT licensed, free online without an account, self-hostable.">
-<meta property="og:url" content="https://studio.kanaky.xyz/">
+<meta property="og:url" content="https://studio.kanaky.xyz/about">
 <meta property="og:image" content="https://studio.kanaky.xyz/docs-img/studio.png">
 <meta property="og:site_name" content="Keou Studio">
 <meta name="twitter:card" content="summary_large_image">
@@ -64,8 +64,55 @@
   --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.07);
   --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
   --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
-  --radius:16px;--radius-sm:12px;
+  --radius:16px;--radius-sm:12px;--radius-lg:20px;--radius-xl:24px;
+  --focus-ring:0 0 0 3px rgba(200,240,96,.28);
+
+  /* ── Grammaire de mouvement — recopiée VERBATIM de shared/styles.css ──
+     Cette page est autonome (elle ne charge pas la feuille partagée, pour que
+     le premier rendu ne dépende de rien) : on duplique donc les tokens plutôt
+     que d'en inventer d'autres. Toute valeur changée ici désaccorderait la
+     page du studio — c'est un miroir, pas une variante. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-menu:.14s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
 }
+
+/* ── Primitives de mouvement (miroir de shared/styles.css) ──
+   N'animent que transform et opacity : composé par le GPU, aucun reflow. */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*:nth-child(1){animation-delay:0ms}
+.m-stagger>*:nth-child(2){animation-delay:40ms}
+.m-stagger>*:nth-child(3){animation-delay:80ms}
+.m-stagger>*:nth-child(4){animation-delay:120ms}
+.m-stagger>*:nth-child(5){animation-delay:160ms}
+.m-stagger>*:nth-child(6){animation-delay:200ms}
+.m-stagger>*:nth-child(7){animation-delay:240ms}
+.m-stagger>*:nth-child(n+8){animation-delay:280ms}
+@keyframes kMotionMenu{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.m-menu-in{animation:kMotionMenu var(--m-menu) both;transform-origin:top center}
+.m-press{transition:transform var(--m-fast),filter var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+
+/* Une grille qui porte les deux classes : le conteneur ne sert plus que de
+   déclencheur, la cascade des enfants porte tout le mouvement. Sans cette
+   pause, la cascade se jouerait au chargement — bien avant que la grille
+   n'arrive à l'écran, donc dans le vide. */
+.js-reveal .m-reveal.m-stagger{opacity:1;transform:none}
+.js-reveal .m-reveal.m-stagger>*{animation-play-state:paused}
+.js-reveal .m-reveal.m-stagger.is-in>*{animation-play-state:running}
+
+/* ── Focus visible — la même bague partout, jamais un contour système ── */
+.btn-hero:focus-visible,.mcp-btn:focus-visible,.lp-nav-link:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.lp-brand:focus-visible,.hero-note a:focus-visible,.plan-note a:focus-visible,
+.mcp-note a:focus-visible,.how-step p a:focus-visible,.final p a:focus-visible,
+.lp-footer a:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:6px}
+
 html{scroll-behavior:smooth}
 body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
@@ -86,7 +133,7 @@ img{max-width:100%}
 .lp-brand-name strong{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
 .lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
 .lp-nav-links{display:flex;gap:6px;align-items:center}
-.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:color var(--m-fast),background var(--m-fast)}
 .lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
 .lp-nav-link.primary{background:var(--accent);color:#050505;font-weight:600}
 .lp-nav-link.primary:hover{background:#d6f57e}
@@ -94,35 +141,46 @@ img{max-width:100%}
 
 /* ── Shared ── */
 .section{max-width:1080px;margin:0 auto;padding:0 32px}
+/* La barre est fixe : sans cette marge, une ancre dépose son titre DERRIÈRE elle. */
+.section[id]{scroll-margin-top:92px}
 .section-title{text-align:center;margin-bottom:52px}
 .eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:18px}
 .eyebrow svg{color:var(--accent)}
 .section-title h2{font-size:clamp(26px,3.6vw,38px);font-weight:700;margin-bottom:14px}
 .section-title p{font-size:16px;color:var(--ink-muted);max-width:620px;margin:0 auto}
-.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;transition:all .25s;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;gap:9px}
+/* La bordure transparente par défaut n'est pas décorative : sans elle, une
+   « primary » (border:none) et une « secondary » (1.5 px) posées côte à côte
+   n'ont pas la même boîte, et la ligne de texte se décale de 1,5 px. */
+.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid transparent;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),box-shadow var(--m-fast),filter var(--m-fast)}
+.btn-hero svg{flex:none}
+.btn-hero:hover{transform:translateY(-2px)}
+.btn-hero:active{transform:translateY(0) scale(.985)}
 .btn-hero.primary{background:var(--accent);color:#050505}
-.btn-hero.primary:hover{background:#d6f57e;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.btn-hero.primary:hover{background:#d6f57e;box-shadow:0 8px 24px rgba(200,240,96,.18)}
 .btn-hero.accent{background:var(--accent);color:#050505}
-.btn-hero.accent:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:0 8px 24px rgba(200,240,96,.25)}
-.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border:1.5px solid var(--border)}
-.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06)}
+.btn-hero.accent:hover{filter:brightness(1.08);box-shadow:0 8px 24px rgba(200,240,96,.18)}
+.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border-color:var(--border)}
+.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06);box-shadow:0 8px 24px rgba(0,0,0,.18)}
 
 
 /* ── Bloc MCP : une ligne à coller dans un agent ── */
 .mcp{padding:110px 0 0}
 .mcp-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:34px 30px;max-width:900px;margin:0 auto}
-.mcp-term{background:#000;border:1px solid var(--border-strong);border-radius:12px;padding:16px 18px;margin:18px 0 12px;overflow-x:auto;position:relative}
+.mcp-term{background:#000;border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:16px 18px;margin:18px 0 12px;overflow-x:auto;position:relative}
 .mcp-term code{font-family:'JetBrains Mono','Menlo',monospace;font-size:12.5px;line-height:1.75;color:#d7d7d3;white-space:pre;display:block}
 .mcp-term .c{color:rgba(240,240,236,.4)}
 .mcp-term .k{color:var(--accent)}
 .mcp-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.mcp-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:100px;font-size:13.5px;font-weight:600;
-  border:1.5px solid var(--border);background:var(--surface-2);color:var(--ink);cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s}
-.mcp-btn:hover{border-color:var(--border-strong);background:rgba(255,255,255,.07)}
+.mcp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:100px;font-size:13.5px;font-weight:600;text-decoration:none;
+  border:1.5px solid var(--border);background:var(--surface-2);color:var(--ink);cursor:pointer;font-family:'Space Grotesk',sans-serif;
+  transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast)}
+.mcp-btn:hover{border-color:var(--border-strong);background:rgba(255,255,255,.07);transform:translateY(-2px)}
+.mcp-btn:active{transform:translateY(0) scale(.985)}
 .mcp-btn.accent{background:var(--accent);color:#050505;border-color:transparent}
 .mcp-btn.accent:hover{background:#d6f57e}
 .mcp-btn.done{background:var(--accent);color:#050505;border-color:transparent}
-.mcp-btn svg{width:15px;height:15px}
+.mcp-btn svg{width:15px;height:15px;flex:none}
 .mcp-note{font-size:12.5px;color:var(--ink-faint);margin-top:14px;line-height:1.6}
 .mcp-note a{color:var(--ink-muted)}
 @media (max-width:640px){.mcp-card{padding:24px 18px}.mcp-term code{font-size:11px}}
@@ -134,6 +192,8 @@ img{max-width:100%}
 .hero .sub{font-size:clamp(15px,1.9vw,19px);color:var(--ink-muted);max-width:640px;margin:0 auto 32px;line-height:1.7}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
 .hero-note{font-size:12.5px;color:var(--ink-faint)}
+.hero-note.lead{font-size:13.5px;color:var(--ink-muted)}
+.hero-note+.hero-note{margin-top:5px}
 .hero-note a{color:var(--ink-muted)}
 
 /* ── Marquee ── */
@@ -146,7 +206,9 @@ img{max-width:100%}
 
 /* ── Metrics strip ── */
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:72px auto 0;max-width:820px}
-.metric{padding:26px 18px;text-align:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
+.metric{padding:26px 18px;text-align:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.metric:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
 .metric b{display:block;font-family:'Space Grotesk',sans-serif;font-size:clamp(22px,3vw,32px);font-weight:800;color:var(--ink);letter-spacing:-.02em}
 .metric span{font-size:12.5px;color:var(--ink-muted);letter-spacing:.2px}
 @media (max-width:640px){.metrics{grid-template-columns:1fr;max-width:340px}}
@@ -154,9 +216,12 @@ img{max-width:100%}
 /* ── Features ── */
 .features{padding:110px 0 0}
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.feat{padding:28px 24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);transition:all .25s}
-.feat:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-3px)}
-.feat-icon{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+/* Même élévation sur TOUTES les cartes de la page (feat, metric, how-step,
+   plan) : 2 px, transform seul. Le -3 px d'origine n'était appliqué qu'ici. */
+.feat{padding:28px 24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.feat:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
+.feat-icon{width:42px;height:42px;flex:none;border-radius:var(--radius-sm);background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .feat h3{font-size:16px;font-weight:600;margin-bottom:8px}
 .feat p{font-size:13.5px;color:var(--ink-muted);line-height:1.65}
 @media (max-width:900px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
@@ -165,7 +230,10 @@ img{max-width:100%}
 /* ── How it works ── */
 .how{padding:110px 0 0}
 .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:step}
-.how-step{position:relative;padding:30px 24px 26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2)}
+.how-step{position:relative;padding:30px 24px 26px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.how-step:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
+.how-step .aside{font-size:13px;color:var(--ink-faint);margin-top:10px;line-height:1.55}
 .how-step::before{counter-increment:step;content:counter(step,decimal-leading-zero);position:absolute;top:22px;right:22px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--ink-faint);letter-spacing:.1em}
 .how-step h3{font-size:16px;font-weight:600;margin-bottom:8px;padding-right:44px}
 .how-step p{font-size:13.5px;color:var(--ink-muted);line-height:1.65}
@@ -179,7 +247,10 @@ img{max-width:100%}
 /* ── Plans ── */
 .plans{padding:110px 0 0}
 .plans-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:18px;align-items:stretch}
-.plan{padding:34px 30px;border:1px solid var(--border);border-radius:20px;background:var(--surface-2);display:flex;flex-direction:column}
+.plan{padding:34px 30px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface-2);display:flex;flex-direction:column;
+  transition:transform var(--m-fast),border-color var(--m-fast)}
+.plan:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.plan.pro:hover{border-color:rgba(200,240,96,.55)}
 .plan.pro{border-color:rgba(200,240,96,.35);background:linear-gradient(160deg,rgba(200,240,96,.10),rgba(255,255,255,.02) 55%)}
 .plan-tag{display:inline-flex;align-self:flex-start;padding:5px 12px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:18px}
 .plan .plan-tag{background:var(--surface-3);color:var(--ink-soft)}
@@ -197,7 +268,7 @@ img{max-width:100%}
 
 /* ── Final CTA ── */
 .final{padding:120px 0 110px;text-align:center}
-.final-card{padding:64px 40px;border:1px solid var(--border);border-radius:24px;background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
+.final-card{padding:64px 40px;border:1px solid var(--border);border-radius:var(--radius-xl);background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
 .final-card::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:520px;height:280px;background:radial-gradient(ellipse,rgba(200,240,96,.18),transparent 70%);pointer-events:none}
 .final h2{font-size:clamp(26px,3.8vw,40px);font-weight:800;margin-bottom:14px}
 .final p{color:var(--ink-muted);max-width:520px;margin:0 auto 30px;font-size:16px}
@@ -205,17 +276,27 @@ img{max-width:100%}
 /* ── Footer ── */
 .lp-footer{border-top:1px solid var(--border);padding:36px 32px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;max-width:1080px;margin:0 auto}
 .lp-footer .fbrand{display:flex;align-items:center;gap:10px;color:var(--ink-muted);font-size:13px}
-.lp-footer .fbrand img{height:22px;border-radius:5px}
+/* Le même logo est un disque dans la barre : ici il était un carré à 5 px. */
+.lp-footer .fbrand img{height:22px;border-radius:50%}
 .lp-footer .fbrand b{color:var(--ink-soft)}
-.lp-footer .flinks{display:flex;gap:18px;align-items:center}
-.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color .2s}
+/* Onze liens sans flex-wrap poussaient le document à 599 px de large sur un
+   écran de 375 : toute la page était réduite, pas seulement le pied. */
+.lp-footer .flinks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color var(--m-fast)}
 .lp-footer .flinks a:hover{color:var(--ink)}
-.lp-footer .flinks a svg{display:block;width:17px;height:17px}
+.lp-footer .flinks a svg{display:block;width:16px;height:16px}
+@media (max-width:640px){.lp-footer{justify-content:center;text-align:center}.lp-footer .flinks{justify-content:center;gap:14px 16px}}
 
-/* ── Reveal on scroll ── */
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
-.reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.marquee{animation:none}}
+/* ── Mouvement réduit ──
+   Cette page est autonome : le garde-fou global de shared/styles.css ne la
+   couvre pas, il faut donc le sien. reveal.js s'abstient déjà de poser
+   `js-reveal`, ce qui laisse tout .m-reveal visible. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto}
+  .m-reveal{opacity:1;transform:none}
+  .marquee{animation:none}
+}
 @media (max-width:480px){.lp-nav{padding:12px 14px;gap:8px}.lp-brand-name span{display:none}.lp-nav-link[href="/login.html"]{display:none}.lp-nav-link{padding:8px 11px;font-size:12.5px}}
 </style>
 <script src="/shared/i18n-fr.js"></script>
@@ -234,12 +315,12 @@ img{max-width:100%}
     <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
   </a>
   <div class="lp-nav-links">
-    <a class="lp-nav-link ghost" href="#features">Features</a>
-    <a class="lp-nav-link ghost" href="#plans">Open source</a>
-    <a class="lp-nav-link ghost" href="/docs.html">Docs</a>
-    <a class="lp-nav-link ghost" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
-    <a class="lp-nav-link" href="/login.html">Sign in</a>
-    <a class="lp-nav-link primary" href="/launch">Launch Keou</a>
+    <a class="lp-nav-link ghost m-press" href="#features">Features</a>
+    <a class="lp-nav-link ghost m-press" href="#plans">Open source</a>
+    <a class="lp-nav-link ghost m-press" href="/docs.html">Docs</a>
+    <a class="lp-nav-link ghost m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
+    <a class="lp-nav-link m-press" href="/login.html">Sign in</a>
+    <a class="lp-nav-link primary m-press" href="/launch">Launch Keou</a>
   </div>
 </nav>
 
@@ -252,24 +333,24 @@ img{max-width:100%}
   <h1>The creative production engine.<br><em>All of it, open source.</em></h1>
   <p class="sub">Turn one product photo into fifty campaign visuals in twenty minutes — plus cinematic video, voice-overs, sound design and delivery packs. The whole suite is on GitHub under MIT — run it here in your browser, or on your own servers. Bring your own key, or run images fully local on your own ComfyUI.</p>
   <div class="hero-ctas">
-    <a class="btn-hero primary" href="/launch">
+    <a class="btn-hero primary m-press" href="/launch">
       Open the studio — free
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
-    <a class="btn-hero secondary" href="/docs.html" style="display:inline-flex;align-items:center;gap:8px">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    <a class="btn-hero secondary m-press" href="/docs.html">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Read the documentation
     </a>
   </div>
-  <p class="hero-note" style="margin-bottom:6px;color:var(--ink-muted);font-size:13.5px">No account. No card. No trial clock. Just paste your own <a href="#mcp" style="color:inherit">KIE.AI key</a> and create.</p>
-  <p class="hero-note" style="margin-bottom:6px">Your key stays in your browser — never stored on our servers.</p>
+  <p class="hero-note lead">No account. No card. No trial clock. Just paste your own <a href="#mcp" style="color:inherit">KIE.AI key</a> and create.</p>
+  <p class="hero-note">Your key stays in your browser — never stored on our servers.</p>
   <p class="hero-note">Creating without an account? Your visuals join the public <a href="/essai.html" style="color:inherit">community gallery</a> — a free account keeps your work private.</p>
 
   <!-- La vitrine ne part pas dans le dépôt public : ses visuels montrent des
        produits de marques tierces réelles, que nous ne pouvons pas concéder
        sous MIT. Elle est visible sur https://studio.kanaky.xyz -->
 
-  <div class="metrics">
+  <div class="metrics m-reveal m-stagger">
     <div class="metric"><b>50 visuals</b><span>in 20 minutes, not 25 hours</span></div>
     <div class="metric"><b>one click</b><span>a render becomes a whole delivery pack</span></div>
     <div class="metric"><b>$0</b><span>platform cost — you only pay your provider</span></div>
@@ -278,7 +359,7 @@ img{max-width:100%}
 
 <!-- ═══ FEATURES ═══ -->
 <section class="features section" id="features">
-  <div class="section-title reveal">
+  <div class="section-title m-reveal">
     <span class="eyebrow">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
       The full suite — nothing held back
@@ -286,48 +367,48 @@ img{max-width:100%}
     <h2>Everything an agency ships, in one studio</h2>
     <p>What used to be gated behind the enterprise build is now open to everyone. All of it.</p>
   </div>
-  <div class="feat-grid">
-    <div class="feat reveal">
+  <div class="feat-grid m-reveal m-stagger">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>
       <h3>Production studio</h3>
       <p>Batch product photography from a single source image. Lifestyle scenes, studio packshots, seasonal campaigns — generated in parallel.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
       <h3>Cinematic video</h3>
       <p>Turn any render into motion — drift shots, product B-roll, social clips. Multiple engines, multiple durations, sound on.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
       <h3>Polish, remix &amp; adapt</h3>
       <p>Retouch a render, re-imagine it in a new direction, or adapt it to any aspect ratio — without starting over.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
       <h3>Multi-format delivery packs</h3>
       <p>One click exports a campaign-ready pack: stories, feeds, banners, covers — named, sized and zipped for hand-off.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></div>
       <h3>Voice &amp; sound</h3>
       <p>Text-to-speech voice-overs and generated sound effects, plus 4K upscaling for stills and video. The finishing room, built in.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
       <h3>Clients, campaigns &amp; library</h3>
       <p>Organise work per client and campaign, browse your full generation history, and keep everything private to you.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
       <h3>Client share links</h3>
       <p>Send a clean review page — clients approve, reject or comment on each asset without creating an account.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
       <h3>Your key, your control</h3>
       <p>Bring your own KIE.AI key. It lives in your browser only, rides each request, and is never stored on our servers.</p>
     </div>
-    <div class="feat reveal">
+    <div class="feat">
       <div class="feat-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
       <h3>Private by design</h3>
       <p>Per-account isolation, hardened auth, rate-limited APIs. Built to the same security bar as our enterprise deployments.</p>
@@ -337,7 +418,7 @@ img{max-width:100%}
 
 <!-- ═══ HOW IT WORKS ═══ -->
 <section class="how section">
-  <div class="section-title reveal">
+  <div class="section-title m-reveal">
     <span class="eyebrow">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Producing in under two minutes
@@ -345,17 +426,17 @@ img{max-width:100%}
     <h2>How the free platform works</h2>
     <p>The platform is free because the compute is yours: you connect your own generation key and pay your provider directly — nothing to us, ever.</p>
   </div>
-  <div class="how-grid">
-    <div class="how-step reveal">
+  <div class="how-grid m-reveal m-stagger">
+    <div class="how-step">
       <h3>Launch Keou</h3>
       <p>One click, no account, no sign-up form. The platform opens ready to work — nothing between you and your first render.</p>
     </div>
-    <div class="how-step reveal">
+    <div class="how-step">
       <h3>Paste your KIE.AI key</h3>
       <p>Grab a key at <a href="https://kie.ai?ref=ec0e98ef53c18d6f13f05629a9ffd793" target="_blank" rel="noopener">kie.ai</a> and paste it in. It stays in your browser — we never see or store it.</p>
-            <p style="font-size:13px;color:rgba(240,240,236,.42);margin-top:10px;line-height:1.55">That link carries our referral code — KIE pays us a small share of your first month. Your price is unchanged, and any key works.</p>
-      </div>
-    <div class="how-step reveal">
+      <p class="aside">That link carries our referral code — KIE pays us a small share of your first month. Your price is unchanged, and any key works.</p>
+    </div>
+    <div class="how-step">
       <h3>Produce like a studio</h3>
       <p>Generate, remix, adapt, pack and share. A typical product visual costs you a few cents of provider credit — the platform adds zero.</p>
     </div>
@@ -364,16 +445,16 @@ img{max-width:100%}
 
 <!-- ═══ DEMO ═══ -->
 <section class="demo section">
-  <div class="section-title reveal">
+  <div class="section-title m-reveal">
     <h2>See the engine at work</h2>
     <p>One source image in, a full campaign out.</p>
   </div>
-  <video class="reveal" src="/api/demo-video" controls preload="none"></video>
+  <video class="m-reveal" src="/api/demo-video" controls preload="none"></video>
 </section>
 
 <!-- ═══ PLANS ═══ -->
 <section class="plans section" id="plans">
-  <div class="section-title reveal">
+  <div class="section-title m-reveal">
     <span class="eyebrow">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       Two ways to run Keou
@@ -381,8 +462,8 @@ img{max-width:100%}
     <h2>The whole thing is open source.</h2>
     <p>Every feature ships in the public repository — nothing is held back for a paid tier. Run it yourself, or have us build a version shaped around how your team actually works.</p>
   </div>
-  <div class="plans-grid">
-    <div class="plan reveal">
+  <div class="plans-grid m-reveal m-stagger">
+    <div class="plan">
       <span class="plan-tag">Open source</span>
       <h3>Free — all of it</h3>
       <p class="price"><b>$0</b> — MIT licence, no ceiling</p>
@@ -395,14 +476,14 @@ img{max-width:100%}
         <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Read it, fork it, self-host it, sell what you build with it</li>
       </ul>
       <div class="cta-row" style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn-hero secondary" href="/launch">Launch Keou</a>
-        <a class="btn-hero secondary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px">
+        <a class="btn-hero secondary m-press" href="/launch">Launch Keou</a>
+        <a class="btn-hero secondary m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
           Source on GitHub
         </a>
       </div>
     </div>
-    <div class="plan pro reveal">
+    <div class="plan pro">
       <span class="plan-tag">Custom build</span>
       <h3>Keou, shaped around you</h3>
       <p class="price"><b>On request</b> — scoped with you</p>
@@ -413,7 +494,7 @@ img{max-width:100%}
         <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Your models, your endpoints — local models, OpenRouter, or any private provider API</li>
         <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Built and handed over by the person who wrote Keou — a direct line, not a ticket queue</li>
       </ul>
-      <div class="cta-row"><a class="btn-hero accent" href="/custom.html">
+      <div class="cta-row"><a class="btn-hero accent m-press" href="/custom.html">
         Tell us what you need
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       </a></div>
@@ -425,7 +506,7 @@ img{max-width:100%}
 
 <!-- ═══ MCP ═══ -->
 <section class="mcp section" id="mcp">
-  <div class="section-title reveal">
+  <div class="section-title m-reveal">
     <span class="eyebrow">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       Works inside your agent
@@ -434,21 +515,21 @@ img{max-width:100%}
     <p>Keou ships an MCP server. Paste this into Claude Code — or any agent that speaks MCP — and you generate product visuals without leaving the conversation.</p>
   </div>
 
-  <div class="mcp-card reveal">
+  <div class="mcp-card m-reveal">
     <div class="mcp-term">
       <code><span class="c"># your KIE.AI key goes where &lt;KEY&gt; is</span>
 claude mcp add keou <span class="k">--scope</span> user <span class="k">-e</span> KIE_API_KEY=&lt;KEY&gt; -- npx <span class="k">-y</span> github:kanakytech/keou-mcp</code>
     </div>
     <div class="mcp-row">
-      <button class="mcp-btn accent" id="mcp-copy-cmd" type="button">
+      <button class="mcp-btn accent m-press" id="mcp-copy-cmd" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Copy the command
       </button>
-      <button class="mcp-btn" id="mcp-copy-prompt" type="button">
+      <button class="mcp-btn m-press" id="mcp-copy-prompt" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Copy the guided prompt
       </button>
-      <a class="mcp-btn" href="/install.html">Step by step</a>
+      <a class="mcp-btn m-press" href="/install.html">Step by step</a>
     </div>
     <p class="mcp-note">
       Not technical? The guided prompt is the one to take — paste it into Claude and it walks you through
@@ -460,11 +541,11 @@ claude mcp add keou <span class="k">--scope</span> user <span class="k">-e</span
 
 <!-- ═══ FINAL CTA ═══ -->
 <section class="final section">
-  <div class="final-card reveal">
+  <div class="final-card m-reveal">
     <h2>Open the studio. It's yours.</h2>
     <p>Every feature, free, online, right now. The only thing you bring is your key — and your taste. If Keou saves you hours, <a href="/donate.html" style="color:var(--accent);text-decoration:none;font-weight:600">a small donation</a> keeps it free for everyone.</p>
     <div class="hero-ctas">
-      <a class="btn-hero primary" href="/launch">
+      <a class="btn-hero primary m-press" href="/launch">
         Open the studio — free
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
@@ -510,12 +591,10 @@ onScroll();
 const marquee = document.getElementById('marquee');
 if (marquee) marquee.innerHTML += marquee.innerHTML;
 
-// Reveal on scroll
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+// La révélation au scroll vit désormais dans /shared/reveal.js — un seul
+// observateur pour tout le produit, au lieu d'un par page.
 </script>
+<script src="/shared/reveal.js" defer></script>
 <script src="/shared/donate-widget.js" data-lang="en" data-project="Keou" data-qr="/donate-btc.svg" data-link="/donate.html" defer></script>
 <script defer src="/shared/kanaky-badge.js"></script>
 <script src="/atc.js"></script>

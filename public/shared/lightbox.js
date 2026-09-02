@@ -64,8 +64,12 @@ const Lightbox = (() => {
 
     const style = document.createElement('style');
     style.textContent = `
-      .lightbox{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease}
-      .lightbox.open{opacity:1;visibility:visible}
+      /* visibility devient visible IMMÉDIATEMENT à l'ouverture (délai 0) et
+         n'attend les 250ms qu'à la fermeture : sinon closeBtn.focus() est
+         appelé sur un élément encore invisible, le focus n'entre jamais dans
+         le dialogue et son piège clavier ne s'arme pas. */
+      .lightbox{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .25s ease,visibility 0s linear .25s}
+      .lightbox.open{opacity:1;visibility:visible;transition:opacity .25s ease,visibility 0s}
       .lightbox-overlay{position:absolute;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);cursor:pointer}
       .lightbox-content{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;transform:scale(.92);transition:transform .3s cubic-bezier(.16,1,.3,1);pointer-events:none}
       .lightbox.open .lightbox-content{transform:scale(1)}
@@ -91,7 +95,13 @@ const Lightbox = (() => {
       .lightbox-toolbar{
         position:fixed;top:20px;right:20px;z-index:10000;
         display:flex;gap:8px;opacity:0;transform:translateY(-8px);
-        transition:all .25s ease;
+        /* Propriétés explicites plutôt que le mot-clé universel : celui-ci
+           laisse le navigateur animer aussi des propriétés de mise en page, et
+           la barre saute quand son contenu change. Courbe = la grammaire
+           commune, avec la valeur littérale en repli — ce fichier est injecté
+           aussi dans les pages autonomes, qui ne chargent pas
+           shared/styles.css et n'ont donc pas le token. */
+        transition:opacity .25s var(--m-ease,cubic-bezier(.2,.8,.2,1)),transform .25s var(--m-ease,cubic-bezier(.2,.8,.2,1));
       }
       .lightbox.open .lightbox-toolbar{opacity:1;transform:translateY(0);transition-delay:.15s}
       .lightbox-btn{
@@ -100,8 +110,9 @@ const Lightbox = (() => {
         color:#fff;font-size:20px;cursor:pointer;
         display:flex;align-items:center;justify-content:center;
         backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-        transition:all .2s ease;
+        transition:background .15s var(--m-ease,cubic-bezier(.2,.8,.2,1)),border-color .15s var(--m-ease,cubic-bezier(.2,.8,.2,1)),transform .15s var(--m-ease,cubic-bezier(.2,.8,.2,1));
       }
+      .lightbox-btn:active{transform:scale(.95)}
       .lightbox-btn:hover{background:rgba(255,255,255,.25);transform:scale(1.08)}
       .lightbox-btn svg{width:18px;height:18px}
 

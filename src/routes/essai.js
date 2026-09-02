@@ -1021,6 +1021,49 @@ router.post('/studio/upscale', async (req, res) => {
   }
 });
 
+// ─── Studio : agrandissement vidéo (Topaz Video, source = une vidéo) ───
+router.post('/studio/video-upscale', async (req, res) => {
+  try {
+    const { sourceId, videoUrl, upscaleFactor } = req.body || {};
+    // La source doit être une VIDÉO — une image générée ne se sur-échantillonne
+    // pas ici. On résout à la main (resolveStudioSource impose l'image).
+    let url = null;
+    if (sourceId) {
+      if (!UUID_RE.test(sourceId)) return res.status(400).json({ error: 'Source not found' });
+      const row = await queryOne(
+        `SELECT r2_key, status, media, hidden FROM essai_generations WHERE id = $1`,
+        [sourceId]
+      );
+      if (!row || row.status !== 'completed' || row.hidden || !row.r2_key) return res.status(400).json({ error: 'Source not found' });
+      if (row.media !== 'video') return res.status(400).json({ error: 'Video upscaling starts from a video — the source you picked is not one' });
+      url = await getPresignedUrl(row.r2_key, 3600);
+    } else if (videoUrl) {
+      try { assertSafeUrl(videoUrl); } catch { return res.status(400).json({ error: 'Invalid video URL' }); }
+      url = videoUrl;
+    } else {
+      return res.status(400).json({ error: 'Source video required' });
+    }
+
+    // Topaz Video : facteurs 2 ou 4, comme POST /api/tools/video-upscale.
+    const demande = String(upscaleFactor ?? '2');
+    if (!['2', '4'].includes(demande)) {
+      return res.status(400).json({ error: 'Upscale factor must be 2 or 4' });
+    }
+
+    await launchStudioJob(req, res, {
+      kind: 'vid-upscale',
+      galleryPrompt: `Video resolution ×${demande} — anonymous studio`,
+      userText: null,
+      format: null,
+      imageUrl: url,            // le tronc commun insère la source ; runJob lit videoUrl||imageUrl
+      params: { videoUrl: url, upscaleFactor: demande },
+    });
+  } catch (e) {
+    console.error('[ESSAI studio video-upscale]', e.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not start the video upscale — try again' });
+  }
+});
+
 // ─── Studio : voix de synthèse (texte visiteur, filtré) ───
 router.post('/studio/tts', async (req, res) => {
   try {

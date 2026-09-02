@@ -58,8 +58,55 @@
   --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.07);
   --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
   --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
-  --radius:16px;--radius-sm:12px;
+  --radius:16px;--radius-sm:12px;--radius-lg:20px;--radius-xl:24px;
+  --focus-ring:0 0 0 3px rgba(200,240,96,.28);
+
+  /* ── Grammaire de mouvement — recopiée VERBATIM de shared/styles.css ──
+     Cette page est autonome (elle ne charge pas la feuille partagée, pour que
+     le premier rendu ne dépende de rien) : on duplique donc les tokens plutôt
+     que d'en inventer d'autres. Toute valeur changée ici désaccorderait la
+     page du studio — c'est un miroir, pas une variante. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-menu:.14s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
 }
+
+/* ── Primitives de mouvement (miroir de shared/styles.css) ──
+   N'animent que transform et opacity : composé par le GPU, aucun reflow. */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*:nth-child(1){animation-delay:0ms}
+.m-stagger>*:nth-child(2){animation-delay:40ms}
+.m-stagger>*:nth-child(3){animation-delay:80ms}
+.m-stagger>*:nth-child(4){animation-delay:120ms}
+.m-stagger>*:nth-child(5){animation-delay:160ms}
+.m-stagger>*:nth-child(6){animation-delay:200ms}
+.m-stagger>*:nth-child(7){animation-delay:240ms}
+.m-stagger>*:nth-child(n+8){animation-delay:280ms}
+@keyframes kMotionMenu{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.m-menu-in{animation:kMotionMenu var(--m-menu) both;transform-origin:top center}
+.m-press{transition:transform var(--m-fast),filter var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+
+/* Une grille qui porte les deux classes : le conteneur ne sert plus que de
+   déclencheur, la cascade des enfants porte tout le mouvement. Sans cette
+   pause, la cascade se jouerait au chargement — bien avant que la grille
+   n'arrive à l'écran, donc dans le vide. */
+.js-reveal .m-reveal.m-stagger{opacity:1;transform:none}
+.js-reveal .m-reveal.m-stagger>*{animation-play-state:paused}
+.js-reveal .m-reveal.m-stagger.is-in>*{animation-play-state:running}
+
+/* ── Focus visible — la même bague partout, jamais un contour système ── */
+.btn-hero:focus-visible,.lp-nav-link:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.lp-brand:focus-visible,.hero-note a:focus-visible,.article a:focus-visible,
+.note a:focus-visible,.faq-item a:focus-visible,.final p a:focus-visible,
+.lp-footer a:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:6px}
+
 html{scroll-behavior:smooth}
 body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
@@ -80,7 +127,7 @@ img{max-width:100%}
 .lp-brand-name strong{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
 .lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
 .lp-nav-links{display:flex;gap:6px;align-items:center}
-.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:color var(--m-fast),background var(--m-fast)}
 .lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
 .lp-nav-link.primary{background:var(--accent);color:#050505;font-weight:600}
 .lp-nav-link.primary:hover{background:#d6f57e}
@@ -90,11 +137,18 @@ img{max-width:100%}
 .section{max-width:1080px;margin:0 auto;padding:0 32px}
 .eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:18px}
 .eyebrow svg{color:var(--accent)}
-.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;transition:all .25s;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;gap:9px}
+/* La bordure transparente par défaut n'est pas décorative : sans elle, une
+   « primary » (border:none) et une « secondary » (1.5 px) posées côte à côte
+   n'ont pas la même boîte, et la ligne de texte se décale de 1,5 px. */
+.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid transparent;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),box-shadow var(--m-fast),filter var(--m-fast)}
+.btn-hero svg{flex:none}
+.btn-hero:hover{transform:translateY(-2px)}
+.btn-hero:active{transform:translateY(0) scale(.985)}
 .btn-hero.primary{background:var(--accent);color:#050505}
-.btn-hero.primary:hover{background:#d6f57e;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.16)}
-.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border:1.5px solid var(--border)}
-.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06)}
+.btn-hero.primary:hover{background:#d6f57e;box-shadow:0 8px 24px rgba(200,240,96,.18)}
+.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border-color:var(--border)}
+.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06);box-shadow:0 8px 24px rgba(0,0,0,.18)}
 
 /* ── Page hero ── */
 .hero{padding:150px 32px 24px;max-width:1080px;margin:0 auto;text-align:center}
@@ -113,12 +167,16 @@ img{max-width:100%}
 .article ul{color:var(--ink-soft);font-size:15.5px;margin:0 0 15px 22px;line-height:1.75}
 .article li{margin-bottom:7px}
 .article li::marker{color:var(--accent)}
-.article a{color:var(--accent);text-decoration:none}
+.article a{color:var(--accent);text-decoration:none;text-underline-offset:3px;text-decoration-thickness:1px}
 .article a:hover{text-decoration:underline}
 .article b{color:var(--ink)}
-.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:20px 0;font-size:14.5px;color:var(--ink-soft)}
+.article code,.faq-item code{font-family:'JetBrains Mono','Menlo',monospace;font-size:.88em;color:var(--ink);background:var(--surface-3);border-radius:5px;padding:1px 5px;
+  /* Un token long coupé en fin de ligne donnait deux fragments sans coins ni
+     marge : clone rend chaque fragment comme une puce entière. */
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;overflow-wrap:anywhere}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:16px 20px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:24px 0;font-size:14.5px;color:var(--ink-soft);line-height:1.7}
 .note b{color:var(--ink)}
-.term{background:#000;border:1px solid var(--border-strong);border-radius:12px;padding:16px 18px;margin:16px 0;overflow-x:auto}
+.term{background:#000;border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:16px 18px;margin:16px 0;overflow-x:auto}
 .term code{font-family:'JetBrains Mono','Menlo',monospace;font-size:12.5px;line-height:1.75;color:#d7d7d3;white-space:pre;display:block}
 .term .c{color:rgba(240,240,236,.4)}
 .term .k{color:var(--accent)}
@@ -126,14 +184,18 @@ img{max-width:100%}
 /* ── FAQ ── */
 .faq{max-width:760px;margin:0 auto;padding:24px 32px 0}
 .faq h2{font-size:clamp(21px,2.6vw,28px);font-weight:700;margin:36px 0 20px}
-.faq-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:20px 22px;margin-bottom:12px}
-.faq-item h3{font-size:15.5px;font-weight:600;margin-bottom:8px;color:var(--ink)}
+.faq-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:20px 22px;margin-bottom:12px;
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.faq-item:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
+/* La question était à 15,5 px comme le corps de l'article : rien ne la lisait
+   comme un titre. 16,5 px / 600 la remet un cran au-dessus de sa réponse. */
+.faq-item h3{font-size:16.5px;font-weight:600;margin-bottom:9px;color:var(--ink);letter-spacing:-.01em}
 .faq-item p{font-size:14.5px;color:var(--ink-muted);line-height:1.7}
 .faq-item p a{color:var(--accent);text-decoration:none}
 
 /* ── Final CTA ── */
 .final{padding:80px 0 100px;text-align:center}
-.final-card{padding:56px 40px;border:1px solid var(--border);border-radius:24px;background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
+.final-card{padding:56px 40px;border:1px solid var(--border);border-radius:var(--radius-xl);background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
 .final-card::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:520px;height:280px;background:radial-gradient(ellipse,rgba(200,240,96,.18),transparent 70%);pointer-events:none}
 .final h2{font-size:clamp(24px,3.4vw,36px);font-weight:800;margin-bottom:14px}
 .final p{color:var(--ink-muted);max-width:520px;margin:0 auto 30px;font-size:15.5px}
@@ -141,16 +203,23 @@ img{max-width:100%}
 /* ── Footer ── */
 .lp-footer{border-top:1px solid var(--border);padding:36px 32px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;max-width:1080px;margin:0 auto}
 .lp-footer .fbrand{display:flex;align-items:center;gap:10px;color:var(--ink-muted);font-size:13px}
-.lp-footer .fbrand img{height:22px;border-radius:5px}
+/* Le même logo est un disque dans la barre : ici il était un carré à 5 px. */
+.lp-footer .fbrand img{height:22px;border-radius:50%}
 .lp-footer .fbrand b{color:var(--ink-soft)}
 .lp-footer .flinks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color .2s}
+.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color var(--m-fast)}
 .lp-footer .flinks a:hover{color:var(--ink)}
+@media (max-width:640px){.lp-footer{justify-content:center;text-align:center}.lp-footer .flinks{justify-content:center;gap:14px 16px}}
 
-/* ── Reveal on scroll ── */
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
-.reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+/* ── Mouvement réduit ──
+   Cette page est autonome : le garde-fou global de shared/styles.css ne la
+   couvre pas, il faut donc le sien. reveal.js s'abstient déjà de poser
+   `js-reveal`, ce qui laisse tout .m-reveal visible. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto}
+  .m-reveal{opacity:1;transform:none}
+}
 @media (max-width:480px){.lp-nav{padding:12px 14px;gap:8px}.lp-brand-name span{display:none}.lp-nav-link[href="/login.html"]{display:none}.lp-nav-link{padding:8px 11px;font-size:12.5px}}
 </style>
 </head>
@@ -164,11 +233,11 @@ img{max-width:100%}
     <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
   </a>
   <div class="lp-nav-links">
-    <a class="lp-nav-link ghost" href="/#features">Features</a>
-    <a class="lp-nav-link ghost" href="/docs.html">Docs</a>
-    <a class="lp-nav-link ghost" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
-    <a class="lp-nav-link" href="/login.html">Sign in</a>
-    <a class="lp-nav-link primary" href="/launch">Launch Keou</a>
+    <a class="lp-nav-link ghost m-press" href="/#features">Features</a>
+    <a class="lp-nav-link ghost m-press" href="/docs.html">Docs</a>
+    <a class="lp-nav-link ghost m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
+    <a class="lp-nav-link m-press" href="/login.html">Sign in</a>
+    <a class="lp-nav-link primary m-press" href="/launch">Launch Keou</a>
   </div>
 </nav>
 
@@ -180,23 +249,23 @@ img{max-width:100%}
   <h1>Self-hosted AI image generation, <em>with the honest caveat up front</em></h1>
   <p class="sub">Keou Studio is an MIT-licensed AI product image and video studio you can run on your own servers with Docker or Railway. Two ways to generate, both yours: through your own KIE.AI or Fal.ai API keys — or fully local, with images and upscaling running on your own ComfyUI, no cloud involved.</p>
   <div class="hero-ctas">
-    <a class="btn-hero primary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
+    <a class="btn-hero primary m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
       Get the source on GitHub
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
-    <a class="btn-hero secondary" href="/launch">Try it hosted first</a>
+    <a class="btn-hero secondary m-press" href="/launch">Try it hosted first</a>
   </div>
   <p class="hero-note">Identical feature set to the hosted studio — no watermark, no public gallery, your brand.</p>
 </header>
 
 <article class="article">
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>What you host, and what you don't</h2>
     <p>You host the whole studio: the frontend, the Express API, the PostgreSQL database, the poller and your object storage. For the inference itself you have two options. <b>Cloud:</b> generation calls go out to KIE.AI or Fal.ai on a key you supply — no GPU on your server, no model weights downloaded. <b>Local, since v1.0:</b> point Keou at your own ComfyUI instance (<code>LOCAL_ENGINE_URL</code>) and images — and video, with the Wan 2.2 or LTX-Video models installed — run entirely on your hardware, no cloud involved. Voice and sound effects remain cloud-only — we would rather you know before you clone the repository.</p>
     <p>What self-hosting buys you instead: <b>no watermark</b> on anything, <b>nothing published</b> to any gallery, full signed downloads and export-pack ZIPs, your own brand across the interface, and no shared queue — your capacity is whatever your provider key and your server allow. Users can each paste their own key; it stays in their browser and is never written to your server's disk, database or logs.</p>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>What you need</h2>
     <ul>
       <li><b>Node.js 20+</b> and <b>PostgreSQL</b> — migrations run automatically at boot.</li>
@@ -206,16 +275,16 @@ img{max-width:100%}
     </ul>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>Docker in two commands</h2>
     <div class="term">
       <code>docker build <span class="k">-t</span> keou .
 docker run <span class="k">-p</span> 3401:3401 <span class="k">--env-file</span> .env keou   <span class="c"># open http://localhost:3401</span></code>
     </div>
-    <p>The image runs as a non-root user and ships a healthcheck on <code style="font-family:monospace;font-size:.9em">/health</code>. On <b>Railway</b>: deploy from GitHub, add a PostgreSQL service (the connection string is injected for you), set <code style="font-family:monospace;font-size:.9em">JWT_SECRET</code>, the admin pair and the R2 variables — <code style="font-family:monospace;font-size:.9em">railway.json</code> and the healthcheck are already in the repository, and auto-deploy on <code style="font-family:monospace;font-size:.9em">main</code> keeps you on the latest build. The full environment reference is in the <a href="/docs.html">documentation</a>.</p>
+    <p>The image runs as a non-root user and ships a healthcheck on <code>/health</code>. On <b>Railway</b>: deploy from GitHub, add a PostgreSQL service (the connection string is injected for you), set <code>JWT_SECRET</code>, the admin pair and the R2 variables — <code>railway.json</code> and the healthcheck are already in the repository, and auto-deploy on <code>main</code> keeps you on the latest build. The full environment reference is in the <a href="/docs.html">documentation</a>.</p>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>An open-source alternative to Photoroom-style tools</h2>
     <p>If you are comparing against hosted product-photo tools like Photoroom, here is the honest framing. Keou covers the product-photography workflow — commercial scenes generated around a <a href="/product-images.html">pixel-locked product</a>, retouching, format adaptation, export packs — plus <a href="/video.html">product video</a>, voice-overs and sound, organised by client and campaign with review links. What you gain by self-hosting is control: your infrastructure, your data, your costs at provider rates, and an MIT licence with no seat pricing. What you give up is the convenience of a managed service — you operate the server, the database and the storage yourself.</p>
     <div class="note">
@@ -224,32 +293,32 @@ docker run <span class="k">-p</span> 3401:3401 <span class="k">--env-file</span>
   </section>
 </article>
 
-<section class="faq">
-  <h2 class="reveal">Frequently asked questions</h2>
-  <div class="faq-item reveal">
+<section class="faq m-reveal m-stagger">
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
     <h3>Do the AI models run locally when I self-host?</h3>
     <p>Yes: point Keou at your own <a href="https://github.com/comfyanonymous/ComfyUI" rel="noopener">ComfyUI</a> instance (<code>LOCAL_ENGINE_URL</code>) and image generation, polish, remix, adapt and upscaling run entirely on your hardware — <b>and video too</b>, if your ComfyUI has the Wan 2.2 or LTX-Video models installed (auto-detected — without them you get a clear message listing exactly what to add). No cloud, no per-generation cost, nothing leaves your machine. Voice and sound effects still go through KIE.AI or Fal.ai on your own keys — ComfyUI core has no TTS, and we don't ship promises built on custom nodes.</p>
   </div>
-  <div class="faq-item reveal">
+  <div class="faq-item">
     <h3>What do I need to run it?</h3>
     <p>Node.js 20+, PostgreSQL, a Cloudflare R2 bucket (free tier, required for uploads) and a provider key. Dockerfile and Railway config ship in the repo; the app listens on port 3401 and migrates its own schema at boot.</p>
   </div>
-  <div class="faq-item reveal">
+  <div class="faq-item">
     <h3>Can I use it commercially?</h3>
     <p>Yes. MIT licence: client work, paid work, rebranding — all allowed, with no fee, revenue share or attribution requirement.</p>
   </div>
 </section>
 
 <section class="final section">
-  <div class="final-card reveal">
+  <div class="final-card m-reveal">
     <h2>Clone it, boot it, own it</h2>
     <p>The same studio that runs at <a href="/launch" style="color:var(--accent);text-decoration:none">studio.kanaky.xyz</a> — on your servers, under your brand, with none of the hosted-demo limits.</p>
     <div class="hero-ctas">
-      <a class="btn-hero primary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
+      <a class="btn-hero primary m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">
         github.com/kanakytech/keou
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
-      <a class="btn-hero secondary" href="/docs.html">Read the docs</a>
+      <a class="btn-hero secondary m-press" href="/docs.html">Read the docs</a>
     </div>
   </div>
 </section>
@@ -276,10 +345,9 @@ const nav = document.getElementById('lp-nav');
 const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
 window.addEventListener('scroll', onScroll, { passive: true });
 onScroll();
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 </script>
+<!-- La révélation au scroll vient de /shared/reveal.js : un seul observateur
+     pour tout le produit, au lieu d'une copie recopiée page par page. -->
+<script src="/shared/reveal.js" defer></script>
 </body>
 </html>

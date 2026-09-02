@@ -43,6 +43,25 @@
   --transition-base:.25s var(--ease-out);
   --transition-slow:.4s var(--ease-out);
 
+  /* ── Grammaire de mouvement (partagée par TOUTES les pages) ──
+     ⚠️ MIROIRS : index.html, product-images.html, video.html et self-host.html
+     ne chargent PAS cette feuille (CSS inline, pages SEO autonomes, et leurs
+     tokens --surface/--ink divergent des nôtres). Elles portent une COPIE
+     verbatim de ce bloc et des primitives .m-* plus bas. Toute modification
+     ici doit être reportée dans ces 4 pages, sinon le produit se met à parler
+     deux dialectes de mouvement.
+     Née dans le studio, promue ici : une interface cohérente n'a qu'un seul
+     vocabulaire de mouvement. Rapide, discret, physiquement crédible — on
+     doit SENTIR la fluidité sans remarquer l'animation.
+     --m-ease : décélération franche, la courbe de référence.
+     --m-fast : interactions (hover, sélection, press).
+     --m-menu : ouverture des surfaces flottantes (menus, popovers).
+     --m-enter: entrée de contenu (cartes, sections, résultats). */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-menu:.14s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
+
   /* ── Liquid Glass material ──
      The glass is the CHROME (nav, overlays, controls) — never the content.
      saturate() is what separates Apple glass from 2020 glassmorphism:
@@ -997,6 +1016,48 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .reveal-delay-1{transition-delay:.1s}
 .reveal-delay-2{transition-delay:.2s}
 .reveal-delay-3{transition-delay:.3s}
+
+/* ═══════════════════════════════════════════
+   PRIMITIVES DE MOUVEMENT — partagées
+   ═══════════════════════════════════════════
+   Le vocabulaire commun à toutes les pages. Une page qui veut de l'entrée de
+   contenu, un menu qui s'ouvre ou un bouton qui répond au doigt utilise CES
+   classes plutôt que de réinventer sa propre animation : c'est ce qui rend le
+   produit cohérent d'un écran à l'autre.
+   Toutes n'animent que `transform` et `opacity` — composé par le GPU, aucun
+   reflow. Le garde-fou prefers-reduced-motion plus bas les neutralise. */
+
+/* Entrée de contenu — carte, section, résultat qui arrive dans le flux. */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+
+/* Entrée en cascade : les enfants arrivent l'un après l'autre, 40 ms d'écart.
+   Au-delà de 8, l'attente devient perceptible — les suivants arrivent ensemble. */
+.m-stagger>*{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*:nth-child(1){animation-delay:0ms}
+.m-stagger>*:nth-child(2){animation-delay:40ms}
+.m-stagger>*:nth-child(3){animation-delay:80ms}
+.m-stagger>*:nth-child(4){animation-delay:120ms}
+.m-stagger>*:nth-child(5){animation-delay:160ms}
+.m-stagger>*:nth-child(6){animation-delay:200ms}
+.m-stagger>*:nth-child(7){animation-delay:240ms}
+.m-stagger>*:nth-child(n+8){animation-delay:280ms}
+
+/* Surface flottante (menu, popover, dropdown) — jamais d'apparition brutale. */
+@keyframes kMotionMenu{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.m-menu-in{animation:kMotionMenu var(--m-menu) both;transform-origin:top center}
+
+/* Réponse tactile : le bouton s'enfonce sous le doigt. */
+.m-press{transition:transform var(--m-fast),filter var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+
+/* Révélation au scroll. L'état caché n'existe QUE si reveal.js a démarré (il
+   pose `js-reveal` sur <html>) : sans JS, ou si le script échoue, le contenu
+   reste simplement visible. Une animation ne doit jamais pouvoir effacer une
+   page. */
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
 
 /* ═══════════════════════════════════════════
    REDUCED MOTION

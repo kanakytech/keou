@@ -58,8 +58,55 @@
   --surface:#050505;--surface-2:rgba(255,255,255,.04);--surface-3:rgba(255,255,255,.07);
   --border:rgba(255,255,255,.06);--border-strong:rgba(255,255,255,.16);
   --accent:#c8f060;--accent-soft:rgba(200,240,96,.08);
-  --radius:16px;--radius-sm:12px;
+  --radius:16px;--radius-sm:12px;--radius-lg:20px;--radius-xl:24px;
+  --focus-ring:0 0 0 3px rgba(200,240,96,.28);
+
+  /* ── Grammaire de mouvement — recopiée VERBATIM de shared/styles.css ──
+     Cette page est autonome (elle ne charge pas la feuille partagée, pour que
+     le premier rendu ne dépende de rien) : on duplique donc les tokens plutôt
+     que d'en inventer d'autres. Toute valeur changée ici désaccorderait la
+     page du studio — c'est un miroir, pas une variante. */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+  --m-fast:.15s var(--m-ease);
+  --m-menu:.14s var(--m-ease);
+  --m-enter:.22s var(--m-ease);
 }
+
+/* ── Primitives de mouvement (miroir de shared/styles.css) ──
+   N'animent que transform et opacity : composé par le GPU, aucun reflow. */
+@keyframes kMotionEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.m-enter{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*{animation:kMotionEnter var(--m-enter) both}
+.m-stagger>*:nth-child(1){animation-delay:0ms}
+.m-stagger>*:nth-child(2){animation-delay:40ms}
+.m-stagger>*:nth-child(3){animation-delay:80ms}
+.m-stagger>*:nth-child(4){animation-delay:120ms}
+.m-stagger>*:nth-child(5){animation-delay:160ms}
+.m-stagger>*:nth-child(6){animation-delay:200ms}
+.m-stagger>*:nth-child(7){animation-delay:240ms}
+.m-stagger>*:nth-child(n+8){animation-delay:280ms}
+@keyframes kMotionMenu{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.m-menu-in{animation:kMotionMenu var(--m-menu) both;transform-origin:top center}
+.m-press{transition:transform var(--m-fast),filter var(--m-fast),background var(--m-fast),border-color var(--m-fast),color var(--m-fast)}
+.m-press:active{transform:scale(.985)}
+.js-reveal .m-reveal{opacity:0;transform:translateY(14px)}
+.m-reveal{transition:opacity .5s var(--m-ease),transform .5s var(--m-ease)}
+.js-reveal .m-reveal.is-in{opacity:1;transform:none}
+
+/* Une grille qui porte les deux classes : le conteneur ne sert plus que de
+   déclencheur, la cascade des enfants porte tout le mouvement. Sans cette
+   pause, la cascade se jouerait au chargement — bien avant que la grille
+   n'arrive à l'écran, donc dans le vide. */
+.js-reveal .m-reveal.m-stagger{opacity:1;transform:none}
+.js-reveal .m-reveal.m-stagger>*{animation-play-state:paused}
+.js-reveal .m-reveal.m-stagger.is-in>*{animation-play-state:running}
+
+/* ── Focus visible — la même bague partout, jamais un contour système ── */
+.btn-hero:focus-visible,.lp-nav-link:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.lp-brand:focus-visible,.hero-note a:focus-visible,.article a:focus-visible,
+.note a:focus-visible,.faq-item a:focus-visible,.final p a:focus-visible,
+.lp-footer a:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:6px}
+
 html{scroll-behavior:smooth}
 body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);background:var(--surface);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.2;letter-spacing:-.02em}
@@ -80,7 +127,7 @@ img{max-width:100%}
 .lp-brand-name strong{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
 .lp-brand-name span{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:.6px;text-transform:uppercase}
 .lp-nav-links{display:flex;gap:6px;align-items:center}
-.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:all .2s}
+.lp-nav-link{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-soft);transition:color var(--m-fast),background var(--m-fast)}
 .lp-nav-link:hover{color:var(--ink);background:var(--surface-2)}
 .lp-nav-link.primary{background:var(--accent);color:#050505;font-weight:600}
 .lp-nav-link.primary:hover{background:#d6f57e}
@@ -90,11 +137,18 @@ img{max-width:100%}
 .section{max-width:1080px;margin:0 auto;padding:0 32px}
 .eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:18px}
 .eyebrow svg{color:var(--accent)}
-.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;transition:all .25s;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;gap:9px}
+/* La bordure transparente par défaut n'est pas décorative : sans elle, une
+   « primary » (border:none) et une « secondary » (1.5 px) posées côte à côte
+   n'ont pas la même boîte, et la ligne de texte se décale de 1,5 px. */
+.btn-hero{padding:14px 30px;border-radius:100px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid transparent;cursor:pointer;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  transition:transform var(--m-fast),background var(--m-fast),border-color var(--m-fast),box-shadow var(--m-fast),filter var(--m-fast)}
+.btn-hero svg{flex:none}
+.btn-hero:hover{transform:translateY(-2px)}
+.btn-hero:active{transform:translateY(0) scale(.985)}
 .btn-hero.primary{background:var(--accent);color:#050505}
-.btn-hero.primary:hover{background:#d6f57e;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.16)}
-.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border:1.5px solid var(--border)}
-.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06)}
+.btn-hero.primary:hover{background:#d6f57e;box-shadow:0 8px 24px rgba(200,240,96,.18)}
+.btn-hero.secondary{background:var(--surface-2);color:var(--ink);border-color:var(--border)}
+.btn-hero.secondary:hover{border-color:var(--border-strong);background:rgba(255,255,255,.06);box-shadow:0 8px 24px rgba(0,0,0,.18)}
 
 /* ── Page hero ── */
 .hero{padding:150px 32px 24px;max-width:1080px;margin:0 auto;text-align:center}
@@ -107,8 +161,10 @@ img{max-width:100%}
 
 /* ── Engine cards ── */
 .engines{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;max-width:760px;margin:0 auto;padding:32px 32px 0}
-.engine{padding:18px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);text-align:center;transition:all .25s}
-.engine:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-3px)}
+/* Même élévation que les cartes de FAQ : 2 px, transform seul. */
+.engine{padding:18px 16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);text-align:center;
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.engine:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
 .engine b{display:block;font-size:14.5px;font-weight:600;color:var(--ink);margin-bottom:4px}
 .engine span{font-size:12px;color:var(--ink-muted)}
 @media (max-width:720px){.engines{grid-template-columns:repeat(2,1fr)}}
@@ -121,23 +177,31 @@ img{max-width:100%}
 .article ul{color:var(--ink-soft);font-size:15.5px;margin:0 0 15px 22px;line-height:1.75}
 .article li{margin-bottom:7px}
 .article li::marker{color:var(--accent)}
-.article a{color:var(--accent);text-decoration:none}
+.article a{color:var(--accent);text-decoration:none;text-underline-offset:3px;text-decoration-thickness:1px}
 .article a:hover{text-decoration:underline}
 .article b{color:var(--ink)}
-.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:20px 0;font-size:14.5px;color:var(--ink-soft)}
+.article code,.faq-item code{font-family:'JetBrains Mono','Menlo',monospace;font-size:.88em;color:var(--ink);background:var(--surface-3);border-radius:5px;padding:1px 5px;
+  /* Un token long coupé en fin de ligne donnait deux fragments sans coins ni
+     marge : clone rend chaque fragment comme une puce entière. */
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;overflow-wrap:anywhere}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:16px 20px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:24px 0;font-size:14.5px;color:var(--ink-soft);line-height:1.7}
 .note b{color:var(--ink)}
 
 /* ── FAQ ── */
 .faq{max-width:760px;margin:0 auto;padding:24px 32px 0}
 .faq h2{font-size:clamp(21px,2.6vw,28px);font-weight:700;margin:36px 0 20px}
-.faq-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:20px 22px;margin-bottom:12px}
-.faq-item h3{font-size:15.5px;font-weight:600;margin-bottom:8px;color:var(--ink)}
+.faq-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);padding:20px 22px;margin-bottom:12px;
+  transition:transform var(--m-fast),border-color var(--m-fast),background var(--m-fast)}
+.faq-item:hover{border-color:var(--border-strong);background:var(--surface-3);transform:translateY(-2px)}
+/* La question était à 15,5 px comme le corps de l'article : rien ne la lisait
+   comme un titre. 16,5 px / 600 la remet un cran au-dessus de sa réponse. */
+.faq-item h3{font-size:16.5px;font-weight:600;margin-bottom:9px;color:var(--ink);letter-spacing:-.01em}
 .faq-item p{font-size:14.5px;color:var(--ink-muted);line-height:1.7}
 .faq-item p a{color:var(--accent);text-decoration:none}
 
 /* ── Final CTA ── */
 .final{padding:80px 0 100px;text-align:center}
-.final-card{padding:56px 40px;border:1px solid var(--border);border-radius:24px;background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
+.final-card{padding:56px 40px;border:1px solid var(--border);border-radius:var(--radius-xl);background:linear-gradient(180deg,rgba(200,240,96,.09),rgba(255,255,255,.015));position:relative;overflow:hidden}
 .final-card::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:520px;height:280px;background:radial-gradient(ellipse,rgba(200,240,96,.18),transparent 70%);pointer-events:none}
 .final h2{font-size:clamp(24px,3.4vw,36px);font-weight:800;margin-bottom:14px}
 .final p{color:var(--ink-muted);max-width:520px;margin:0 auto 30px;font-size:15.5px}
@@ -145,16 +209,23 @@ img{max-width:100%}
 /* ── Footer ── */
 .lp-footer{border-top:1px solid var(--border);padding:36px 32px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;max-width:1080px;margin:0 auto}
 .lp-footer .fbrand{display:flex;align-items:center;gap:10px;color:var(--ink-muted);font-size:13px}
-.lp-footer .fbrand img{height:22px;border-radius:5px}
+/* Le même logo est un disque dans la barre : ici il était un carré à 5 px. */
+.lp-footer .fbrand img{height:22px;border-radius:50%}
 .lp-footer .fbrand b{color:var(--ink-soft)}
 .lp-footer .flinks{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color .2s}
+.lp-footer .flinks a{color:var(--ink-faint);font-size:13px;text-decoration:none;transition:color var(--m-fast)}
 .lp-footer .flinks a:hover{color:var(--ink)}
+@media (max-width:640px){.lp-footer{justify-content:center;text-align:center}.lp-footer .flinks{justify-content:center;gap:14px 16px}}
 
-/* ── Reveal on scroll ── */
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
-.reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+/* ── Mouvement réduit ──
+   Cette page est autonome : le garde-fou global de shared/styles.css ne la
+   couvre pas, il faut donc le sien. reveal.js s'abstient déjà de poser
+   `js-reveal`, ce qui laisse tout .m-reveal visible. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto}
+  .m-reveal{opacity:1;transform:none}
+}
 @media (max-width:480px){.lp-nav{padding:12px 14px;gap:8px}.lp-brand-name span{display:none}.lp-nav-link[href="/login.html"]{display:none}.lp-nav-link{padding:8px 11px;font-size:12.5px}}
 </style>
 </head>
@@ -168,11 +239,11 @@ img{max-width:100%}
     <span class="lp-brand-name"><strong>Keou Studio</strong><span>by kanaky.xyz</span></span>
   </a>
   <div class="lp-nav-links">
-    <a class="lp-nav-link ghost" href="/#features">Features</a>
-    <a class="lp-nav-link ghost" href="/docs.html">Docs</a>
-    <a class="lp-nav-link ghost" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
-    <a class="lp-nav-link" href="/login.html">Sign in</a>
-    <a class="lp-nav-link primary" href="/launch">Launch Keou</a>
+    <a class="lp-nav-link ghost m-press" href="/#features">Features</a>
+    <a class="lp-nav-link ghost m-press" href="/docs.html">Docs</a>
+    <a class="lp-nav-link ghost m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">GitHub</a>
+    <a class="lp-nav-link m-press" href="/login.html">Sign in</a>
+    <a class="lp-nav-link primary m-press" href="/launch">Launch Keou</a>
   </div>
 </nav>
 
@@ -184,29 +255,29 @@ img{max-width:100%}
   <h1>An open-source AI product video generator, <em>on your own key</em></h1>
   <p class="sub">Keou Studio turns a product still into short video clips — drift shots, B-roll, social cuts — using Grok Imagine, Kling 2.6/3.0, Seedance 2 or Veo 3, reached through your own KIE.AI or Fal.ai API key. Free online with no account, MIT licensed, and self-hostable.</p>
   <div class="hero-ctas">
-    <a class="btn-hero primary" href="/launch">
+    <a class="btn-hero primary m-press" href="/launch">
       Generate product video now
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
-    <a class="btn-hero secondary" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">Source on GitHub</a>
+    <a class="btn-hero secondary m-press" href="https://github.com/kanakytech/keou" target="_blank" rel="noopener">Source on GitHub</a>
   </div>
   <p class="hero-note">No account. No card. You pay your provider per clip — the platform adds zero.</p>
 </header>
 
-<div class="engines">
-  <div class="engine reveal"><b>Grok Imagine</b><span>video engine</span></div>
-  <div class="engine reveal"><b>Kling 2.6 / 3.0</b><span>video engine</span></div>
-  <div class="engine reveal"><b>Seedance 2</b><span>video engine</span></div>
-  <div class="engine reveal"><b>Veo 3</b><span>video engine</span></div>
+<div class="engines m-reveal m-stagger">
+  <div class="engine"><b>Grok Imagine</b><span>video engine</span></div>
+  <div class="engine"><b>Kling 2.6 / 3.0</b><span>video engine</span></div>
+  <div class="engine"><b>Seedance 2</b><span>video engine</span></div>
+  <div class="engine"><b>Veo 3</b><span>video engine</span></div>
 </div>
 
 <article class="article">
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>How it works</h2>
     <p>Start from a still — either a photo you upload or a product image generated in the <a href="/product-images.html">production studio</a>, where your product stays pixel-locked. Pick an engine, describe the motion, and generate. The same pipeline covers the finishing work: text-to-speech voice-overs, generated sound effects, and upscaling of images and video at ×4 or ×8. One approved clip or render becomes a full multi-format delivery pack in one action.</p>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>Bring your own key — what that actually means</h2>
     <p>Keou does not run video models itself, and does not resell compute. It is the orchestration layer: your provider key lives in your browser's localStorage, rides each request in an <b>X-Provider-Key</b> header, is used for that single provider call, and is never written to the server's disk, database or logs. You can grep the <a href="https://github.com/kanakytech/keou" rel="noopener">source</a> for that header and follow the whole path.</p>
     <div class="note">
@@ -214,7 +285,7 @@ img{max-width:100%}
     </div>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>Honest limits</h2>
     <ul>
       <li><b>Cost is per clip, at your provider's rates.</b> Video is more expensive than images. The platform adds nothing, but the provider bill is real — check your provider's pricing before a large batch.</li>
@@ -223,34 +294,34 @@ img{max-width:100%}
     </ul>
   </section>
 
-  <section class="reveal">
+  <section class="m-reveal">
     <h2>Open source, end to end</h2>
-    <p>The full studio — video, images, polish, remix, adapt, packs, voice, sound, upscaling, teams, share links — ships in the <a href="https://github.com/kanakytech/keou" rel="noopener">public repository</a> under MIT. There is no paid tier holding features back. The <a href="/docs.html">documentation</a> covers the API (<code style="font-family:monospace;font-size:.9em">POST /api/video</code> generates a clip from a still) and the <a href="/self-host.html">self-hosting guide</a> covers Docker and Railway.</p>
+    <p>The full studio — video, images, polish, remix, adapt, packs, voice, sound, upscaling, teams, share links — ships in the <a href="https://github.com/kanakytech/keou" rel="noopener">public repository</a> under MIT. There is no paid tier holding features back. The <a href="/docs.html">documentation</a> covers the API (<code>POST /api/video</code> generates a clip from a still) and the <a href="/self-host.html">self-hosting guide</a> covers Docker and Railway.</p>
   </section>
 </article>
 
-<section class="faq">
-  <h2 class="reveal">Frequently asked questions</h2>
-  <div class="faq-item reveal">
+<section class="faq m-reveal m-stagger">
+  <h2>Frequently asked questions</h2>
+  <div class="faq-item">
     <h3>Which AI video engines does Keou support?</h3>
     <p>Grok Imagine, Kling 2.6 and 3.0, Seedance 2, and Veo 3 — reached through your own KIE.AI or Fal.ai API key. Keou orchestrates these engines; it does not run models itself.</p>
   </div>
-  <div class="faq-item reveal">
+  <div class="faq-item">
     <h3>What does bring-your-own-key (BYOK) mean here?</h3>
     <p>Your key stays in your browser and rides each request in a header — never stored on the server. The trade-off: your browser drives job polling, so a closed tab pauses a job until you return.</p>
   </div>
-  <div class="faq-item reveal">
+  <div class="faq-item">
     <h3>Is AI product video generation free on Keou?</h3>
     <p>The platform is free and MIT licensed. You pay your provider per clip at their rates. Anonymous hosted videos are watermarked and public; a <a href="/self-host.html">self-hosted install</a> has neither limit.</p>
   </div>
 </section>
 
 <section class="final section">
-  <div class="final-card reveal">
+  <div class="final-card m-reveal">
     <h2>From still to clip in one session</h2>
     <p>Generate a product image, turn it into motion, pack it for every channel — all in the browser, on your own key.</p>
     <div class="hero-ctas">
-      <a class="btn-hero primary" href="/launch">
+      <a class="btn-hero primary m-press" href="/launch">
         Launch Keou
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
@@ -280,10 +351,9 @@ const nav = document.getElementById('lp-nav');
 const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
 window.addEventListener('scroll', onScroll, { passive: true });
 onScroll();
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 </script>
+<!-- La révélation au scroll vient de /shared/reveal.js : un seul observateur
+     pour tout le produit, au lieu d'une copie recopiée page par page. -->
+<script src="/shared/reveal.js" defer></script>
 </body>
 </html>
