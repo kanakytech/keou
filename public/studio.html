@@ -1077,6 +1077,7 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .as-msg{max-width:88%;padding:10px 14px;border-radius:14px;font-size:13.5px;line-height:1.55;animation:kMotionEnter var(--m-enter) both;word-wrap:break-word}
 .as-msg.user{align-self:flex-end;background:var(--tool-tint);color:var(--ink);border-bottom-right-radius:4px}
 .as-msg.ai{align-self:flex-start;background:var(--s2);color:var(--ink);border:1px solid var(--s3);border-bottom-left-radius:4px}
+.as-msg.ai.thinking::before{content:attr(data-thinking);color:var(--ink-faint);font-style:italic}
 .as-msg.ai.streaming::after{content:'';display:inline-block;width:6px;height:14px;margin-left:3px;vertical-align:-2px;background:var(--tool-accent);animation:asCaret .9s steps(2) infinite}
 @keyframes asCaret{50%{opacity:0}}
 .as-msg strong{color:var(--ink);font-weight:600}
@@ -6129,15 +6130,15 @@ function imgFallback(el) {
       input.value = ''; autosize();
       bubble('user', esc(text));
       history.push({ role: 'user', content: text });
-      var ai = bubble('ai streaming', '');
+      var ai = bubble('ai streaming', ''); ai.setAttribute('data-thinking', I18N.t('Thinking…'));
       busy = true; send.disabled = true;
       var acc = '', usage = null;
       try {
         var isOr = sel.provider === 'or';
         var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (isOr ? orKey.value.trim() : Auth.getProviderKey()) };
         if (isOr) { headers['HTTP-Referer'] = 'https://studio.kanaky.xyz'; headers['X-Title'] = 'Keou Studio'; }
-        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 1200 };
-        if (isOr) { body.model = sel.model; body.usage = { include: true }; }
+        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 2000 };
+        if (isOr) { body.model = sel.model; body.usage = { include: true }; body.reasoning = { exclude: true }; }
         var res = await fetch(endpointFor(sel), { method: 'POST', headers: headers, body: JSON.stringify(body) });
         if (!res.ok) {
           // Le fournisseur dit souvent POURQUOI (quel plafond, quelle clé) : on
@@ -6160,16 +6161,24 @@ function imgFallback(el) {
           buf += dec.decode(chunk.value, { stream: true });
           var parts = buf.split('\n\n'); buf = parts.pop();
           for (var i = 0; i < parts.length; i++) {
-            var line = parts[i].trim();
-            if (line.indexOf('data:') !== 0) continue;
-            var payload = line.slice(5).trim();
-            if (payload === '[DONE]') continue;
-            try {
-              var j = JSON.parse(payload);
-              var delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
-              if (delta) { acc += delta; ai.innerHTML = render(acc); log.scrollTop = log.scrollHeight; }
-              if (j.usage) usage = j.usage; // OpenRouter : dernier morceau, avec le coût réel
-            } catch (e) { /* fragment incomplet : on attend la suite */ }
+            // Un bloc peut porter PLUSIEURS lignes : OpenRouter intercale des
+            // commentaires de maintien (« : OPENROUTER PROCESSING ») devant la
+            // ligne data. Lire le bloc comme une seule ligne perdait la réponse.
+            var lignes = parts[i].split('\n');
+            for (var k = 0; k < lignes.length; k++) {
+              var line = lignes[k].trim();
+              if (line.indexOf('data:') !== 0) continue;
+              var payload = line.slice(5).trim();
+              if (payload === '[DONE]') continue;
+              try {
+                var j = JSON.parse(payload);
+                var d0 = j.choices && j.choices[0] && j.choices[0].delta;
+                var delta = d0 && d0.content;
+                if (delta) { acc += delta; ai.classList.remove('thinking'); ai.innerHTML = render(acc); log.scrollTop = log.scrollHeight; }
+                else if (d0 && d0.reasoning && !acc) { ai.classList.add('thinking'); } // le modèle réfléchit encore
+                if (j.usage) usage = j.usage; // OpenRouter : dernier morceau, avec le coût réel
+              } catch (e) { /* fragment incomplet : on attend la suite */ }
+            }
           }
         }
         if (!acc) throw new Error(I18N.t('The assistant returned nothing — try again'));
