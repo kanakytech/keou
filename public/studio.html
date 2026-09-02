@@ -1002,7 +1002,30 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 }
 .tp-src-btn:hover{border-color:var(--tool-accent);color:var(--tool-accent);background:var(--tool-tint-soft)}
 .tp-src-btn svg{width:16px;height:16px}
-.tp-src-btn.busy{opacity:.5;pointer-events:none}
+/* ── Envoi d'une source : on VOIT qu'on envoie ──
+   La vignette apparaît tout de suite avec l'aperçu local, un anneau de
+   progression (--p en %) et le pourcentage ; le bouton d'envoi montre un
+   spinner ; le bouton de génération attend. Aucun état muet. */
+.tp-thumb.pending{cursor:progress;border-color:var(--tool-accent,var(--accent))}
+.tp-thumb.pending img,.tp-thumb.pending video{opacity:.35;filter:saturate(.6)}
+.tp-thumb .tp-ring{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.tp-thumb .tp-ring::before{content:'';width:30px;height:30px;border-radius:50%;
+  background:conic-gradient(var(--tool-accent,var(--accent)) calc(var(--p,0)*1%),rgba(255,255,255,.14) 0);
+  -webkit-mask:radial-gradient(circle,transparent 9px,#000 10px);mask:radial-gradient(circle,transparent 9px,#000 10px);
+  transition:--p .12s linear}
+.tp-thumb .tp-ring span{position:absolute;font-size:9.5px;font-weight:700;color:#fff;letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tp-thumb.pending.indeterminate .tp-ring::before{background:conic-gradient(var(--tool-accent,var(--accent)) 25%,rgba(255,255,255,.14) 0);animation:tpSpin .9s linear infinite}
+@keyframes tpSpin{to{transform:rotate(360deg)}}
+.tp-thumb.failed{border-color:#fda4af}
+.tp-thumb.failed img,.tp-thumb.failed video{opacity:.25}
+.tp-thumb .tp-retry{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fda4af;background:rgba(10,10,10,.55);cursor:pointer}
+.tp-src-btn.busy{opacity:1;pointer-events:none;color:var(--tool-accent,var(--accent));border-color:var(--tool-accent,var(--accent))}
+.tp-src-btn.busy svg{animation:tpSpin .9s linear infinite}
+.tp-upload-note{margin:6px 0 0;font-size:12px;color:var(--ink-muted);display:flex;align-items:center;gap:8px}
+.tp-upload-note .bar{flex:1;height:3px;border-radius:2px;background:var(--s3);overflow:hidden}
+.tp-upload-note .bar i{display:block;height:100%;width:calc(var(--p,0)*1%);background:var(--tool-accent,var(--accent));transition:width .12s linear}
+.btn-primary[disabled]{opacity:.55;cursor:wait}
+@media (prefers-reduced-motion:reduce){.tp-thumb .tp-ring::before,.tp-upload-note .bar i{transition:none}.tp-thumb.pending.indeterminate .tp-ring::before,.tp-src-btn.busy svg{animation:none}}
 
 /* Chips de réglage : sélection à l'accent de L'OUTIL */
 .tp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
@@ -2719,6 +2742,15 @@ async function processAll(pending) {
           for (let tries = 0; tries < 3; tries++) {
             if (tries > 0) await new Promise(r => setTimeout(r, tries * 1500));
             try {
+              if (typeof window.uploadWithProgress === 'function') {
+                // Toutes les variantes du même fichier partagent cet envoi :
+                // on peint la progression sur chacune de leurs cartes.
+                const freres = allJobs.filter(j => j.file === job.file);
+                const upData = await window.uploadWithProgress(job.file, job.file.name || 'source.jpg', (pct) => {
+                  freres.forEach(j => updateUploadProgress(j, pct));
+                });
+                return upData.url;
+              }
               const fd = new FormData();
               fd.append('image', job.file);
               const upRes = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
@@ -3195,6 +3227,22 @@ function cardHTML(job) {
     </div>`;
 }
 
+/* Progression d'ENVOI sur une carte du lot. updateCard() ne repeint pas tant
+ * que le statut ne change pas — juste, pour vingt cartes — mais pendant
+ * l'envoi le visiteur ne voyait qu'un mot figé. On touche seulement la barre
+ * et le texte : « Uploading 42% ». */
+function updateUploadProgress(job, pct) {
+  const el = document.getElementById(`card-${job.id}`);
+  if (!el) return;
+  const bar = el.querySelector('.ov-progress i');
+  if (bar) { bar.style.width = (pct === null ? 30 : pct) + '%'; bar.style.transition = 'width .12s linear'; }
+  const txt = el.querySelector('.status-text');
+  const base = I18N.t('Uploading...');
+  if (txt) txt.textContent = pct === null ? base : `${base} ${pct}%`;
+  const ov = el.querySelector('.result-overlay span');
+  if (ov) ov.textContent = pct === null ? '' : `${pct}%`;
+}
+
 // In-place mutation — avoids HTML reparse and image re-download on every status change.
 // Only the actually-changed nodes get touched, so Safari stays fluid on 20+ concurrent cards.
 function updateCard(job) {
@@ -3540,11 +3588,16 @@ window.retryJob = async (id) => {
     try {
       j.status = 'uploading'; updateCard(j);
       if (!j.uploadUrl) {
-        const fd = new FormData(); fd.append('image', j.file);
-        const r = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
-        const d = await r.json();
-        if (d.error) throw new Error(d.error);
-        j.uploadUrl = d.url;
+        if (typeof window.uploadWithProgress === 'function') {
+          const d = await window.uploadWithProgress(j.file, j.file.name || 'source.jpg', (pct) => updateUploadProgress(j, pct));
+          j.uploadUrl = d.url;
+        } else {
+          const fd = new FormData(); fd.append('image', j.file);
+          const r = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          j.uploadUrl = d.url;
+        }
       }
       j.status = 'generating'; updateCard(j);
       /* Le retry doit produire la MÊME chose que le lot d'origine : la
@@ -4670,7 +4723,11 @@ function imgFallback(el) {
     });
     if (st.sel && !seen[st.sel]) st.sel = null;
     if (!st.sel && list.length) { st.sel = list[0].url; st.selMedia = list[0].media; }
-    box.textContent = '';
+    // On ne retire que les vignettes réelles : celles en cours d'envoi ou en
+    // échec restent à leur place, avec leur anneau ou leur bouton « Retry ».
+    Array.prototype.slice.call(box.children).forEach(function (c) {
+      if (!c.classList.contains('pending') && !c.classList.contains('failed')) c.remove();
+    });
     list.forEach(function (s) {
       var b = document.createElement('button');
       b.type = 'button';
@@ -4729,25 +4786,126 @@ function imgFallback(el) {
     }
   }
 
-  async function uploadBlob(tool, btn, blob, name, media) {
-    btn.classList.add('busy');
-    var type = media === 'video' ? 'video' : 'image';
-    try {
+  /* Envoi avec progression. fetch() n'émet aucun événement pendant l'envoi ;
+     XMLHttpRequest, si. Même URL et mêmes en-têtes que Auth.authFetch dans
+     chaque mode — anonyme (route essai + clé fournisseur) ou connecté (jeton).
+     onProgress reçoit un pourcentage, ou null tant que la taille totale n'est
+     pas connue. */
+  function uploadWithProgress(blob, name, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var anon = !!window.IS_ANON;
+      var url = anon ? '/api/essai/upload' : '/api/upload';
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.withCredentials = true;
+      if (!anon) {
+        var tok = Auth.getToken && Auth.getToken();
+        if (tok) xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
+      }
+      var pk = Auth.getProviderKey && Auth.getProviderKey();
+      if (pk && (anon || (Auth.isByok && Auth.isByok()))) xhr.setRequestHeader('X-Provider-Key', pk);
+      xhr.upload.onprogress = function (e) {
+        if (onProgress) onProgress(e.lengthComputable ? Math.round((e.loaded / e.total) * 100) : null, e.loaded, e.total);
+      };
+      xhr.onerror = function () { reject(new Error(I18N.t('Network error during upload'))); };
+      xhr.ontimeout = function () { reject(new Error(I18N.t('Upload timed out'))); };
+      xhr.onload = function () {
+        var d = {};
+        try { d = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+        if (xhr.status >= 200 && xhr.status < 300 && d.url) return resolve(d);
+        reject(new Error(d.error || d.message || ('Upload failed (HTTP ' + xhr.status + ')')));
+      };
+      xhr.timeout = 10 * 60 * 1000; // une vidéo de 200 Mo sur une connexion lente
       var fd = new FormData();
-      // Le champ garde le nom « image » : c'est celui que la route attend,
-      // pour l'image comme pour la vidéo (elle lit le type MIME du fichier).
-      fd.append('image', blob, name || (type === 'video' ? 'source.mp4' : 'source.jpg'));
-      var res = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
-      var data = await res.json();
-      if (!res.ok || data.error || !data.url) throw new Error(data.error || 'Upload failed');
+      fd.append('image', blob, name);
+      xhr.send(fd);
+    });
+  }
+
+  window.uploadWithProgress = uploadWithProgress; // le lot Create s'en sert aussi
+
+  /* Les textes posés par JS après le chargement ne sont pas repris par
+     l'observateur de nœuds : on appelle I18N.t() EXPLICITEMENT, et sous ce
+     nom — c'est lui que scripts/i18n-extract.mjs reconnaît pour retenir la
+     clé. Un alias local la ferait rejeter comme « traduction morte ». */
+  if (!window.I18N) window.I18N = { t: function (x) { return x; }, lang: function () { return 'en'; } };
+
+  function fmtBytes(n) {
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+
+  async function uploadBlob(tool, btn, blob, name, media) {
+    var type = media === 'video' ? 'video' : 'image';
+    var fname = name || (type === 'video' ? 'source.mp4' : 'source.jpg');
+    var panel = panelOf(tool);
+    var box = q(panel, '[data-tp-thumbs]');
+    var submit = q(panel, '[data-tp-submit]');
+    var btnLabel = btn.querySelector('span');
+    var btnText = btnLabel ? btnLabel.textContent : '';
+
+    // 1. La vignette existe AVANT l'envoi : aperçu local, anneau, pourcentage.
+    var objUrl = URL.createObjectURL(blob);
+    var ph = document.createElement('div');
+    ph.className = 'tp-thumb pending indeterminate';
+    ph.setAttribute('role', 'progressbar'); ph.setAttribute('aria-valuemin', '0'); ph.setAttribute('aria-valuemax', '100');
+    ph.setAttribute('aria-label', I18N.t('Uploading') + ' ' + fname);
+    var prev = document.createElement(type === 'video' ? 'video' : 'img');
+    prev.src = objUrl; if (type === 'video') { prev.muted = true; prev.preload = 'metadata'; } else prev.alt = '';
+    var ring = document.createElement('div'); ring.className = 'tp-ring';
+    var pct = document.createElement('span'); pct.textContent = '';
+    ring.appendChild(pct); ph.appendChild(prev); ph.appendChild(ring);
+    if (box) { box.querySelectorAll('.tp-thumb.sel').forEach(function (t) { t.classList.remove('sel'); }); box.prepend(ph); }
+
+    // 2. Une ligne d'état sous les sources : nom, taille, barre.
+    var note = q(panel, '[data-tp-upload-note]');
+    if (!note && box) {
+      note = document.createElement('p'); note.className = 'tp-upload-note'; note.setAttribute('data-tp-upload-note', '');
+      box.parentElement.insertAdjacentElement('afterend', note);
+    }
+    if (note) { note.innerHTML = '<span></span><span class="bar"><i></i></span><b></b>'; note.hidden = false; }
+    var noteTxt = note ? note.querySelector('span') : null, noteBar = note ? note.querySelector('.bar') : null, notePct = note ? note.querySelector('b') : null;
+    if (noteTxt) noteTxt.textContent = I18N.t('Uploading') + ' ' + fname + ' (' + fmtBytes(blob.size || 0) + ')…';
+
+    // 3. Le bouton d'envoi et le bouton de génération disent ce qu'ils font.
+    btn.classList.add('busy'); if (btnLabel) btnLabel.textContent = I18N.t('Uploading…');
+    var submitText = submit ? submit.textContent : '';
+    if (submit) { submit.disabled = true; submit.textContent = I18N.t('Uploading…'); }
+
+    function onProgress(p) {
+      if (p === null) { ph.classList.add('indeterminate'); return; }
+      ph.classList.remove('indeterminate');
+      ph.style.setProperty('--p', p); ph.setAttribute('aria-valuenow', String(p));
+      pct.textContent = p + '%';
+      if (noteBar) noteBar.style.setProperty('--p', p);
+      if (notePct) notePct.textContent = p + '%';
+      if (p >= 100 && noteTxt) noteTxt.textContent = I18N.t('Processing') + ' ' + fname + '…';
+    }
+
+    try {
+      var data = await uploadWithProgress(blob, fname, onProgress);
       state[tool].uploads.unshift({ url: data.url, media: type, bytes: blob.size || 0 });
       state[tool].sel = data.url;
       state[tool].selMedia = type;
+      ph.remove();
       refreshThumbs(tool);
+      if (note) { note.hidden = true; }
     } catch (e) {
+      ph.classList.remove('pending', 'indeterminate'); ph.classList.add('failed');
+      ring.remove();
+      var retry = document.createElement('button'); retry.type = 'button'; retry.className = 'tp-retry'; retry.textContent = I18N.t('Retry');
+      retry.title = e.message;
+      retry.addEventListener('click', function () { ph.remove(); uploadBlob(tool, btn, blob, name, media); });
+      ph.appendChild(retry);
+      if (noteTxt) { noteTxt.textContent = I18N.t('Upload failed') + ' — ' + I18N.t(e.message); if (noteBar) noteBar.hidden = true; if (notePct) notePct.textContent = ''; }
       toast(e.message, true);
+    } finally {
+      URL.revokeObjectURL(objUrl);
+      btn.classList.remove('busy'); if (btnLabel) btnLabel.textContent = btnText;
+      if (submit) { submit.disabled = false; submit.textContent = submitText; }
+      if (tool === 'upscale') probeUpscaleLimits();
     }
-    btn.classList.remove('busy');
   }
 
   // ── Chips génériques (un seul actif par groupe) ──
