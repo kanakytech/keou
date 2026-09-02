@@ -1043,6 +1043,41 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
 .tp-limit.over{color:#fda4af}
 
+/* ── Composeur (anonyme) ── */
+.anon-only{display:none}
+body.keou-anon .anon-only{display:block}
+body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
+.composer{background:var(--s1);border:1px solid var(--s3);border-radius:var(--radius);padding:14px 16px 12px;margin-bottom:18px;transition:border-color var(--m-fast),box-shadow var(--m-fast)}
+.composer:focus-within{border-color:var(--tool-accent,var(--accent));box-shadow:0 0 0 3px var(--tool-tint,rgba(200,240,96,.12))}
+.composer-row{display:flex;gap:12px;align-items:flex-start}
+.composer-spark{flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--tool-tint,rgba(200,240,96,.12));color:var(--tool-accent,var(--accent));margin-top:2px}
+.composer-spark svg{width:18px;height:18px}
+#anon-composer{flex:1;min-height:44px;max-height:180px;resize:vertical;background:transparent;border:0;outline:none;color:var(--ink);font:inherit;font-size:15px;line-height:1.5;padding:8px 0}
+#anon-composer::placeholder{color:var(--ink-faint)}
+#anon-composer:focus,#anon-composer:focus-visible{outline:none;box-shadow:none;border:0} /* la carte porte le halo, pas la zone de texte */
+.composer-go{flex:none;width:auto;padding:10px 18px;margin-top:2px}
+.composer-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:46px}
+.composer-chip{padding:5px 11px;border-radius:100px;border:1px solid var(--s3);background:var(--s2);color:var(--ink-muted);font:inherit;font-size:12px;cursor:pointer;transition:border-color var(--m-fast),color var(--m-fast),background var(--m-fast),transform var(--m-fast)}
+.composer-chip:hover{border-color:var(--tool-accent,var(--accent));color:var(--ink);background:var(--s3)}
+.composer-chip:active{transform:scale(.97)}
+.composer-hint{margin:8px 0 0;padding-left:46px;font-size:12px;color:var(--ink-faint)}
+@media(max-width:768px){.composer-row{flex-wrap:wrap}.composer-go{width:100%}.composer-chips,.composer-hint{padding-left:0}}
+/* ── Choix d'un échantillon ── */
+.samples-modal{position:fixed;inset:0;z-index:9980;display:flex;align-items:center;justify-content:center;background:rgba(6,6,6,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .14s var(--m-ease)}
+.samples-modal.open{opacity:1;pointer-events:auto}
+.samples-card{width:min(92vw,640px);background:var(--s1);border:1px solid var(--s3);border-radius:16px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.55);transform:scale(.98);transition:transform .14s var(--m-ease)}
+.samples-modal.open .samples-card{transform:scale(1)}
+.samples-card h3{margin:0 0 4px;font-size:16px;font-weight:700}
+.samples-card p{margin:0 0 14px;font-size:12.5px;color:var(--ink-muted)}
+.samples-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.sample-tile{border:1px solid var(--s3);background:var(--s2);border-radius:12px;overflow:hidden;padding:0;cursor:pointer;text-align:left;transition:border-color var(--m-fast),transform var(--m-fast),box-shadow var(--m-fast)}
+.sample-tile img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
+.sample-tile span{display:block;padding:7px 9px;font-size:12px;font-weight:600;color:var(--ink)}
+.sample-tile small{display:block;padding:0 9px 8px;font-size:10.5px;color:var(--ink-faint)}
+.sample-tile:hover{border-color:var(--tool-accent,var(--accent));transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.sample-tile:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(200,240,96,.45)}
+
+
 /* ── Avant / après — un seul composant, dans la carte et en plein écran ──
    Deux calques superposés ; l'« après » est rogné par clip-path, propriété
    composée par le GPU : le glissement ne relance aucune mise en page.
@@ -1385,6 +1420,27 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
        Le wrap n'ajoute qu'un contexte d'affichage ; tous les ids/classes
        internes sont inchangés, le JS existant continue de piloter. -->
   <div class="tool-panel active" id="tool-panel-create">
+
+  <!-- Composeur (anonyme) : un endroit où ÉCRIRE. Sans photo, les mots
+       deviennent l'image (texte → image). Avec une photo, ils deviennent la
+       direction créative. Masqué en mode connecté : l'interface des instances
+       en marque blanche ne bouge pas. -->
+  <section id="composer-section" class="anon-only">
+    <div class="composer">
+      <div class="composer-row">
+        <span class="composer-spark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></span>
+        <textarea id="anon-composer" rows="2" maxlength="500" placeholder="Describe what you want to create — or drop a product photo below to keep it pixel-locked"></textarea>
+        <button type="button" id="composer-go" class="btn-primary composer-go">Generate</button>
+      </div>
+      <div class="composer-chips" aria-label="Ideas">
+        <button type="button" class="composer-chip" data-idea="A great white shark breaching at sunrise, water droplets frozen mid-air, cinematic wildlife photograph">Shark at sunrise</button>
+        <button type="button" class="composer-chip" data-idea="Amber glass perfume bottle on wet black volcanic stone, soft morning light, studio product photograph">Perfume on stone</button>
+        <button type="button" class="composer-chip" data-idea="White leather sneaker floating mid-air, hard studio light, pastel background, product photograph">Floating sneaker</button>
+        <button type="button" class="composer-chip" data-idea="Kraft coffee bag on a rustic wooden table, roasted beans scattered, warm side light">Coffee on wood</button>
+      </div>
+      <p class="composer-hint">No photo? Your words become the image. With a photo, they become the creative direction.</p>
+    </div>
+  </section>
 
   <!-- Upload -->
   <section id="upload-section">
@@ -2328,19 +2384,66 @@ dropZone.addEventListener('click', (e) => { if (!isProcessing && !e.target.close
 /* Image d'exemple : le visiteur sans photo sous la main restait bloqué au
  * premier pas. On récupère un visuel du showcase en blob et on l'injecte par
  * le MÊME chemin que le drag&drop (addFiles) — aucun traitement spécial. */
-dropZone.addEventListener('click', async (e) => {
+/* Les échantillons sont de vrais cas d'usage, produits par le moteur lui-même
+   (texte → image) : un requin pour la vidéo et l'agrandissement, un parfum,
+   une sneaker, un café, une planche. Un seul sélecteur pour Create et pour
+   chaque outil. */
+const SAMPLES = [
+  { f: 'shark',   label: 'Great white shark', note: 'Wildlife · try Video or Upscale' },
+  { f: 'perfume', label: 'Perfume bottle',    note: 'Product · try Create or Polish' },
+  { f: 'sneaker', label: 'Sneaker',           note: 'Product · try Adapt' },
+  { f: 'coffee',  label: 'Coffee bag',        note: 'Product · try Remix' },
+  { f: 'surf',    label: 'Surfboard',         note: 'Lifestyle · try Video' },
+];
+let samplesModal = null;
+function openSamplePicker(onPick) {
+  if (!samplesModal) {
+    samplesModal = document.createElement('div');
+    samplesModal.className = 'samples-modal';
+    samplesModal.setAttribute('role', 'dialog'); samplesModal.setAttribute('aria-modal', 'true');
+    samplesModal.setAttribute('aria-label', 'Pick a sample');
+    document.body.appendChild(samplesModal); // sous <body> : jamais dans un ancêtre transformé
+    samplesModal.addEventListener('click', (e) => { if (e.target === samplesModal) closeSamplePicker(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && samplesModal.classList.contains('open')) closeSamplePicker(); });
+  }
+  samplesModal.innerHTML = '<div class="samples-card"><h3>Pick a sample</h3><p>Real photos to try the studio with — each one made by the engine itself.</p><div class="samples-grid"></div></div>';
+  const grid = samplesModal.querySelector('.samples-grid');
+  SAMPLES.forEach((sm) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sample-tile';
+    const chemin = '/samples/' + sm.f + '.jpg';
+    const im = document.createElement('img'); im.src = chemin; im.alt = ''; im.loading = 'lazy';
+    const lab = document.createElement('span'); lab.textContent = sm.label;
+    const nt = document.createElement('small'); nt.textContent = sm.note;
+    b.appendChild(im); b.appendChild(lab); b.appendChild(nt);
+    b.addEventListener('click', () => { closeSamplePicker(); onPick(chemin, 'sample-' + sm.f + '.jpg'); });
+    grid.appendChild(b);
+  });
+  samplesModal._ouvreur = document.activeElement;
+  requestAnimationFrame(() => { samplesModal.classList.add('open'); const first = grid.querySelector('button'); if (first) first.focus({ preventScroll: true }); });
+}
+function closeSamplePicker() {
+  if (!samplesModal) return;
+  samplesModal.classList.remove('open');
+  const o = samplesModal._ouvreur; if (o && o.isConnected && o.focus) { try { o.focus({ preventScroll: true }); } catch (e) {} }
+}
+window.openSamplePicker = openSamplePicker;
+
+dropZone.addEventListener('click', (e) => {
   const btn = e.target.closest('.drop-sample');
   if (!btn || isProcessing) return;
-  btn.disabled = true;
-  try {
-    const res = await fetch('/showcase/1.jpg');
-    if (!res.ok) throw new Error('sample unavailable');
-    const blob = await res.blob();
-    addFiles([new File([blob], 'sample-product.jpg', { type: blob.type || 'image/jpeg' })]);
-  } catch {
-    toast('Sample image unavailable — please add your own photo', true);
+  openSamplePicker(async (url, name) => {
+    btn.disabled = true;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('sample unavailable');
+      const blob = await res.blob();
+      addFiles([new File([blob], name, { type: blob.type || 'image/jpeg' })]);
+    } catch {
+      toast('Sample image unavailable — please add your own photo', true);
+    }
     btn.disabled = false;
-  }
+  });
 });
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (!isProcessing) dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -2386,6 +2489,37 @@ function addFiles(fileList) {
   }
 }
 
+/* Une tâche texte → image : même file, mêmes cartes, mêmes variantes que
+   les photos — simplement sans fichier. L'aperçu est une pastille neutre, le
+   nom est le début de la phrase. */
+const TEXT_PREVIEW = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" fill="#171717"/><path d="M200 120l-14 44a12 12 0 0 1-8 8l-44 14 44 14a12 12 0 0 1 8 8l14 44 14-44a12 12 0 0 1 8-8l44-14-44-14a12 12 0 0 1-8-8z" fill="#c8f060" opacity=".9"/></svg>');
+function addTextJob(prompt) {
+  const clean = String(prompt || '').trim().replace(/\s+/g, ' ').slice(0, 500);
+  if (clean.length < 3) return null;
+  const job = {
+    id: crypto.randomUUID(), kind: 'text', prompt: clean, file: null,
+    name: clean.length > 48 ? clean.slice(0, 47) + '…' : clean,
+    preview: TEXT_PREVIEW, status: 'queued', uploadUrl: null, resultUrl: null, polishedUrl: null,
+    videoUrl: null, upscaledUrl: null, generationId: null, error: null, refusal: null,
+  };
+  jobs.push(job);
+  log('Text prompt added');
+  renderQueue(); updateDropZone(); show('queue-section'); show('format-section'); updateGenerateBtn();
+  return job;
+}
+
+function updateGenerateBtn() {
+  updateGenerateBtnBase();
+  if (!window.IS_ANON) return;
+  const btn = document.getElementById('generate-btn');
+  const c = document.getElementById('anon-composer');
+  if (!btn || !c) return;
+  const queued = jobs.some(j => j.status === 'queued');
+  const texte = c.value.trim().length >= 3;
+  if (!queued && texte && !isProcessing) { btn.disabled = false; btn.textContent = I18N.t('Generate from text'); }
+}
+window.updateGenerateBtn = updateGenerateBtn; // le montage du composeur vit dans un autre script
+
 function removeJob(id) {
   const idx = jobs.findIndex(j => j.id === id);
   if (idx > -1) {
@@ -2430,7 +2564,7 @@ function updateDropZone() {
   }
 }
 
-function updateGenerateBtn() {
+function updateGenerateBtnBase() {
   const queued = jobs.filter(j => j.status === 'queued').length;
   const total = queued * variantCount;
   const presetInfo = activePreset !== 'custom' && PLATFORM_PRESETS[activePreset]
@@ -2554,6 +2688,12 @@ $('#da-toggle').addEventListener('click', () => {
 });
 
 function getCreativeDirection() {
+  // En anonyme, le composeur EST la direction créative (une seule boîte,
+  // deux rôles : image sans photo, direction avec photo).
+  if (window.IS_ANON) {
+    const c = document.getElementById('anon-composer');
+    if (c) return c.value.trim();
+  }
   const el = document.getElementById('da-input');
   return el ? el.value.trim() : '';
 }
@@ -2623,6 +2763,11 @@ $('#generate-btn').addEventListener('click', async () => {
   if (window.IS_ANON && window.AnonMode && typeof AnonMode.ensureConsent === 'function') {
     if (!(await AnonMode.ensureConsent())) return;
   }
+  // Rien en file mais une phrase dans le composeur : c'est une image à créer.
+  if (window.IS_ANON && !jobs.some(j => j.status === 'queued')) {
+    const c = document.getElementById('anon-composer');
+    if (c && c.value.trim().length >= 3) addTextJob(c.value);
+  }
   const pending = jobs.filter(j => j.status === 'queued');
   if (!pending.length) return;
   processAll(pending);
@@ -2678,6 +2823,7 @@ async function processAll(pending) {
     for (let v = 1; v < variantCount; v++) {
       const clone = {
         id: crypto.randomUUID(),
+        kind: job.kind, prompt: job.prompt,
         file: job.file,
         name: `${job.name} (v${v + 1})`,
         preview: job.preview,
@@ -2731,6 +2877,7 @@ async function processAll(pending) {
     try {
       // Jitter: desynchronize concurrent workers so provider createTask calls don't all fire at once
       if (SUBMIT_JITTER_MS > 0) await new Promise(r => setTimeout(r, Math.random() * SUBMIT_JITTER_MS));
+      if (job.kind !== 'text') {
       job.status = 'uploading';
       updateCard(job);
 
@@ -2769,6 +2916,7 @@ async function processAll(pending) {
       job.uploadUrl = typeof cached === 'string' ? cached : await cached;
       // Replace Promise with string URL once resolved (first success)
       if (typeof cached !== 'string') uploadCache.set(job.file, job.uploadUrl);
+      }
 
       /* Le job retient le format avec lequel il a ete genere.
        *
@@ -2797,11 +2945,26 @@ async function processAll(pending) {
           if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 2000)); // 0, 2s, 4s backoff
           const ctrl = new AbortController();
           const tmo = setTimeout(() => ctrl.abort(), 60000);
-          const genRes = await Auth.authFetch('/api/generate', {
-            method: 'POST',
-            body: JSON.stringify(genBody),
-            signal: ctrl.signal,
-          });
+          let genRes;
+          if (job.kind === 'text') {
+            // Texte → image : la route d'essai texte, appelée en direct (elle
+            // n'a pas d'équivalent de compte à traduire) — clé fournisseur et
+            // consentement comme les autres appels anonymes.
+            const hdrs = { 'Content-Type': 'application/json' };
+            const pk = Auth.getProviderKey && Auth.getProviderKey();
+            if (pk) hdrs['X-Provider-Key'] = pk;
+            genRes = await fetch('/api/essai/generer', {
+              method: 'POST', credentials: 'same-origin', headers: hdrs,
+              body: JSON.stringify({ prompt: job.prompt, format, consent: true, idempotencyKey: job.id }),
+              signal: ctrl.signal,
+            });
+          } else {
+            genRes = await Auth.authFetch('/api/generate', {
+              method: 'POST',
+              body: JSON.stringify(genBody),
+              signal: ctrl.signal,
+            });
+          }
           clearTimeout(tmo);
           genData = await genRes.json();
           if (genRes.status === 402) throw new Error(genData.message || genData.error || 'API error — check your API key');
@@ -2836,8 +2999,8 @@ async function processAll(pending) {
       }
 
       // Store IDs — job is now safe in DB even if user leaves
-      job.generationId = genData.generationId;
-      job.taskId = genData.taskId;
+      job.generationId = genData.generationId || genData.id;
+      job.taskId = genData.taskId || genData.id;
       job.recordId = genData.recordId;
 
     } catch (e) {
@@ -4772,16 +4935,17 @@ function imgFallback(el) {
       });
     }
     if (sampleBtn) {
-      sampleBtn.addEventListener('click', async function () {
-        sampleBtn.classList.add('busy');
-        try {
-          var r = await fetch('/showcase/1.jpg');
-          if (!r.ok) throw new Error('sample');
-          uploadBlob(tool, sampleBtn, await r.blob(), 'sample-product.jpg');
-        } catch (e) {
-          toast('Sample image unavailable — please add your own photo', true);
-        }
-        sampleBtn.classList.remove('busy');
+      sampleBtn.addEventListener('click', function () {
+        if (typeof window.openSamplePicker !== 'function') return;
+        window.openSamplePicker(async function (url, name) {
+          try {
+            var r = await fetch(url);
+            if (!r.ok) throw new Error('sample');
+            uploadBlob(tool, sampleBtn, await r.blob(), name);
+          } catch (e) {
+            toast('Sample image unavailable — please add your own photo', true);
+          }
+        });
       });
     }
   }
@@ -5590,6 +5754,33 @@ function imgFallback(el) {
 
     modal.removeAttribute('hidden');
     layout();
+  }
+  boot();
+})();
+</script>
+<script>
+/* ═══ Composeur — texte → image sans photo (anonyme) ═══ */
+(function () {
+  'use strict';
+  var essais = 0;
+  function boot() {
+    if (window.IS_ANON === undefined) { if (++essais < 300) return setTimeout(boot, 100); return; }
+    if (!window.IS_ANON) return; // connecté : rien ne change
+    var c = document.getElementById('anon-composer'), go = document.getElementById('composer-go');
+    if (!c || !go) return;
+    var maj = function () { if (typeof window.updateGenerateBtn === 'function') window.updateGenerateBtn(); };
+    document.querySelectorAll('.composer-chip').forEach(function (ch) {
+      ch.addEventListener('click', function () { c.value = ch.getAttribute('data-idea') || ''; c.focus(); maj(); });
+    });
+    c.addEventListener('input', maj);
+    c.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go.click(); }
+    });
+    go.addEventListener('click', function () {
+      var main = document.getElementById('generate-btn');
+      if (main) main.click();
+    });
+    maj();
   }
   boot();
 })();
