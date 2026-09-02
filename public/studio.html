@@ -955,6 +955,7 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 #main-content[data-tool="adapt"]{--tool-accent:#fcd34d;--tool-tint:rgba(252,211,77,.14);--tool-tint-soft:rgba(252,211,77,.10)}
 #main-content[data-tool="video"]{--tool-accent:#22d3ee;--tool-tint:rgba(34,211,238,.14);--tool-tint-soft:rgba(34,211,238,.10)}
 #main-content[data-tool="upscale"]{--tool-accent:#c4b5fd;--tool-tint:rgba(196,181,253,.14);--tool-tint-soft:rgba(196,181,253,.10)}
+#main-content[data-tool="assistant"]{--tool-accent:#f1f5f9;--tool-tint:rgba(241,245,249,.12);--tool-tint-soft:rgba(241,245,249,.08)}
 #main-content[data-tool="voice"]{--tool-accent:#f9a8d4;--tool-tint:rgba(249,168,212,.14);--tool-tint-soft:rgba(249,168,212,.10)}
 #main-content[data-tool="sfx"]{--tool-accent:#86efac;--tool-tint:rgba(134,239,172,.14);--tool-tint-soft:rgba(134,239,172,.10)}
 #main-content[data-tool="vidupscale"]{--tool-accent:#a5b4fc;--tool-tint:rgba(165,180,252,.14);--tool-tint-soft:rgba(165,180,252,.10)}
@@ -1049,6 +1050,42 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-chip[disabled]:hover{border-color:var(--s3);color:var(--ink-muted)}
 .tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
 .tp-limit.over{color:#fda4af}
+
+/* ── Assistant ── */
+.as-card{padding-top:12px}
+.as-log{max-height:56vh;min-height:220px;overflow-y:auto;padding:4px 2px 8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;scrollbar-width:thin}
+.as-empty{margin:auto;text-align:center;max-width:460px;padding:18px 8px}
+.as-empty-spark{width:40px;height:40px;margin:0 auto 10px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--tool-tint);color:var(--tool-accent)}
+.as-empty-spark svg{width:20px;height:20px}
+.as-empty-title{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
+.as-empty-sub{margin:6px 0 14px;font-size:13px;color:var(--ink-muted);line-height:1.55}
+.as-suggest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.as-chip{padding:6px 12px;border-radius:100px;border:1px solid var(--s3);background:var(--s2);color:var(--ink-muted);font:inherit;font-size:12px;cursor:pointer;transition:border-color var(--m-fast),color var(--m-fast),background var(--m-fast),transform var(--m-fast)}
+.as-chip:hover{border-color:var(--tool-accent);color:var(--ink);background:var(--s3)}
+.as-chip:active{transform:scale(.97)}
+.as-msg{max-width:88%;padding:10px 14px;border-radius:14px;font-size:13.5px;line-height:1.55;animation:kMotionEnter var(--m-enter) both;word-wrap:break-word}
+.as-msg.user{align-self:flex-end;background:var(--tool-tint);color:var(--ink);border-bottom-right-radius:4px}
+.as-msg.ai{align-self:flex-start;background:var(--s2);color:var(--ink);border:1px solid var(--s3);border-bottom-left-radius:4px}
+.as-msg.ai.streaming::after{content:'';display:inline-block;width:6px;height:14px;margin-left:3px;vertical-align:-2px;background:var(--tool-accent);animation:asCaret .9s steps(2) infinite}
+@keyframes asCaret{50%{opacity:0}}
+.as-msg strong{color:var(--ink);font-weight:600}
+.as-msg pre{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:#0a0a0a;border:1px solid var(--s3);font-size:12px;white-space:pre-wrap;overflow-x:auto}
+.as-msg.error{align-self:flex-start;background:rgba(253,164,175,.1);border:1px solid rgba(253,164,175,.35);color:#fda4af}
+.as-prompt{margin:10px 0 2px;padding:12px 14px;border-radius:12px;background:#0a0a0a;border:1px solid var(--s3)}
+.as-prompt-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+.as-prompt-text{font-size:13px;color:var(--ink);white-space:pre-wrap}
+.as-prompt-use{margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:100px;border:1px solid var(--accent);background:var(--accent);color:#0a0a0a;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:transform var(--m-fast),filter var(--m-fast)}
+.as-prompt-use:hover{filter:brightness(1.05)}
+.as-prompt-use:active{transform:scale(.97)}
+.as-prompt-use svg{width:13px;height:13px}
+.as-compose{display:flex;gap:10px;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--s3)}
+.as-input{flex:1;min-height:42px;max-height:160px;resize:none;padding:10px 12px;border-radius:12px;border:1px solid var(--s3);background:var(--s2);color:var(--ink);font:inherit;font-size:14px;line-height:1.45;outline:none;transition:border-color var(--m-fast),box-shadow var(--m-fast)}
+.as-input:focus{border-color:var(--tool-accent);box-shadow:0 0 0 3px var(--tool-tint)}
+.as-send{width:auto;padding:10px 16px;flex:none}
+.as-send[disabled]{opacity:.55;cursor:wait}
+.as-note{margin-top:8px}
+@media(max-width:768px){.as-log{max-height:50vh}.as-msg{max-width:94%}}
+
 
 /* ── Composeur (anonyme) ── */
 .anon-only{display:none}
@@ -1301,6 +1338,10 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
        Dévoilée par le script « Vague 3 — tools » (mode anonyme) ; sans lui,
        seule la pilule Create existe implicitement : le studio classique. -->
   <div class="tools-row" id="tools-row" hidden>
+    <button type="button" class="tool-pill" data-tool="assistant" style="--pill-accent:#f1f5f9;--pill-glow:rgba(241,245,249,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Assistant</span>
+    </button>
     <button type="button" class="tool-pill active" data-tool="create" style="--pill-accent:#c8f060;--pill-glow:rgba(200,240,96,.22)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
       <span>Create</span>
@@ -1355,6 +1396,13 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
         <input type="text" id="tools-search" class="tools-search" placeholder="Find a tool&hellip;" autocomplete="off" spellcheck="false">
       </div>
       <div class="tools-list" id="tools-list">
+      <button type="button" class="tools-item" data-tool="assistant" style="--item-accent:#f1f5f9;--item-glow:rgba(241,245,249,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Assistant</span>
+          <span class="tools-item-sub">Ask, plan, get your prompt written</span>
+        </span>
+      </button>
       <button type="button" class="tools-item" data-tool="create" style="--item-accent:#c8f060;--item-glow:rgba(200,240,96,.22)">
         <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span>
         <span class="tools-item-text">
@@ -1658,6 +1706,32 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
        outil via main[data-tool] → \-\-tool-accent. -->
 
   <!-- Polish -->
+  <!-- Assistant — un chat, sur la clé KIE du visiteur, directement depuis
+       le navigateur (KIE ouvre CORS sur ce chemin) : rien ne transite par
+       nos serveurs, rien n'est publié. Il connaît les outils, les coûts et
+       les limites, et écrit des prompts qu'un clic envoie dans Create. -->
+  <section class="tool-panel" id="tool-panel-assistant">
+    <div class="section-card tp-card as-card">
+      <div class="as-log" data-as-log aria-live="polite">
+        <div class="as-empty">
+          <div class="as-empty-spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></div>
+          <p class="as-empty-title">Hi &mdash; I&rsquo;m the studio assistant.</p>
+          <p class="as-empty-sub">Ask which tool fits, what it costs, or let me write your prompt. When I propose one, a single click sends it to Create.</p>
+          <div class="as-suggest">
+            <button type="button" class="as-chip" data-as-suggest="I have one product photo. What can I make with it, and in what order?">What can I make with one product photo?</button>
+            <button type="button" class="as-chip" data-as-suggest="Write me a prompt for a premium perfume ad, amber bottle, natural light.">Write a perfume ad prompt</button>
+            <button type="button" class="as-chip" data-as-suggest="I need a 4K poster from a small photo. Which tool, what will it cost?">A 4K poster from a small photo</button>
+          </div>
+        </div>
+      </div>
+      <div class="as-compose">
+        <textarea class="as-input" data-as-input rows="1" maxlength="2000" placeholder="Ask anything about your visuals&hellip;"></textarea>
+        <button type="button" class="btn-primary as-send" data-as-send><span>Send</span></button>
+      </div>
+      <p class="tp-note as-note">gemini-2.5-flash via KIE.AI &mdash; about $0.01 per message, billed to your key. Nothing here is published.</p>
+    </div>
+  </section>
+
   <section class="tool-panel" id="tool-panel-polish">
     <div class="section-card tp-card">
       <p class="section-label">Source Image</p>
@@ -4757,7 +4831,7 @@ function imgFallback(el) {
 (function () {
   'use strict';
 
-  var TOOL_KEYS = ['create', 'polish', 'remix', 'adapt', 'video', 'upscale', 'voice', 'sfx', 'vidupscale'];
+  var TOOL_KEYS = ['assistant', 'create', 'polish', 'remix', 'adapt', 'video', 'upscale', 'voice', 'sfx', 'vidupscale'];
 
   /* Moteurs vidéo : identifiants EXACTS acceptés par la file
      (src/lib/essai-queue.js VIDEO_MODELS + variantes Veo de la route). */
@@ -5697,7 +5771,7 @@ function imgFallback(el) {
 (function () {
   'use strict';
 
-  var PINNED = ['create', 'polish', 'video'];  // toujours visibles
+  var PINNED = ['assistant', 'create', 'polish', 'video'];  // toujours visibles, l'assistant en tête
   var SLOT = 'upscale';                        // 4e pilule par défaut
 
   var row, modal, card, more, search, list, empty;
@@ -5869,6 +5943,130 @@ function imgFallback(el) {
     layout();
   }
   boot();
+})();
+</script>
+<script>
+/* ═══ Assistant — chat en streaming sur la clé KIE du visiteur (anonyme) ═══ */
+(function () {
+  'use strict';
+  var MODEL = 'gemini-2.5-flash';
+  var ENDPOINT = 'https://api.kie.ai/' + MODEL + '/v1/chat/completions';
+  var SYSTEM = [
+    'You are the assistant inside Keou Studio (studio.kanaky.xyz), a free, open-source creative production studio. The visitor brings their own KIE.AI key; everything they create here is public in the community gallery with a watermark; costs are billed by KIE.AI to their key.',
+    'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3, ~$0.09 per format); Video (a clip from a still — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
+    'Be concise, warm and practical. Answer in the language the visitor writes in. Recommend the right tool and say what it will cost. Never invent tools, models or prices.',
+    'When you propose an image prompt, put it ALONE in a fenced block that starts with ```prompt and ends with ``` — the studio turns it into a one-click Generate. Write prompts in English, specific and photographic: subject, setting, light, camera, mood. One prompt per block.'
+  ].join('\n\n');
+  var history = [];
+  var busy = false;
+
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  // Rendu minimal : blocs ```prompt``` → carte avec bouton, autres blocs → <pre>, **gras**, retours à la ligne.
+  function render(text) {
+    var out = '', re = /```(\w*)\n?([\s\S]*?)```/g, last = 0, m;
+    while ((m = re.exec(text))) {
+      out += inline(text.slice(last, m.index));
+      var lang = (m[1] || '').toLowerCase(), body = m[2].trim();
+      if (lang === 'prompt') {
+        out += '<div class="as-prompt"><span class="as-prompt-label">' + esc(I18N.t('Prompt')) + '</span><div class="as-prompt-text">' + esc(body) + '</div>'
+          + '<button type="button" class="as-prompt-use" data-prompt="' + esc(body) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>' + esc(I18N.t('Use this prompt')) + '</button></div>';
+      } else {
+        out += '<pre>' + esc(body) + '</pre>';
+      }
+      last = re.lastIndex;
+    }
+    out += inline(text.slice(last));
+    return out;
+  }
+  function inline(t) {
+    return esc(t).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  }
+
+  function boot() {
+    var panel = document.getElementById('tool-panel-assistant');
+    if (!panel || !window.IS_ANON) return;
+    var log = panel.querySelector('[data-as-log]'), input = panel.querySelector('[data-as-input]'), send = panel.querySelector('[data-as-send]');
+    if (!log || !input || !send) return;
+    var costTag = document.createElement('span'); costTag.className = 'tp-cost'; costTag.textContent = '~$0.01'; send.appendChild(costTag);
+
+    function bubble(cls, html) {
+      var empty = log.querySelector('.as-empty'); if (empty) empty.remove();
+      var d = document.createElement('div'); d.className = 'as-msg ' + cls; d.innerHTML = html;
+      log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+    }
+    function autosize() { input.style.height = 'auto'; input.style.height = Math.min(160, input.scrollHeight) + 'px'; }
+    input.addEventListener('input', autosize);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
+    send.addEventListener('click', submit);
+    panel.addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-as-suggest]');
+      if (chip) { input.value = chip.getAttribute('data-as-suggest'); autosize(); submit(); return; }
+      var use = e.target.closest('.as-prompt-use');
+      if (use) {
+        var c = document.getElementById('anon-composer');
+        if (c) { c.value = use.getAttribute('data-prompt'); c.dispatchEvent(new Event('input', { bubbles: true })); }
+        var pill = document.querySelector('.tool-pill[data-tool="create"]'); if (pill) pill.click();
+        setTimeout(function () { if (c) { c.focus(); c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 220);
+        toast(I18N.t('Prompt placed in Create — hit Generate when ready'));
+      }
+    });
+
+    async function submit() {
+      var text = input.value.trim();
+      if (!text || busy) return;
+      if (!Auth.getProviderKey()) { if (typeof demandProviderKey === 'function') demandProviderKey(); return; }
+      input.value = ''; autosize();
+      bubble('user', esc(text));
+      history.push({ role: 'user', content: text });
+      var ai = bubble('ai streaming', '');
+      busy = true; send.disabled = true;
+      var acc = '';
+      try {
+        var res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getProviderKey() },
+          body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true }),
+        });
+        if (!res.ok) {
+          var msg = res.status === 401 || res.status === 403 ? I18N.t('Your KIE.AI key was refused — check it in the bar at the top') : (I18N.t('The assistant is unavailable right now') + ' (HTTP ' + res.status + ')');
+          throw new Error(msg);
+        }
+        var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
+        for (;;) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          buf += dec.decode(chunk.value, { stream: true });
+          var parts = buf.split('\n\n'); buf = parts.pop();
+          for (var i = 0; i < parts.length; i++) {
+            var line = parts[i].trim();
+            if (line.indexOf('data:') !== 0) continue;
+            var payload = line.slice(5).trim();
+            if (payload === '[DONE]') continue;
+            try {
+              var j = JSON.parse(payload);
+              var delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+              if (delta) { acc += delta; ai.innerHTML = render(acc); log.scrollTop = log.scrollHeight; }
+            } catch (e) { /* fragment incomplet : on attend la suite */ }
+          }
+        }
+        if (!acc) throw new Error(I18N.t('The assistant returned nothing — try again'));
+        ai.innerHTML = render(acc);
+        history.push({ role: 'assistant', content: acc });
+      } catch (e) {
+        ai.remove();
+        bubble('error', esc(e.message || 'Error'));
+        history.pop();
+      } finally {
+        ai.classList.remove('streaming');
+        busy = false; send.disabled = false; input.focus();
+      }
+    }
+  }
+  var essais = 0;
+  (function attendre() {
+    if (window.IS_ANON === undefined) { if (++essais < 300) return setTimeout(attendre, 100); return; }
+    boot();
+  })();
 })();
 </script>
 <script>
