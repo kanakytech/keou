@@ -1732,6 +1732,7 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
           <option value="kie:gemini-2.5-flash">KIE.AI · Gemini 2.5 Flash (your KIE key)</option>
           <option value="kie:gemini-3-flash">KIE.AI · Gemini 3 Flash (your KIE key)</option>
           <option value="kie:gpt-5-2">KIE.AI · GPT 5.2 (your KIE key)</option>
+          <optgroup label="OpenRouter · free models (your OpenRouter key, $0)" data-as-or-free></optgroup>
           <optgroup label="OpenRouter (your OpenRouter key)" data-as-or-group></optgroup>
           <option value="or:custom">OpenRouter · type any model id&hellip;</option>
         </select>
@@ -6033,7 +6034,7 @@ function imgFallback(el) {
     var log = panel.querySelector('[data-as-log]'), input = panel.querySelector('[data-as-input]'), send = panel.querySelector('[data-as-send]');
     if (!log || !input || !send) return;
     var costTag = document.createElement('span'); costTag.className = 'tp-cost'; costTag.textContent = '~$0.01'; send.appendChild(costTag);
-    var provSel = panel.querySelector('[data-as-provider]'), orBox = panel.querySelector('[data-as-or]'), orModel = panel.querySelector('[data-as-or-model]'), orKey = panel.querySelector('[data-as-or-key]'), orGroup = panel.querySelector('[data-as-or-group]'), orList = panel.querySelector('#as-or-models'), priceTag = panel.querySelector('[data-as-price]');
+    var provSel = panel.querySelector('[data-as-provider]'), orBox = panel.querySelector('[data-as-or]'), orModel = panel.querySelector('[data-as-or-model]'), orKey = panel.querySelector('[data-as-or-key]'), orGroup = panel.querySelector('[data-as-or-group]'), orFree = panel.querySelector('[data-as-or-free]'), orList = panel.querySelector('#as-or-models'), priceTag = panel.querySelector('[data-as-price]');
     orKey.value = lsGet(LS.orKey);
     orKey.addEventListener('change', function () { lsSet(LS.orKey, orKey.value.trim()); });
     orModel.value = lsGet(LS.orModel);
@@ -6054,7 +6055,7 @@ function imgFallback(el) {
       var m = orCatalog[sel.model];
       if (!m) { costTag.textContent = '~$?'; priceTag.textContent = sel.model ? I18N.t('Unknown model') : ''; return; }
       var est = m.prompt * 1000 + m.completion * 300;
-      costTag.textContent = '~' + fmtUsd(est);
+      costTag.textContent = est === 0 ? I18N.t('free') : '~' + fmtUsd(est);
       priceTag.textContent = (m.prompt * 1e6).toFixed(2) + ' / ' + (m.completion * 1e6).toFixed(2) + ' $ ' + I18N.t('per 1M tokens') + ' (in / out)';
     }
     function applyProvider() {
@@ -6070,7 +6071,16 @@ function imgFallback(el) {
     fetch(OR_CATALOG).then(function (r) { return r.json(); }).then(function (d) {
       (d.data || []).forEach(function (m) {
         var pr = m.pricing || {};
-        orCatalog[m.id] = { name: m.name || m.id, prompt: Number(pr.prompt) || 0, completion: Number(pr.completion) || 0 };
+        orCatalog[m.id] = { name: m.name || m.id, prompt: Number(pr.prompt) || 0, completion: Number(pr.completion) || 0, ctx: m.context_length || 0 };
+      });
+      // Les modèles GRATUITS d'abord : un visiteur sans crédit peut quand même
+      // parler à l'assistant. Triés par contexte, les plus larges en tête.
+      var frees = Object.keys(orCatalog).filter(function (id) { return /:free$/.test(id) && orCatalog[id].prompt === 0 && orCatalog[id].completion === 0; });
+      frees.sort(function (a, b) { return (orCatalog[b].ctx || 0) - (orCatalog[a].ctx || 0); });
+      frees.slice(0, 12).forEach(function (id) {
+        var opt = document.createElement('option'); opt.value = 'or:' + id;
+        opt.textContent = 'Free · ' + orCatalog[id].name.replace(/^[^:]+:\s*/, '').replace(/\s*\(free\)$/i, '');
+        orFree.appendChild(opt);
       });
       OR_SHORTLIST.forEach(function (id) {
         var m = orCatalog[id]; if (!m) return;
@@ -6126,16 +6136,21 @@ function imgFallback(el) {
         var isOr = sel.provider === 'or';
         var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (isOr ? orKey.value.trim() : Auth.getProviderKey()) };
         if (isOr) { headers['HTTP-Referer'] = 'https://studio.kanaky.xyz'; headers['X-Title'] = 'Keou Studio'; }
-        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true };
+        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 1200 };
         if (isOr) { body.model = sel.model; body.usage = { include: true }; }
         var res = await fetch(endpointFor(sel), { method: 'POST', headers: headers, body: JSON.stringify(body) });
         if (!res.ok) {
+          // Le fournisseur dit souvent POURQUOI (quel plafond, quelle clé) : on
+          // montre sa phrase quand il y en a une, et notre traduction sinon.
+          var detail = '';
+          try { var eb = await res.json(); detail = (eb && eb.error && (eb.error.message || eb.error)) || eb.message || ''; if (typeof detail !== 'string') detail = ''; } catch (e) {}
           var msg;
           if (res.status === 401 || res.status === 403) msg = isOr ? I18N.t('Your OpenRouter key was refused — check it') : I18N.t('Your KIE.AI key was refused — check it in the bar at the top');
           else if (res.status === 402) msg = I18N.t('Not enough credits on this key — top up with the provider');
           else if (res.status === 429) msg = I18N.t('Rate limited by the provider — wait a moment');
           else if (res.status === 404 && isOr) msg = I18N.t('Unknown model') + ' : ' + sel.model;
           else msg = I18N.t('The assistant is unavailable right now') + ' (HTTP ' + res.status + ')';
+          if (detail) msg += ' — ' + detail.slice(0, 180);
           throw new Error(msg);
         }
         var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
