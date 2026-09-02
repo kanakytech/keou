@@ -6057,7 +6057,9 @@ function imgFallback(el) {
       if (!m) { costTag.textContent = '~$?'; priceTag.textContent = sel.model ? I18N.t('Unknown model') : ''; return; }
       var est = m.prompt * 1000 + m.completion * 300;
       costTag.textContent = est === 0 ? I18N.t('free') : '~' + fmtUsd(est);
-      priceTag.textContent = (m.prompt * 1e6).toFixed(2) + ' / ' + (m.completion * 1e6).toFixed(2) + ' $ ' + I18N.t('per 1M tokens') + ' (in / out)';
+      priceTag.textContent = est === 0
+        ? I18N.t('Free — shared pool, can stall or be rate-limited; pick another if it does')
+        : (m.prompt * 1e6).toFixed(2) + ' / ' + (m.completion * 1e6).toFixed(2) + ' $ ' + I18N.t('per 1M tokens') + ' (in / out)';
     }
     function applyProvider() {
       var sel = selection();
@@ -6076,8 +6078,16 @@ function imgFallback(el) {
       });
       // Les modèles GRATUITS d'abord : un visiteur sans crédit peut quand même
       // parler à l'assistant. Triés par contexte, les plus larges en tête.
-      var frees = Object.keys(orCatalog).filter(function (id) { return /:free$/.test(id) && orCatalog[id].prompt === 0 && orCatalog[id].completion === 0; });
-      frees.sort(function (a, b) { return (orCatalog[b].ctx || 0) - (orCatalog[a].ctx || 0); });
+      // Les gratuits vivent sur des pools partagés : certains saturent, un
+      // (inkling) n'accepte que les « agentic harnesses », d'autres pensent
+      // tout leur budget. Ceux qui ont RÉPONDU à nos tests passent en tête.
+      var OR_FREE_FIRST = ['minimax/minimax-m3:free', 'google/gemma-4-26b-a4b-it:free']; // nemotron laisse fuir son raisonnement dans la réponse
+      var frees = Object.keys(orCatalog).filter(function (id) { return /:free$/.test(id) && orCatalog[id].prompt === 0 && orCatalog[id].completion === 0 && !/inkling/.test(id); });
+      frees.sort(function (a, b) {
+        var ia = OR_FREE_FIRST.indexOf(a), ib = OR_FREE_FIRST.indexOf(b);
+        if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        return (orCatalog[b].ctx || 0) - (orCatalog[a].ctx || 0);
+      });
       frees.slice(0, 12).forEach(function (id) {
         var opt = document.createElement('option'); opt.value = 'or:' + id;
         opt.textContent = 'Free · ' + orCatalog[id].name.replace(/^[^:]+:\s*/, '').replace(/\s*\(free\)$/i, '');
@@ -6132,12 +6142,15 @@ function imgFallback(el) {
       history.push({ role: 'user', content: text });
       var ai = bubble('ai streaming', ''); ai.setAttribute('data-thinking', I18N.t('Thinking…'));
       busy = true; send.disabled = true;
-      var acc = '', usage = null;
+      var acc = '', usage = null, finish = null;
       try {
         var isOr = sel.provider === 'or';
         var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (isOr ? orKey.value.trim() : Auth.getProviderKey()) };
         if (isOr) { headers['HTTP-Referer'] = 'https://studio.kanaky.xyz'; headers['X-Title'] = 'Keou Studio'; }
-        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 2000 };
+        // 4 000 : les modèles qui raisonnent dépensent d'abord des tokens à
+        // réfléchir (548 pour un « OK » chez nemotron) — avec 2 000, une
+        // question longue finissait la borne avant d'écrire un mot.
+        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 4000 };
         if (isOr) { body.model = sel.model; body.usage = { include: true }; body.reasoning = { exclude: true }; }
         var res = await fetch(endpointFor(sel), { method: 'POST', headers: headers, body: JSON.stringify(body) });
         if (!res.ok) {
@@ -6173,6 +6186,7 @@ function imgFallback(el) {
               try {
                 var j = JSON.parse(payload);
                 var d0 = j.choices && j.choices[0] && j.choices[0].delta;
+                if (j.choices && j.choices[0] && j.choices[0].finish_reason) finish = j.choices[0].finish_reason;
                 var delta = d0 && d0.content;
                 if (delta) { acc += delta; ai.classList.remove('thinking'); ai.innerHTML = render(acc); log.scrollTop = log.scrollHeight; }
                 else if (d0 && d0.reasoning && !acc) { ai.classList.add('thinking'); } // le modèle réfléchit encore
@@ -6181,7 +6195,11 @@ function imgFallback(el) {
             }
           }
         }
-        if (!acc) throw new Error(I18N.t('The assistant returned nothing — try again'));
+        if (!acc) {
+          throw new Error(finish === 'length'
+            ? I18N.t('This model spent its whole budget thinking and wrote nothing — ask something shorter, or pick another model')
+            : I18N.t('The assistant returned nothing — try again'));
+        }
         ai.innerHTML = render(acc);
         history.push({ role: 'assistant', content: acc });
         // Coût RÉEL sous la réponse : celui du fournisseur s'il le donne, sinon
