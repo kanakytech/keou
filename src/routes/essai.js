@@ -76,7 +76,8 @@ router.use((req, res, next) => {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Whitelist stricte — mêmes ratios que jarvis.js (nano-banana-pro les accepte tous).
-const VALID_FORMATS = ['1:1', '16:9', '9:16', '3:4', '4:3', '3:2', '2:3'];
+// 4:5 = le format feed d'Instagram — accepté par nano-banana-pro (vérifié à la soumission le 03/09/2026).
+const VALID_FORMATS = ['1:1', '4:5', '16:9', '9:16', '3:4', '4:3', '3:2', '2:3'];
 // Modes de rendu vidéo, réunion des vocabulaires du catalogue : kling parle en
 // std/pro, grok en fun/normal. Chaque modèle ignore ce qui ne le concerne pas ;
 // la liste ne sert qu'à ne pas relayer une valeur inventée par le client.

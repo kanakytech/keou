@@ -150,6 +150,10 @@
   .m-reveal,.m-reveal>*{opacity:1!important;transform:none!important}
 }
 
+.anon-only{display:none}
+body.keou-anon .anon-only{display:flex}
+body.keou-anon section.anon-only{display:block}
+body.keou-anon .platform-only{display:none!important}
 </style>
 </head>
 <body>
@@ -163,7 +167,11 @@
       Back
     </a>
     <div class="help-nav-title">Guide</div>
-    <a href="#setup" class="help-nav-link active">
+    <a href="#open-studio" class="help-nav-link anon-only">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+      Free studio
+    </a>
+    <a href="#setup" class="help-nav-link active platform-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Setup
     </a>
@@ -175,11 +183,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
       Studio
     </a>
-    <a href="#clients" class="help-nav-link">
+    <a href="#clients" class="help-nav-link platform-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       Clients
     </a>
-    <a href="#library" class="help-nav-link">
+    <a href="#library" class="help-nav-link platform-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Library
     </a>
@@ -187,7 +195,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
       Tools
     </a>
-    <a href="#team" class="help-nav-link">
+    <a href="#team" class="help-nav-link platform-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Team
     </a>
@@ -202,7 +210,42 @@
     </div>
 
     <!-- 1. Setup -->
-    <section class="help-section m-reveal m-cascade" id="setup">
+    <!-- Studio gratuit (anonyme) : la page d'aide est celle vers laquelle
+         pointe la barre latérale anonyme. Elle décrit LE STUDIO D'AUJOURD'HUI —
+         la plateforme en marque blanche a ses propres sections plus bas. -->
+    <section class="help-section m-reveal m-cascade anon-only" id="open-studio">
+      <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>The free studio</h2>
+      <p>studio.kanaky.xyz is the full studio, free, with no account. You bring your own KIE.AI key: it stays in your browser, rides each request, and KIE bills your key directly. We never see it and never charge you.</p>
+      <div class="help-steps">
+        <div class="help-step"><div class="help-step-num">1</div><div class="help-step-text"><strong>Paste your KIE.AI key</strong> in the bar at the top. No key yet? The link next to it takes you to KIE.AI, where a key takes two minutes.</div></div>
+        <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Pick a tool</strong> in the row under the greeting. Create, Polish, Video and Upscale are one click away; More opens the full list with a search.</div></div>
+        <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Generate.</strong> The estimated cost is written on the button itself, so you know before you click. The first time, the studio asks you to accept that everything you make here is public.</div></div>
+        <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Keep what you like.</strong> Every result lands in the community gallery with its prompt, and the gallery viewer has a save button. Retouches and upscales open a before/after slider.</div></div>
+      </div>
+      <h3>The tools</h3>
+      <table class="help-table">
+        <tr><th>Tool</th><th>What it does</th><th>Estimated cost</th></tr>
+        <tr><td>Create</td><td>Describe what you want and get an image with no photo at all — or drop a product photo and it stays pixel-locked while the scene is generated around it. Try a sample if you have nothing at hand.</td><td>~$0.09 per image</td></tr>
+        <tr><td>Polish</td><td>Professional retouch of a photo or a result: lighting, sharpness, clean finish.</td><td>~$0.09</td></tr>
+        <tr><td>Remix</td><td>A new creative direction from the same product.</td><td>~$0.09</td></tr>
+        <tr><td>Adapt</td><td>The whole pack in one click: the same image recomposed for every ratio (1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3). Tap a format to leave it out.</td><td>~$0.09 per format</td></tr>
+        <tr><td>Video</td><td>A cinematic clip from a still. Engines: Veo 3.1 fast, Veo 3.1 pro, Kling 2.6, Kling 3.0, Seedance 2. Duration and format adapt to the engine.</td><td>from ~$0.30 (Veo fast) to ~$1.25 (Veo pro); Kling ~$0.06 per second</td></tr>
+        <tr><td>Upscale</td><td>Sharp enlargement ×2 or ×4 with Topaz. The studio measures your image first: factors that would exceed the provider's 20,000 px limit are switched off, and files over 10 MB are refused before anything is sent.</td><td>~$0.12</td></tr>
+        <tr><td>Voice</td><td>Narration from text, 24 voices.</td><td>~$0.05</td></tr>
+        <tr><td>SFX</td><td>Sound design from a description. The provider's sound model is intermittent at the moment: the studio retries once and tells you plainly when it is their side.</td><td>~$0.05</td></tr>
+        <tr><td>Video Upscale</td><td>Topaz Video ×2 or ×4 on a clip from this session, an uploaded file (MP4, WebM, MOV, up to 200 MB) or a link.</td><td>~$0.70</td></tr>
+      </table>
+      <h3>Good to know</h3>
+      <ul>
+        <li><strong>Everything you make here is public</strong> — watermarked, in the community gallery, with its prompt. Need private work and downloads? <a href="/login.html">Create a free account</a>, or <a href="/self-host.html">self-host</a>: no watermark, nothing published.</li>
+        <li><strong>Uploads show their progress</strong> — a ring on the thumbnail, a bar with the file name and size. A cross removes an uploaded image if you change your mind.</li>
+        <li><strong>Results appear the second they exist.</strong> Long generations (video, Topaz) can take one to two minutes on the provider's side.</li>
+        <li><strong>Costs are estimates</strong>, in US dollars, billed by KIE.AI to your key. Your balance is visible on your KIE.AI dashboard.</li>
+        <li><strong>The queue is shared.</strong> A few generations run at once for everyone; yours shows its position while it waits.</li>
+      </ul>
+    </section>
+
+    <section class="help-section m-reveal m-cascade platform-only" id="setup">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Initial Setup
@@ -268,7 +311,7 @@
           <tr><td>Image Generation</td><td>Nano Banana Pro</td><td>Nano Banana Pro</td></tr>
           <tr><td>Image Polish</td><td>Flux 2 Pro</td><td>Flux 2 Pro Edit</td></tr>
           <tr><td>Video</td><td>Kling / Veo / Grok / Seedance</td><td>Kling / Veo / Grok / Seedance</td></tr>
-          <tr><td>Upscale</td><td>Topaz (up to 8x)</td><td>Topaz (up to 4x)</td></tr>
+          <tr><td>Upscale</td><td>Topaz ×2 / ×4</td><td>Topaz ×2 / ×4</td></tr>
           <tr><td>Audio</td><td>ElevenLabs TTS + SFX</td><td>ElevenLabs TTS + SFX</td></tr>
         </tbody>
       </table>
@@ -297,7 +340,7 @@
         <li><strong>Remix</strong> &mdash; transform with a custom prompt</li>
         <li><strong>Adapt</strong> &mdash; convert to a different aspect ratio</li>
         <li><strong>Video</strong> &mdash; animate into a product video</li>
-        <li><strong>Upscale</strong> &mdash; increase resolution up to 4-8x</li>
+        <li><strong>Upscale</strong> &mdash; sharp enlargement ×2 or ×4 (20,000 px cap on the longest side)</li>
       </ul>
 
       <div class="help-tip">
@@ -307,7 +350,7 @@
     </section>
 
     <!-- 4. Clients -->
-    <section class="help-section m-reveal m-cascade" id="clients">
+    <section class="help-section m-reveal m-cascade platform-only" id="clients">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Clients & Projects
@@ -322,7 +365,7 @@
     </section>
 
     <!-- 6. Library -->
-    <section class="help-section m-reveal m-cascade" id="library">
+    <section class="help-section m-reveal m-cascade platform-only" id="library">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Library
@@ -346,7 +389,7 @@
       <table class="help-table">
         <thead><tr><th>Tool</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td>Image Upscale</td><td>Increase resolution up to 4-8x with Topaz AI</td></tr>
+          <tr><td>Image Upscale</td><td>Sharp enlargement ×2 or ×4 with Topaz — 20,000 px cap on the longest side</td></tr>
           <tr><td>Video Upscale</td><td>Enhance video resolution with AI</td></tr>
           <tr><td>Text-to-Speech</td><td>Natural speech with multiple voice options</td></tr>
           <tr><td>Sound Effects</td><td>Generate sound effects from text descriptions</td></tr>
@@ -355,7 +398,7 @@
     </section>
 
     <!-- 8. Team -->
-    <section class="help-section m-reveal m-cascade" id="team">
+    <section class="help-section m-reveal m-cascade platform-only" id="team">
       <h2>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Team Management

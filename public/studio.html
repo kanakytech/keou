@@ -1017,6 +1017,12 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-thumb.pending.indeterminate .tp-ring::before{background:conic-gradient(var(--tool-accent,var(--accent)) 25%,rgba(255,255,255,.14) 0);animation:tpSpin .9s linear infinite}
 @keyframes tpSpin{to{transform:rotate(360deg)}}
 .tp-thumb.failed,.tp-thumb.broken{border-color:#fda4af}
+.tp-thumb-x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#0a0a0a;border:1px solid var(--s3);color:var(--ink-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transform:scale(.8);transition:opacity var(--m-fast),transform var(--m-fast),color var(--m-fast),border-color var(--m-fast)}
+.tp-thumb-x svg{width:10px;height:10px}
+.tp-thumb:hover .tp-thumb-x,.tp-thumb:focus-within .tp-thumb-x,.tp-thumb.sel .tp-thumb-x{opacity:1;transform:scale(1)}
+.tp-thumb-x:hover{color:#fda4af;border-color:#fda4af}
+@media (hover:none){.tp-thumb-x{opacity:1;transform:scale(1)}}
+.tp-cost{display:inline-block;margin-left:10px;padding:2px 8px;border-radius:100px;background:rgba(0,0,0,.18);font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
 .tp-thumb.failed img,.tp-thumb.failed video{opacity:.25}
 .tp-thumb .tp-retry{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fda4af;background:rgba(10,10,10,.55);cursor:pointer}
 .tp-src-btn.busy{opacity:1;pointer-events:none;color:var(--tool-accent,var(--accent));border-color:var(--tool-accent,var(--accent))}
@@ -1709,18 +1715,22 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
           <span>Sample</span>
         </button>
       </div>
-      <p class="section-label">Target format</p>
-      <div class="tp-chips" data-tp-formats>
-        <button type="button" class="tp-chip active" data-v="1:1">1:1</button>
-        <button type="button" class="tp-chip" data-v="16:9">16:9</button>
-        <button type="button" class="tp-chip" data-v="9:16">9:16</button>
-        <button type="button" class="tp-chip" data-v="3:4">3:4</button>
-        <button type="button" class="tp-chip" data-v="4:3">4:3</button>
-        <button type="button" class="tp-chip" data-v="3:2">3:2</button>
-        <button type="button" class="tp-chip" data-v="2:3">2:3</button>
+      <p class="section-label">Formats in the pack</p>
+      <!-- Multi-choix : tous actifs par défaut. Un clic retire un format du
+           pack, un second le remet. L'utilisateur repart avec un jeu complet
+           de la MÊME image, pas un format à la fois. -->
+      <div class="tp-chips" data-tp-formats data-multi>
+        <button type="button" class="tp-chip active" data-v="1:1" title="Square · feed">1:1</button>
+        <button type="button" class="tp-chip active" data-v="4:5" title="Portrait · feed">4:5</button>
+        <button type="button" class="tp-chip active" data-v="9:16" title="Story · Reels · TikTok">9:16</button>
+        <button type="button" class="tp-chip active" data-v="16:9" title="Landscape · YouTube · web">16:9</button>
+        <button type="button" class="tp-chip active" data-v="3:4" title="Portrait · print">3:4</button>
+        <button type="button" class="tp-chip active" data-v="4:3" title="Landscape · slides">4:3</button>
+        <button type="button" class="tp-chip active" data-v="3:2" title="Photo · web">3:2</button>
+        <button type="button" class="tp-chip active" data-v="2:3" title="Pinterest · poster">2:3</button>
       </div>
-      <button type="button" class="btn-primary full" data-tp-submit>Adapt format</button>
-      <p class="tp-note">Recomposes the visual for the target ratio &mdash; nothing squeezed, nothing cropped blindly.</p>
+      <button type="button" class="btn-primary full" data-tp-submit>Adapt to 8 formats</button>
+      <p class="tp-note">One click, every format of the same image &mdash; recomposed for each ratio, nothing squeezed, nothing cropped blindly. Tap a format to leave it out.</p>
     </div>
   </section>
 
@@ -4675,7 +4685,14 @@ function imgFallback(el) {
     more.setAttribute('aria-expanded', 'true');
     search.value = '';
     filter('');
-    setTimeout(function () { try { search.focus({ preventScroll: true }); } catch (e) {} }, 150);
+    // Le focus va à la PREMIÈRE LIGNE, pas au champ de recherche : un champ
+    // sélectionné ouvre le clavier sur mobile alors que le visiteur voulait
+    // juste voir la liste. La recherche reste à un clic, et le clavier reste
+    // possible (Tab, flèches) — le dialogue est bien entré.
+    setTimeout(function () {
+      var premier = list ? list.querySelector('.tools-item:not([hidden]), .wf-item:not([hidden]), button:not([hidden])') : null;
+      try { (premier || search).focus({ preventScroll: true }); } catch (e) {}
+    }, 150);
   }
   function closePanel() {
     row.classList.remove('open');
@@ -4923,6 +4940,22 @@ function imgFallback(el) {
         b.classList.add('sel');
         if (tool === 'upscale') probeUpscaleLimits();
       });
+      // Une image ENVOYÉE se retire d'une croix (pas un rendu de session : il
+      // appartient à la galerie). Le visiteur change d'avis sans recharger.
+      if (st.uploads.some(function (u) { return u.url === s.url; })) {
+        var x = document.createElement('span');
+        x.className = 'tp-thumb-x'; x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Remove');
+        x.title = 'Remove';
+        x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+        x.addEventListener('click', function (e) {
+          e.stopPropagation();
+          st.uploads = st.uploads.filter(function (u) { return u.url !== s.url; });
+          if (st.sel === s.url) { st.sel = null; st.selMedia = null; }
+          refreshThumbs(tool);
+          if (tool === 'upscale') probeUpscaleLimits();
+        });
+        b.appendChild(x);
+      }
       box.appendChild(b);
     });
     if (tool === 'upscale') probeUpscaleLimits();
@@ -5087,6 +5120,7 @@ function imgFallback(el) {
     group.addEventListener('click', function (e) {
       var chip = e.target.closest('.tp-chip');
       if (!chip || chip.disabled || chip.hasAttribute('data-tp-audio')) return;
+      if (group.hasAttribute('data-multi')) { chip.classList.toggle('active'); return; }
       group.querySelectorAll('.tp-chip').forEach(function (c) { c.classList.remove('active'); });
       chip.classList.add('active');
     });
@@ -5440,8 +5474,64 @@ function imgFallback(el) {
     }
   }
 
+  /* Coût ESTIMÉ, en dollars, facturé par KIE au visiteur — même table que le
+     serveur (src/lib/providers/kie.js, calculateCost). Affiché sur le bouton
+     lui-même : on sait ce qu'on va dépenser AVANT de cliquer. */
+  var COST = {
+    polish: 0.09, remix: 0.09, adapt: 0.09, upscale: 0.12, vidupscale: 0.70, voice: 0.05, sfx: 0.05,
+    video: function (panel) {
+      var eng = panel.querySelector('.tp-engine.active');
+      var key = eng ? eng.getAttribute('data-v') : 'veo3_fast';
+      var d = Number(chipValue(q(panel, '[data-tp-durations]')) || 8);
+      if (key === 'veo3' || key === 'veo3_pro') return 1.25;
+      if (key === 'veo3_fast') return 0.30;
+      if (key === 'kling-2.6' || key === 'kling-3.0') return d * 0.06;
+      if (key === 'seedance-2') return d * 0.05;
+      return d * 0.05;
+    },
+  };
+  function fmtCost(v) { return '~$' + v.toFixed(2); }
+  function refreshCost(tool) {
+    var panel = panelOf(tool); if (!panel) return;
+    var btn = q(panel, '[data-tp-submit]'); if (!btn) return;
+    var c = COST[tool]; if (c === undefined) return;
+    var val = typeof c === 'function' ? c(panel) : c;
+    var mult = Number(panel.getAttribute('data-cost-mult') || 1);
+    val = val * mult;
+    var tag = btn.querySelector('.tp-cost');
+    if (!tag) { tag = document.createElement('span'); tag.className = 'tp-cost'; btn.appendChild(tag); }
+    tag.textContent = fmtCost(val);
+    tag.title = 'Estimated, billed by KIE.AI to your key';
+  }
+  function refreshAllCosts() { Object.keys(COST).forEach(refreshCost); refreshAdaptLabel(); }
+  function adaptFormats(panel) {
+    return Array.prototype.map.call(panel.querySelectorAll('[data-tp-formats] .tp-chip.active'), function (c) { return c.getAttribute('data-v'); });
+  }
+  function refreshAdaptLabel() {
+    var panel = panelOf('adapt'); if (!panel) return;
+    var n = adaptFormats(panel).length;
+    var btn = q(panel, '[data-tp-submit]'); if (!btn) return;
+    panel.setAttribute('data-cost-mult', String(Math.max(n, 1)));
+    var tag = btn.querySelector('.tp-cost');
+    btn.textContent = n === 1 ? I18N.t('Adapt to 1 format') : I18N.t('Adapt to {n} formats').replace('{n}', n);
+    if (tag) btn.appendChild(tag);
+    btn.disabled = n === 0;
+    refreshCost('adapt');
+  }
+
   function mountTools() {
     ['polish', 'remix', 'adapt', 'video', 'upscale'].forEach(wireUpload);
+    refreshAllCosts();
+    // La vidéo change de prix avec le moteur et la durée : on recalcule après
+    // tout clic dans le panneau, une fois que les autres gestionnaires ont
+    // posé leur état (les moteurs ne sont pas des .tp-chip).
+    // En phase de CAPTURE : un gestionnaire en aval arrête la propagation
+    // (les moteurs), la capture nous garantit d'être appelés ; le setTimeout
+    // nous garantit de lire l'état APRÈS que les autres l'ont posé.
+    var vp = panelOf('video');
+    if (vp) vp.addEventListener('click', function () { setTimeout(function () { refreshCost('video'); }, 0); }, true);
+    var ap = panelOf('adapt');
+    if (ap) ap.addEventListener('click', function () { setTimeout(function () { refreshAdaptLabel(); }, 0); }, true);
     wireVideoSource();
     document.querySelectorAll('.tool-panel .tp-chips').forEach(wireChips);
     document.querySelectorAll('.tp-engines').forEach(wireChips);
@@ -5462,9 +5552,16 @@ function imgFallback(el) {
 
     wireSubmit('adapt', function (panel, st) {
       if (!needSource(st)) return null;
-      var fmt = chipValue(q(panel, '[data-tp-formats]')) || '1:1';
-      return { route: '/api/adapt', statusType: 'adapt', interval: 6000, timeout: 300000,
-        media: 'image', body: { imageUrl: st.sel, ratio: fmt } };
+      var fmts = adaptFormats(panel);
+      if (!fmts.length) { toast('Pick at least one format', true); return null; }
+      // Un rendu par format, tous de la même source : le pack complet. Les
+      // pré-vols (clé, consentement) se partagent : la modale n'apparaît
+      // qu'une fois, les autres attendent la même promesse.
+      fmts.forEach(function (fmt) {
+        run('adapt', { route: '/api/adapt', statusType: 'adapt', interval: 6000, timeout: 300000,
+          media: 'image', body: { imageUrl: st.sel, ratio: fmt } });
+      });
+      return null;
     });
 
     // Vidéo : moteurs → durées permises + résolution Seedance
@@ -5652,7 +5749,14 @@ function imgFallback(el) {
     document.body.style.overflow = 'hidden';   // le fond ne défile plus
     search.value = '';
     filter('');
-    setTimeout(function () { try { search.focus({ preventScroll: true }); } catch (e) {} }, 150);
+    // Le focus va à la PREMIÈRE LIGNE, pas au champ de recherche : un champ
+    // sélectionné ouvre le clavier sur mobile alors que le visiteur voulait
+    // juste voir la liste. La recherche reste à un clic, et le clavier reste
+    // possible (Tab, flèches) — le dialogue est bien entré.
+    setTimeout(function () {
+      var premier = list ? list.querySelector('.tools-item:not([hidden]), .wf-item:not([hidden]), button:not([hidden])') : null;
+      try { (premier || search).focus({ preventScroll: true }); } catch (e) {}
+    }, 150);
   }
   function closePanel() {
     modal.classList.remove('open');
