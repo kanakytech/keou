@@ -1053,6 +1053,17 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 
 /* ── Assistant ── */
 .as-card{padding-top:12px}
+.as-model{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--s3)}
+.as-model-label{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.as-select{padding:7px 30px 7px 10px;border-radius:10px;border:1px solid var(--s3);background:var(--s2);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer;max-width:100%;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'><path d='m6 9 6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+.as-select:focus{outline:none;border-color:var(--tool-accent);box-shadow:0 0 0 3px var(--tool-tint)}
+.as-or{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
+.as-input-sm{flex:1;min-width:180px;padding:7px 10px;border-radius:10px;border:1px solid var(--s3);background:var(--s2);color:var(--ink);font:inherit;font-size:12.5px;outline:none;transition:border-color var(--m-fast),box-shadow var(--m-fast)}
+.as-input-sm:focus{border-color:var(--tool-accent);box-shadow:0 0 0 3px var(--tool-tint)}
+.as-or-link{font-size:12px;color:var(--ink-muted);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.as-or-link:hover{color:var(--ink)}
+.as-model-price{margin-left:auto;font-size:11.5px;color:var(--ink-faint);white-space:nowrap}
+.as-usage{align-self:flex-start;margin:-4px 0 0 4px;font-size:11px;color:var(--ink-faint)}
 .as-log{max-height:56vh;min-height:220px;overflow-y:auto;padding:4px 2px 8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;scrollbar-width:thin}
 .as-empty{margin:auto;text-align:center;max-width:460px;padding:18px 8px}
 .as-empty-spark{width:40px;height:40px;margin:0 auto 10px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--tool-tint);color:var(--tool-accent)}
@@ -1712,6 +1723,26 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
        les limites, et écrit des prompts qu'un clic envoie dans Create. -->
   <section class="tool-panel" id="tool-panel-assistant">
     <div class="section-card tp-card as-card">
+      <!-- Fournisseur du chat : KIE (la clé déjà posée) ou OpenRouter (une clé
+           OpenRouter, 400+ modèles, prix par token). Le catalogue OpenRouter
+           est lu en direct : la liste ne peut pas vieillir. -->
+      <div class="as-model">
+        <label class="as-model-label" for="as-provider">Model</label>
+        <select id="as-provider" class="as-select" data-as-provider>
+          <option value="kie:gemini-2.5-flash">KIE.AI · Gemini 2.5 Flash (your KIE key)</option>
+          <option value="kie:gemini-3-flash">KIE.AI · Gemini 3 Flash (your KIE key)</option>
+          <option value="kie:gpt-5-2">KIE.AI · GPT 5.2 (your KIE key)</option>
+          <optgroup label="OpenRouter (your OpenRouter key)" data-as-or-group></optgroup>
+          <option value="or:custom">OpenRouter · type any model id&hellip;</option>
+        </select>
+        <div class="as-or" data-as-or hidden>
+          <input type="text" class="as-input-sm" data-as-or-model list="as-or-models" placeholder="provider/model-id" autocomplete="off" spellcheck="false">
+          <datalist id="as-or-models"></datalist>
+          <input type="password" class="as-input-sm" data-as-or-key placeholder="OpenRouter key (sk-or-&hellip;)" autocomplete="off">
+          <a class="as-or-link" href="https://openrouter.ai/keys" target="_blank" rel="noopener">Get a key &#8599;</a>
+        </div>
+        <span class="as-model-price" data-as-price></span>
+      </div>
       <div class="as-log" data-as-log aria-live="polite">
         <div class="as-empty">
           <div class="as-empty-spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></div>
@@ -1728,7 +1759,7 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
         <textarea class="as-input" data-as-input rows="1" maxlength="2000" placeholder="Ask anything about your visuals&hellip;"></textarea>
         <button type="button" class="btn-primary as-send" data-as-send><span>Send</span></button>
       </div>
-      <p class="tp-note as-note">gemini-2.5-flash via KIE.AI &mdash; about $0.01 per message, billed to your key. Nothing here is published.</p>
+      <p class="tp-note as-note">Billed by the provider to your own key &mdash; KIE.AI about $0.01 per message, OpenRouter by the token (real cost shown under each answer). Nothing here is published.</p>
     </div>
   </section>
 
@@ -5949,8 +5980,22 @@ function imgFallback(el) {
 /* ═══ Assistant — chat en streaming sur la clé KIE du visiteur (anonyme) ═══ */
 (function () {
   'use strict';
-  var MODEL = 'gemini-2.5-flash';
-  var ENDPOINT = 'https://api.kie.ai/' + MODEL + '/v1/chat/completions';
+  /* Deux fournisseurs, même protocole (OpenAI-compatible, SSE) :
+     - KIE : un chemin par modèle, la clé déjà posée dans la barre ;
+     - OpenRouter : un seul chemin, 400+ modèles, une clé OpenRouter à part,
+       prix par token lus dans leur catalogue public, coût réel rendu par
+       leur champ `usage`. Le navigateur parle aux deux directement (CORS). */
+  var OR_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+  var OR_CATALOG = 'https://openrouter.ai/api/v1/models';
+  var OR_SHORTLIST = ['anthropic/claude-sonnet-4.5', 'anthropic/claude-haiku-4.5', 'openai/gpt-5', 'openai/gpt-5-mini', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro', 'deepseek/deepseek-chat-v3.1', 'meta-llama/llama-4-maverick', 'mistralai/mistral-medium-3.1', 'qwen/qwen3-235b-a22b', 'x-ai/grok-4.6', 'x-ai/grok-4.5'];
+  var orCatalog = {};   // id → { name, prompt ($/token), completion ($/token) }
+  var LS = { provider: 'keou.assistantProvider', orModel: 'keou.openrouterModel', orKey: 'keou.openrouterKey' };
+  function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function lsSet(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
+  function endpointFor(sel) {
+    if (sel.provider === 'or') return OR_ENDPOINT;
+    return 'https://api.kie.ai/' + sel.model + '/v1/chat/completions';
+  }
   var SYSTEM = [
     'You are the assistant inside Keou Studio (studio.kanaky.xyz), a free, open-source creative production studio. The visitor brings their own KIE.AI key; everything they create here is public in the community gallery with a watermark; costs are billed by KIE.AI to their key.',
     'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3, ~$0.09 per format); Video (a clip from a still — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
@@ -5988,6 +6033,57 @@ function imgFallback(el) {
     var log = panel.querySelector('[data-as-log]'), input = panel.querySelector('[data-as-input]'), send = panel.querySelector('[data-as-send]');
     if (!log || !input || !send) return;
     var costTag = document.createElement('span'); costTag.className = 'tp-cost'; costTag.textContent = '~$0.01'; send.appendChild(costTag);
+    var provSel = panel.querySelector('[data-as-provider]'), orBox = panel.querySelector('[data-as-or]'), orModel = panel.querySelector('[data-as-or-model]'), orKey = panel.querySelector('[data-as-or-key]'), orGroup = panel.querySelector('[data-as-or-group]'), orList = panel.querySelector('#as-or-models'), priceTag = panel.querySelector('[data-as-price]');
+    orKey.value = lsGet(LS.orKey);
+    orKey.addEventListener('change', function () { lsSet(LS.orKey, orKey.value.trim()); });
+    orModel.value = lsGet(LS.orModel);
+    orModel.addEventListener('change', function () { lsSet(LS.orModel, orModel.value.trim()); refreshPrice(); });
+
+    /** Le choix courant : { provider: 'kie'|'or', model } */
+    function selection() {
+      var v = provSel.value || 'kie:gemini-2.5-flash';
+      if (v === 'or:custom') return { provider: 'or', model: orModel.value.trim() };
+      var i = v.indexOf(':');
+      return { provider: v.slice(0, i), model: v.slice(i + 1) };
+    }
+    function fmtUsd(v) { return v < 0.01 ? '$' + v.toFixed(4) : '$' + v.toFixed(3); }
+    // Estimation avant envoi : ~1 000 tokens entrants (contexte + question), ~300 sortants.
+    function refreshPrice() {
+      var sel = selection();
+      if (sel.provider === 'kie') { costTag.textContent = '~$0.01'; priceTag.textContent = ''; return; }
+      var m = orCatalog[sel.model];
+      if (!m) { costTag.textContent = '~$?'; priceTag.textContent = sel.model ? I18N.t('Unknown model') : ''; return; }
+      var est = m.prompt * 1000 + m.completion * 300;
+      costTag.textContent = '~' + fmtUsd(est);
+      priceTag.textContent = (m.prompt * 1e6).toFixed(2) + ' / ' + (m.completion * 1e6).toFixed(2) + ' $ ' + I18N.t('per 1M tokens') + ' (in / out)';
+    }
+    function applyProvider() {
+      var sel = selection();
+      var isOr = sel.provider === 'or';
+      orBox.hidden = !isOr;
+      orModel.hidden = provSel.value !== 'or:custom';
+      lsSet(LS.provider, provSel.value);
+      refreshPrice();
+    }
+    provSel.addEventListener('change', applyProvider);
+    // Catalogue OpenRouter : liste courte lisible + tous les ids en autocomplétion.
+    fetch(OR_CATALOG).then(function (r) { return r.json(); }).then(function (d) {
+      (d.data || []).forEach(function (m) {
+        var pr = m.pricing || {};
+        orCatalog[m.id] = { name: m.name || m.id, prompt: Number(pr.prompt) || 0, completion: Number(pr.completion) || 0 };
+      });
+      OR_SHORTLIST.forEach(function (id) {
+        var m = orCatalog[id]; if (!m) return;
+        var opt = document.createElement('option'); opt.value = 'or:' + id;
+        opt.textContent = 'OpenRouter · ' + m.name.replace(/^[^:]+:\s*/, '') + ' — ' + (m.prompt * 1e6).toFixed(2) + '/' + (m.completion * 1e6).toFixed(2) + ' $/1M';
+        orGroup.appendChild(opt);
+      });
+      Object.keys(orCatalog).sort().forEach(function (id) { var o = document.createElement('option'); o.value = id; orList.appendChild(o); });
+      var saved = lsGet(LS.provider);
+      if (saved && provSel.querySelector('option[value="' + saved.replace(/"/g, '') + '"]')) provSel.value = saved;
+      applyProvider();
+    }).catch(function () { applyProvider(); });
+    applyProvider();
 
     function bubble(cls, html) {
       var empty = log.querySelector('.as-empty'); if (empty) empty.remove();
@@ -6014,21 +6110,32 @@ function imgFallback(el) {
     async function submit() {
       var text = input.value.trim();
       if (!text || busy) return;
-      if (!Auth.getProviderKey()) { if (typeof demandProviderKey === 'function') demandProviderKey(); return; }
+      var sel = selection();
+      if (sel.provider === 'kie' && !Auth.getProviderKey()) { if (typeof demandProviderKey === 'function') demandProviderKey(); return; }
+      if (sel.provider === 'or') {
+        if (!orKey.value.trim()) { toast(I18N.t('Paste your OpenRouter key first'), true); orKey.focus(); return; }
+        if (!sel.model) { toast(I18N.t('Pick an OpenRouter model first'), true); orModel.focus(); return; }
+      }
       input.value = ''; autosize();
       bubble('user', esc(text));
       history.push({ role: 'user', content: text });
       var ai = bubble('ai streaming', '');
       busy = true; send.disabled = true;
-      var acc = '';
+      var acc = '', usage = null;
       try {
-        var res = await fetch(ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getProviderKey() },
-          body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true }),
-        });
+        var isOr = sel.provider === 'or';
+        var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (isOr ? orKey.value.trim() : Auth.getProviderKey()) };
+        if (isOr) { headers['HTTP-Referer'] = 'https://studio.kanaky.xyz'; headers['X-Title'] = 'Keou Studio'; }
+        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true };
+        if (isOr) { body.model = sel.model; body.usage = { include: true }; }
+        var res = await fetch(endpointFor(sel), { method: 'POST', headers: headers, body: JSON.stringify(body) });
         if (!res.ok) {
-          var msg = res.status === 401 || res.status === 403 ? I18N.t('Your KIE.AI key was refused — check it in the bar at the top') : (I18N.t('The assistant is unavailable right now') + ' (HTTP ' + res.status + ')');
+          var msg;
+          if (res.status === 401 || res.status === 403) msg = isOr ? I18N.t('Your OpenRouter key was refused — check it') : I18N.t('Your KIE.AI key was refused — check it in the bar at the top');
+          else if (res.status === 402) msg = I18N.t('Not enough credits on this key — top up with the provider');
+          else if (res.status === 429) msg = I18N.t('Rate limited by the provider — wait a moment');
+          else if (res.status === 404 && isOr) msg = I18N.t('Unknown model') + ' : ' + sel.model;
+          else msg = I18N.t('The assistant is unavailable right now') + ' (HTTP ' + res.status + ')';
           throw new Error(msg);
         }
         var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
@@ -6046,12 +6153,26 @@ function imgFallback(el) {
               var j = JSON.parse(payload);
               var delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
               if (delta) { acc += delta; ai.innerHTML = render(acc); log.scrollTop = log.scrollHeight; }
+              if (j.usage) usage = j.usage; // OpenRouter : dernier morceau, avec le coût réel
             } catch (e) { /* fragment incomplet : on attend la suite */ }
           }
         }
         if (!acc) throw new Error(I18N.t('The assistant returned nothing — try again'));
         ai.innerHTML = render(acc);
         history.push({ role: 'assistant', content: acc });
+        // Coût RÉEL sous la réponse : celui du fournisseur s'il le donne, sinon
+        // tokens × prix du catalogue, sinon l'estimation KIE.
+        var line = '';
+        if (usage) {
+          var cost = typeof usage.cost === 'number' ? usage.cost : null;
+          var m = orCatalog[sel.model];
+          if (cost === null && m && usage.prompt_tokens != null) cost = usage.prompt_tokens * m.prompt + (usage.completion_tokens || 0) * m.completion;
+          var toks = (usage.total_tokens || ((usage.prompt_tokens || 0) + (usage.completion_tokens || 0)));
+          line = (cost !== null ? fmtUsd(cost) : '') + (toks ? ' · ' + toks.toLocaleString() + ' tokens' : '') + ' · ' + sel.model;
+        } else if (sel.provider === 'kie') {
+          line = '~$0.01 · ' + sel.model;
+        }
+        if (line) { var u = document.createElement('div'); u.className = 'as-usage'; u.textContent = line.replace(/^ · /, ''); log.appendChild(u); log.scrollTop = log.scrollHeight; }
       } catch (e) {
         ai.remove();
         bubble('error', esc(e.message || 'Error'));
