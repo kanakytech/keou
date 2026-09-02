@@ -1019,6 +1019,38 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-chip[disabled]:hover{border-color:var(--s3);color:var(--ink-muted)}
 .tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
 .tp-limit.over{color:#fda4af}
+
+/* ── Avant / après — un seul composant, dans la carte et en plein écran ──
+   Deux calques superposés ; l'« après » est rogné par clip-path, propriété
+   composée par le GPU : le glissement ne relance aucune mise en page.
+   Dans la carte, le comparateur REMPLIT le cadre (position:absolute) : c'est
+   le cadre qui possède la géométrie, jamais le composant. */
+.cmp{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;cursor:ew-resize;background:var(--s1)}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;animation:none!important;transform:none!important}
+.cmp .cmp-after{clip-path:inset(0 0 0 var(--cmp-x,50%));will-change:clip-path}
+.cmp .cmp-handle{position:absolute;top:0;bottom:0;left:var(--cmp-x,50%);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none}
+.cmp .cmp-handle::after{content:'';position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background-color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.4);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M8 6l-4 6 4 6'/><path d='M16 6l4 6-4 6'/></svg>");background-size:18px;background-repeat:no-repeat;background-position:center}
+.cmp .cmp-tag{position:absolute;top:10px;padding:4px 9px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:rgba(10,10,10,.72);color:#fff;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none;transition:opacity var(--m-fast)}
+.cmp .cmp-tag.before{left:10px}
+.cmp .cmp-tag.after{right:10px;background:var(--tool-accent,var(--accent));color:#0a0a0a}
+.cmp.keyed .cmp-after,.cmp.keyed .cmp-handle{transition:clip-path .18s var(--m-ease),left .18s var(--m-ease)}
+.cmp:focus-visible{outline:none;box-shadow:inset 0 0 0 3px rgba(200,240,96,.45)}
+.result-card .cmp{position:absolute;inset:0;border-radius:inherit}
+/* Plein écran */
+.cmp-overlay{position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;background:rgba(6,6,6,.92);opacity:0;pointer-events:none;transition:opacity .2s var(--m-ease)}
+.cmp-overlay.open{opacity:1;pointer-events:auto}
+.cmp-overlay .cmp{width:min(92vw,1400px);height:min(84vh,900px);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6);transform:scale(.985);transition:transform .22s var(--m-ease)}
+.cmp-overlay.open .cmp{transform:scale(1)}
+.cmp-overlay .cmp img{object-fit:contain;background:#0a0a0a}
+.cmp-overlay .cmp-close{position:absolute;top:18px;right:18px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background var(--m-fast),transform var(--m-fast)}
+.cmp-overlay .cmp-close:hover{background:rgba(255,255,255,.2)}
+.cmp-overlay .cmp-close:active{transform:scale(.94)}
+.cmp-overlay .cmp-close svg{width:18px;height:18px}
+.cmp-overlay .cmp-foot{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;color:var(--ink-muted);font-size:12px;white-space:nowrap}
+.cmp-overlay .cmp-foot a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+@media (prefers-reduced-motion:reduce){.cmp.keyed .cmp-after,.cmp.keyed .cmp-handle,.cmp-overlay,.cmp-overlay .cmp{transition:none}}
+
 .tp-chip:active{transform:scale(.95);transition-duration:.08s}
 .tp-chip.active{border-color:var(--tool-accent);color:var(--tool-accent);background:var(--tool-tint);animation:chipSelect .18s var(--m-ease)}
 .tp-chip[hidden]{display:none}
@@ -1186,7 +1218,7 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
        le bloc JS « Production engine badge » et anon.js s'y accrochent. -->
   <div class="studio-header">
     <h2 class="studio-title">Production Engine</h2>
-    <h2 class="welcome-title">Ready to produce?</h2>
+    <h2 class="welcome-title">Hello Anonymous, what can I do for you today?</h2>
     <p class="welcome-sub">One product photo in &mdash; a full campaign out.</p>
     <div class="studio-controls">
       <span class="provider-badge" id="provider-badge" style="font-size:10px;padding:3px 8px;border-radius:100px;border:1px solid var(--border);color:var(--ink-muted);font-weight:500;letter-spacing:.3px"></span>
@@ -3014,6 +3046,10 @@ function poll(url, interval = 8000, timeout = 360000, onUpdate = null) {
           const rang = data.position ? ` position=${data.position}` : '';
           console.log(`[poll] attempt ${attempts}: state=${data.state || 'unknown'} ready=${data.ready}${rang}`);
         }
+        // Réponse RETENUE par le serveur (long-poll anonyme) : l'attente a déjà
+        // eu lieu là-bas, on redemande tout de suite. Sinon l'intervalle
+        // classique — les routes d'un compte ne retiennent pas.
+        if (data.held === true) { setTimeout(check, 250); return; }
       } catch (err) {
         networkErrors++;
         // Backoff: after 5+ consecutive errors, slow down polling to not hammer a dead server
@@ -3027,7 +3063,8 @@ function poll(url, interval = 8000, timeout = 360000, onUpdate = null) {
       }
       setTimeout(check, interval);
     };
-    setTimeout(check, 3000);
+    // Premier passage rapide : si le serveur retient, il attendra pour nous.
+    setTimeout(check, 600);
   });
 }
 
@@ -4762,10 +4799,126 @@ function imgFallback(el) {
     return card;
   }
 
+  /* Avant / après. Un seul constructeur pour la carte et le plein écran :
+     glisser au pointeur, flèches au clavier, étiquettes qui s'effacent près
+     du bord pour ne pas masquer ce qu'on compare. */
+  function buildCompare(before, after, opts) {
+    opts = opts || {};
+    var el = document.createElement('div');
+    el.className = 'cmp';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'slider');
+    el.setAttribute('aria-label', 'Before / after');
+    el.setAttribute('aria-valuemin', '0'); el.setAttribute('aria-valuemax', '100');
+    var b = document.createElement('img'); b.className = 'cmp-before'; b.src = before; b.alt = '';
+    var a = document.createElement('img'); a.className = 'cmp-after'; a.src = after; a.alt = '';
+    var h = document.createElement('div'); h.className = 'cmp-handle';
+    var tb = document.createElement('span'); tb.className = 'cmp-tag before'; tb.textContent = 'Before';
+    var ta = document.createElement('span'); ta.className = 'cmp-tag after'; ta.textContent = 'After';
+    el.appendChild(b); el.appendChild(a); el.appendChild(h); el.appendChild(tb); el.appendChild(ta);
+    var x = 50;
+    function paint() {
+      el.style.setProperty('--cmp-x', x + '%');
+      el.setAttribute('aria-valuenow', String(Math.round(x)));
+      tb.style.opacity = x < 14 ? '0' : '1';
+      ta.style.opacity = x > 86 ? '0' : '1';
+    }
+    function setFrom(clientX) {
+      var r = el.getBoundingClientRect();
+      x = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+      paint();
+    }
+    /* Limitation à une image par tour : on mémorise la DERNIÈRE position et
+       c'est elle qu'on peint — jeter les mouvements arrivés pendant une image
+       en attente laissait la poignée en retard sur le doigt (vu sur WebKit,
+       où les événements arrivent groupés). */
+    var raf = null, dragging = false, lastX = null;
+    el.addEventListener('pointerdown', function (e) {
+      dragging = true; el.classList.remove('keyed');
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      lastX = e.clientX; setFrom(lastX);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      lastX = e.clientX;
+      if (raf) return;
+      raf = requestAnimationFrame(function () { raf = null; if (dragging && lastX !== null) setFrom(lastX); });
+    });
+    var stop = function () {
+      if (!dragging) return;
+      dragging = false;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      if (lastX !== null) setFrom(lastX); // la position finale est toujours peinte
+    };
+    el.addEventListener('pointerup', stop); el.addEventListener('pointercancel', stop);
+    el.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 10 : 2;
+      if (e.key === 'ArrowLeft') { x = Math.max(0, x - step); }
+      else if (e.key === 'ArrowRight') { x = Math.min(100, x + step); }
+      else if (e.key === 'Home') { x = 0; }
+      else if (e.key === 'End') { x = 100; }
+      else return;
+      e.preventDefault(); el.classList.add('keyed'); paint();
+    });
+    paint();
+    // Entrée : l'« après » se dévoile de gauche à droite, une fois.
+    if (opts.reveal && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      x = 0; paint();
+      // Si le visiteur a déjà pris la poignée, l'entrée ne lui reprend pas
+      // la main : on ne repose la position que si personne n'y touche.
+      setTimeout(function () {
+        if (dragging) return;
+        el.classList.add('keyed'); x = 50; paint();
+        setTimeout(function () { el.classList.remove('keyed'); }, 260);
+      }, 60);
+    }
+    return el;
+  }
+
+  var cmpOverlay = null;
+  function openCompare(before, after) {
+    if (!cmpOverlay) {
+      cmpOverlay = document.createElement('div');
+      cmpOverlay.className = 'cmp-overlay';
+      cmpOverlay.setAttribute('role', 'dialog'); cmpOverlay.setAttribute('aria-modal', 'true');
+      cmpOverlay.setAttribute('aria-label', 'Before / after comparison');
+      // Sous <body> : un ancêtre transformé ferait de lui le bloc conteneur
+      // du position:fixed (même raison que le panneau « More »).
+      document.body.appendChild(cmpOverlay);
+      cmpOverlay.addEventListener('click', function (e) { if (e.target === cmpOverlay) closeCompare(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && cmpOverlay.classList.contains('open')) closeCompare(); });
+    }
+    cmpOverlay.textContent = '';
+    var c = buildCompare(before, after, { reveal: true });
+    var close = document.createElement('button');
+    close.type = 'button'; close.className = 'cmp-close'; close.setAttribute('aria-label', 'Close');
+    close.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    close.addEventListener('click', closeCompare);
+    var foot = document.createElement('div');
+    foot.className = 'cmp-foot';
+    foot.innerHTML = '<span>Drag or use the arrow keys</span><span>·</span>';
+    var full = document.createElement('a'); full.href = after; full.target = '_blank'; full.rel = 'noopener'; full.textContent = 'Open full size';
+    foot.appendChild(full);
+    cmpOverlay.appendChild(c); cmpOverlay.appendChild(close); cmpOverlay.appendChild(foot);
+    cmpOverlay._ouvreur = document.activeElement;
+    cmpOverlay._scroll = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function () { cmpOverlay.classList.add('open'); c.focus({ preventScroll: true }); });
+  }
+  function closeCompare() {
+    if (!cmpOverlay) return;
+    cmpOverlay.classList.remove('open');
+    document.body.style.overflow = cmpOverlay._scroll || '';
+    var o = cmpOverlay._ouvreur;
+    if (o && o.isConnected && typeof o.focus === 'function') { try { o.focus({ preventScroll: true }); } catch (e) {} }
+  }
+
   function finishCard(card, url, media) {
     if (!card) return;
     var wrap = card.querySelector('.result-media-wrap');
     wrap.textContent = '';
+    var before = card.dataset.before || null;
     if (media === 'video') {
       var v = document.createElement('video');
       v.className = 'w3-video'; v.controls = true; v.playsInline = true; v.src = url;
@@ -4779,6 +4932,12 @@ function imgFallback(el) {
       au.controls = true; au.src = url;
       aw.appendChild(au);
       wrap.appendChild(aw);
+    } else if (before) {
+      // Retouche ou agrandissement : la carte EST le comparateur. On glisse
+      // dans la carte, et le bouton « Compare » ouvre la version plein écran.
+      var cmp = buildCompare(before, url, { reveal: true });
+      wrap.appendChild(cmp);
+      wrap.style.cursor = 'ew-resize';
     } else {
       var im = document.createElement('img');
       im.src = url; im.alt = '';
@@ -4795,6 +4954,15 @@ function imgFallback(el) {
     if (dot) dot.className = 'status-dot done';
     var actions = document.createElement('div');
     actions.className = 'result-actions';
+    if (before && media !== 'video' && media !== 'audio') {
+      var cb = document.createElement('button');
+      cb.type = 'button'; cb.className = 'action-btn'; cb.textContent = 'Compare';
+      cb.addEventListener('click', function () { openCompare(before, url); });
+      actions.appendChild(cb);
+      var fs = document.createElement('a');
+      fs.className = 'action-btn'; fs.href = url; fs.target = '_blank'; fs.rel = 'noopener'; fs.textContent = 'Full size';
+      actions.appendChild(fs);
+    }
     var a = document.createElement('a');
     a.className = 'action-btn';
     a.href = '/essai.html';
@@ -4828,6 +4996,7 @@ function imgFallback(el) {
         if (Date.now() - start > timeout) {
           return reject(new Error('Timed out — check the community gallery later'));
         }
+        var retenu = false;
         try {
           var res = await Auth.authFetch(url);
           if (res.ok) {
@@ -4836,11 +5005,14 @@ function imgFallback(el) {
             if (d.failed || d.state === 'failed') return reject(new Error(d.error || 'The generation failed'));
             if (d.state === 'queued') { start = Date.now(); setCardState(card, 'queued'); }
             else setCardState(card, 'working');
+            retenu = d.held === true;
           }
         } catch (e) { /* réseau : on retentera au tick suivant */ }
-        setTimeout(tick, interval);
+        // Réponse retenue par le serveur : on repart tout de suite, l'attente a
+        // déjà eu lieu là-bas. Sinon, l'intervalle classique.
+        setTimeout(tick, retenu ? 250 : interval);
       };
-      setTimeout(tick, 2500);
+      setTimeout(tick, 400);
     });
   }
 
@@ -4857,6 +5029,11 @@ function imgFallback(el) {
     }
     spec.body.idempotencyKey = 'w3-' + tool + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     var card = addCard();
+    // Avant/après seulement là où les deux images se superposent (même
+    // cadrage) : retouche, remix, agrandissement. Adapt change le format.
+    if (card && spec.media === 'image' && spec.body.imageUrl && ['polish', 'remix', 'upscale'].indexOf(tool) !== -1) {
+      card.dataset.before = spec.body.imageUrl;
+    }
     try {
       var res;
       if (spec.direct) {

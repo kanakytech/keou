@@ -57,7 +57,7 @@ import { requireAdmin } from '../middleware/auth.js';
 import { clientIp } from '../middleware/rateLimit.js';
 import { getRequestProviderKey } from '../utils/requestContext.js';
 import { checkPrompt } from '../lib/prompt-filter.js';
-import { enqueue, positionOf, queueStats, mediaForKind } from '../lib/essai-queue.js';
+import { enqueue, positionOf, queueStats, mediaForKind, attendreFin } from '../lib/essai-queue.js';
 // r2Client (l'export par défaut de r2.js) sert UNIQUEMENT à demander un
 // intervalle d'octets : voir getObjectRange plus bas. Tout le reste passe par
 // les fonctions nommées du module.
@@ -1154,8 +1154,15 @@ router.get('/studio/status/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!UUID_RE.test(id)) return res.status(404).json({ error: 'Not found' });
+    /* `?wait=1` : on RETIENT la réponse jusqu'à la fin du travail (20 s au
+     * plus, sous les délais des proxys). Le client reçoit le rendu à la
+     * seconde où il existe, avec MOINS de requêtes qu'en sondant. L'écoute
+     * est posée AVANT la lecture de la base : sinon une fin survenue entre
+     * les deux serait manquée et le client attendrait 20 s pour rien. */
+    const retenir = req.query.wait === '1';
+    const finPromise = retenir ? attendreFin(id, 20_000) : null;
 
-    const row = await queryOne(
+    let row = await queryOne(
       `SELECT status, error, media, kind FROM essai_generations WHERE id = $1`,
       [id]
     );
@@ -1167,13 +1174,20 @@ router.get('/studio/status/:id', async (req, res) => {
     // par la table des kinds — jamais par un 'image' écrit en dur ici.
     const media = row.media || mediaForKind(row.kind).media;
 
+    if (retenir && row.status !== 'completed' && row.status !== 'failed') {
+      const etat = await finPromise;
+      if (etat) {
+        const r2 = await queryOne(`SELECT status, error, media, kind FROM essai_generations WHERE id = $1`, [id]);
+        if (r2) row = r2;
+      }
+    }
     if (row.status === 'completed') {
-      return res.json({ ready: true, resultUrl: `/api/essai/image/${id}`, state: 'completed', media });
+      return res.json({ ready: true, resultUrl: `/api/essai/image/${id}`, state: 'completed', media, held: retenir });
     }
     if (row.status === 'failed') {
-      return res.json({ ready: false, failed: true, state: 'failed', media, error: row.error || 'The generation failed' });
+      return res.json({ ready: false, failed: true, state: 'failed', media, error: row.error || 'The generation failed', held: retenir });
     }
-    const payload = { ready: false, state: row.status, media };
+    const payload = { ready: false, state: row.status, media, held: retenir };
     if (row.status === 'queued') payload.position = positionOf(id);
     res.json(payload);
   } catch (e) {

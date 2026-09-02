@@ -121,7 +121,10 @@ const AnonMode = (() => {
     // final, la boucle de sondage avalait l'erreur, et l'agrandissement tournait
     // indéfiniment sur son spinner alors que l'image était prête.
     const st = u.match(/^\/api\/status\/[a-z-]+\/([0-9a-f-]{36})/i);
-    if (st) return anonFetch(`/api/essai/studio/status/${st[1]}`);
+    // `wait=1` : le serveur retient sa réponse jusqu'à la fin du travail (20 s
+    // au plus). Le rendu apparaît à la seconde où il existe, au lieu d'attendre
+    // le prochain tour d'un sondage à 6-15 s.
+    if (st) return anonFetch(`/api/essai/studio/status/${st[1]}?wait=1`);
 
     // Generation operations → essai studio pipeline (public gallery output)
     if (method === 'POST' && ['/api/generate', '/api/polish', '/api/remix', '/api/adapt'].includes(u)) {

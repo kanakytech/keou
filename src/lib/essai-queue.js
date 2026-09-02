@@ -663,6 +663,29 @@ async function persistProviderResult(resultUrl, key, out, job) {
   await uploadToR2(marquer ? await apposerFiligrane(raw, out) : raw, key, out.mime);
 }
 
+/* ─── Terminaisons annoncées ───
+ * Le studio ne redemandait le statut que toutes les 6 à 15 secondes : la
+ * galerie, qui lit la base à l'ouverture, montrait le rendu AVANT le studio
+ * qui l'avait produit. Plutôt que sonder plus vite (plus de requêtes pour la
+ * même attente), la route de statut peut RETENIR sa réponse jusqu'à ce que
+ * la file annonce la fin du travail — c'est ici qu'elle l'annonce. */
+import { EventEmitter } from 'node:events';
+const terminaisons = new EventEmitter();
+terminaisons.setMaxListeners(0);
+function annoncerFin(id, etat) { terminaisons.emit(id, etat); }
+/**
+ * Se résout dès que le job `id` se termine (completed/failed), ou après `ms`.
+ * @returns {Promise<string|null>} l'état annoncé, ou null si le délai est passé
+ */
+export function attendreFin(id, ms) {
+  return new Promise((resolve) => {
+    let t;
+    const sur = (etat) => { clearTimeout(t); resolve(etat); };
+    terminaisons.once(id, sur);
+    t = setTimeout(() => { terminaisons.off(id, sur); resolve(null); }, ms);
+  });
+}
+
 /* Certaines pannes du fournisseur sont PASSAGÈRES, et il le dit lui-même :
  * « Internal Error, Please try again later. ». Vérifié le 02/09/2026 sur le
  * modèle de bruitage — trois demandes identiques dans la minute, deux échecs
@@ -763,6 +786,7 @@ async function executerJob(job) {
       WHERE id = $2 AND status IN ('queued','processing')`,
     [r2Key, job.id]
   );
+    annoncerFin(job.id, 'completed');
 }
 
 async function runJob(job) {
@@ -791,6 +815,7 @@ async function runJob(job) {
             WHERE id = $2 AND status IN ('queued','processing')`,
           [safeErrorMessage(err2), job.id]
         ).catch(() => {});
+    annoncerFin(job.id, 'failed');
         return;
       }
     }
@@ -801,6 +826,7 @@ async function runJob(job) {
         WHERE id = $2 AND status IN ('queued','processing')`,
       [safeErrorMessage(err), job.id]
     ).catch(() => {});
+    annoncerFin(job.id, 'failed');
   } finally {
     job.apiKey = null; // la clé ne survit pas au job
     active.delete(job);
