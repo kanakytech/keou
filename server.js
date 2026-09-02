@@ -151,9 +151,21 @@ app.use(cookieParser());
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(join(__dirname, 'public'), {
-  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, // Cache static assets 1h in prod, no cache in dev
+  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, // images, polices, échantillons : 1 h
   etag: true,                    // ETag for conditional requests (304 Not Modified)
   lastModified: true,            // Last-Modified headers
+  /* Le CODE (HTML, JS, CSS, JSON) n'est JAMAIS gardé une heure : `no-cache`
+   * force une revalidation à chaque chargement — un 304 quand rien n'a
+   * changé, la nouvelle version sinon. Sans ça, après chaque déploiement un
+   * navigateur mélangeait une page d'il y a une heure avec des scripts neufs
+   * (ou l'inverse) : vignettes vides, états figés, « bugs dans différents
+   * modules ». Vu le 03/09/2026 sur Safari après six déploiements dans la
+   * soirée. Les images gardent leur heure : elles ne changent pas de forme. */
+  setHeaders(res, filePath) {
+    if (/\.(html|js|mjs|css|json|txt|xml)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
   // Aucune édition ne sert de page d'index automatiquement : c'est la route
   // explicite plus bas qui décide de ce qu'est la racine. Depuis le 02/09 la
   // racine community est LE STUDIO, pas la page de présentation — un visiteur
@@ -672,6 +684,7 @@ app.get('/', (req, res) => {
     '<meta name="robots" content="noindex">',
     `<link rel="canonical" href="${SEO_HOST}/">\n<meta name="description" content="Keou Studio — free, open-source AI product images, cinematic video, voice and sound. No account: paste your own KIE.AI key and produce. Self-hostable under MIT.">`,
   );
+  res.set('Cache-Control', 'no-cache');
   res.type('html').send(html);
 });
 

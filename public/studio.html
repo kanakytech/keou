@@ -1016,12 +1016,13 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-thumb .tp-ring span{position:absolute;font-size:9.5px;font-weight:700;color:#fff;letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .tp-thumb.pending.indeterminate .tp-ring::before{background:conic-gradient(var(--tool-accent,var(--accent)) 25%,rgba(255,255,255,.14) 0);animation:tpSpin .9s linear infinite}
 @keyframes tpSpin{to{transform:rotate(360deg)}}
-.tp-thumb.failed{border-color:#fda4af}
+.tp-thumb.failed,.tp-thumb.broken{border-color:#fda4af}
 .tp-thumb.failed img,.tp-thumb.failed video{opacity:.25}
 .tp-thumb .tp-retry{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fda4af;background:rgba(10,10,10,.55);cursor:pointer}
 .tp-src-btn.busy{opacity:1;pointer-events:none;color:var(--tool-accent,var(--accent));border-color:var(--tool-accent,var(--accent))}
 .tp-src-btn.busy svg{animation:tpSpin .9s linear infinite}
 .tp-upload-note{margin:6px 0 0;font-size:12px;color:var(--ink-muted);display:flex;align-items:center;gap:8px}
+.tp-upload-note[hidden]{display:none}
 .tp-upload-note .bar{flex:1;height:3px;border-radius:2px;background:var(--s3);overflow:hidden}
 .tp-upload-note .bar i{display:block;height:100%;width:calc(var(--p,0)*1%);background:var(--tool-accent,var(--accent));transition:width .12s linear}
 .btn-primary[disabled]{opacity:.55;cursor:wait}
@@ -4905,7 +4906,15 @@ function imgFallback(el) {
         b.appendChild(badge);
       } else {
         var im = document.createElement('img');
-        im.alt = ''; im.loading = 'lazy'; im.src = s.url;
+        im.alt = ''; im.loading = 'eager'; im.decoding = 'async';
+        // Un lien signé peut hoqueter une fois : une seule reprise, puis on
+        // laisse le fond de la vignette dire qu'elle n'a pas chargé.
+        im.addEventListener('error', function () {
+          if (im.dataset.retry) { b.classList.add('broken'); return; }
+          im.dataset.retry = '1';
+          setTimeout(function () { im.src = s.url + (s.url.indexOf('?') === -1 ? '?' : '&') + 'r=1'; }, 800);
+        });
+        im.src = s.url;
         b.appendChild(im);
       }
       b.addEventListener('click', function () {
