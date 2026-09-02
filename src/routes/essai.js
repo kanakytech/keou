@@ -704,15 +704,26 @@ router.post('/signaler/:id', async (req, res) => {
 // stockée sur R2, publication dans la galerie communautaire, clé en RAM only.
 // ═══════════════════════════════════════════════════════════════════════
 
-const uploadImage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const uploadImage = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 const ALLOWED_IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+/* L'agrandissement vidéo part d'une vidéo EXTERNE à la plateforme : c'est tout
+ * son intérêt. On accepte donc aussi un fichier vidéo, avec sa propre limite —
+ * 20 Mo suffisent à une photo, pas à un clip. */
+const ALLOWED_VIDEO_TYPES = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 
 // ─── Upload anonyme (image source de génération, jamais publiée) ───
 router.post('/upload', uploadImage.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    const ext = ALLOWED_IMAGE_TYPES[req.file.mimetype];
-    if (!ext) return res.status(400).json({ error: 'Unsupported format. Use JPEG, PNG, WebP or GIF.' });
+    const estVideo = !!ALLOWED_VIDEO_TYPES[req.file.mimetype];
+    const ext = ALLOWED_IMAGE_TYPES[req.file.mimetype] || ALLOWED_VIDEO_TYPES[req.file.mimetype];
+    if (!ext) return res.status(400).json({ error: 'Unsupported format. Use JPEG, PNG, WebP, GIF, MP4, WebM or MOV.' });
+    const plafond = estVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+    if (req.file.size > plafond) {
+      return res.status(400).json({ error: estVideo ? 'Video too large (max 200MB)' : 'Image too large (max 20MB)' });
+    }
 
     const key = `essai/uploads/${Date.now()}_${randomBytes(6).toString('hex')}.${ext}`;
     // Chemin d'upload du studio anonyme — le plus exposé d'un build public.

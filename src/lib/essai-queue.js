@@ -281,6 +281,14 @@ function safeErrorMessage(err) {
   const propre = raw.trim();
   const suspect = /https?:\/\/|[A-Za-z0-9_-]{28,}|bearer|token|secret/i.test(propre);
   if (propre && propre.length <= 160 && !suspect) {
+    /* « Refusé » et « en panne » ne se disent pas pareil. Un refus vient de la
+     * demande (modération, format, crédit) et le visiteur peut agir dessus ;
+     * une panne amont ne lui doit rien — il a déjà été réessayé une fois par
+     * la file, et l'accuser d'un refus l'enverrait corriger un texte qui n'a
+     * rien à se reprocher. */
+    if (estPassagere(propre)) {
+      return `The model provider is having trouble right now (${propre}) — we already retried once. Try again in a few minutes.`;
+    }
     return `Provider refused the request: ${propre}`;
   }
   return 'Generation failed — please try again in a moment';
@@ -646,83 +654,137 @@ async function persistProviderResult(resultUrl, key, out, job) {
   await uploadToR2(marquer ? await apposerFiligrane(raw, out) : raw, key, out.mime);
 }
 
+/* Certaines pannes du fournisseur sont PASSAGÈRES, et il le dit lui-même :
+ * « Internal Error, Please try again later. ». Vérifié le 02/09/2026 sur le
+ * modèle de bruitage — trois demandes identiques dans la minute, deux échecs
+ * et une réussite. Sans reprise, le visiteur voyait « ça ne marche pas » pour
+ * une secousse d'en face. On reprend UNE fois, et seulement sur ces messages :
+ * un refus de modération, une clé morte ou un crédit épuisé ne se réessaient
+ * pas — ils se disent. */
+const ERREURS_PASSAGERES = [
+  'internal error',
+  'please try again',
+  'try again later',
+  'timeout',
+  'temporarily unavailable',
+  'service unavailable',
+];
+function estPassagere(message) {
+  const m = String(message || '').toLowerCase();
+  return ERREURS_PASSAGERES.some((e) => m.includes(e));
+}
+
+/**
+ * La partie utile d'un job : soumission au fournisseur, sondage, filigrane,
+ * écriture du résultat. Extraite de runJob pour pouvoir être RELANCÉE telle
+ * quelle après une panne passagère, sans rejouer la comptabilité de file
+ * (`active`, durées, pump) que porte le `finally` de runJob.
+ */
+async function executerJob(job) {
+  // Calculé DANS le try, et pas au-dessus : tout ce qui précède le try est du
+  // code dont un jet ne rendrait jamais sa voie — `active` garderait le job
+  // pour toujours et la file perdrait une place à chaque fois. Rien ici ne
+  // jette aujourd'hui ; la garantie « une voie prise est une voie rendue » ne
+  // doit pas dépendre de cette lecture-là.
+  let out = mediaForKind(job.kind);
+
+  // media est réaffirmé ici, et pas seulement à l'insertion : la file est la
+  // seule à connaître la table des médias, le client saura donc toujours ce
+  // qu'il reçoit même si la route appelante ne l'a pas renseigné.
+  await query(`UPDATE essai_generations SET status = 'processing', media = $2 WHERE id = $1`, [job.id, out.media]);
+
+  // 1. Création de la tâche provider (clé du visiteur, RAM only)
+  const task = await createProviderTask(job);
+
+  // veo3 se sonde sur un autre point d'entrée que le reste du catalogue :
+  // pollTask a besoin du modèle pour choisir la bonne URL.
+  const pollMetadata = job.kind === 'video'
+    ? JSON.stringify({ videoModel: videoModelOf(job) })
+    : '{}';
+
+  // 2. Polling jusqu'à état terminal ou timeout
+  const deadline = Date.now() + (out.media === 'video' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
+  let resultUrl = null;
+  /* Une panne installée chez le fournisseur s'annonce, elle ne s'attend pas.
+   *
+   * Le sondage ne distinguait pas « la génération travaille » de « le serveur
+   * d'en face ne répond plus ». Un 524 — le code Cloudflare d'une origine
+   * muette — se traversait donc quatre minutes durant, pour finir en « délai
+   * dépassé » sans motif, alors que le fournisseur criait depuis la première
+   * seconde. Constaté le 27/08 sur une génération d'image.
+   *
+   * Quelques secousses se traversent : un réseau hoquette, un service
+   * redémarre. Au-delà d'une minute d'échecs D'AFFILÉE, ce n'est plus une
+   * secousse, et le visiteur a le droit de savoir sur quoi il attend. */
+  const MAX_PANNES_AMONT = Math.max(4, Math.round(60_000 / POLL_INTERVAL_MS));
+  let pannes = 0;
+  let dernierePanne = null;
+
+  for (;;) {
+    if (Date.now() > deadline) throw new Error('ESSAI_TIMEOUT');
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: pollMetadata });
+    if (st.status === 'failed') throw new Error(st.error || 'provider failed');
+    if (st.status === 'completed' && st.resultUrl) { resultUrl = st.resultUrl; break; }
+
+    if (st.panneAmont) {
+      pannes++;
+      dernierePanne = st.panneAmont;
+      if (pannes >= MAX_PANNES_AMONT) throw new Error(`ESSAI_AMONT_${dernierePanne}`);
+    } else {
+      pannes = 0;   // une seule réponse saine efface la série
+    }
+  }
+
+  // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
+  //    l'URL du fournisseur ne sort jamais d'ici, ni vers la base ni vers le client
+  // Le son prend le format réellement rendu — voir formatAudioRendu.
+  if (out.media === 'audio') {
+    const reel = formatAudioRendu(resultUrl);
+    if (reel && reel.ext !== out.ext) {
+      console.warn(`[ESSAI] job ${job.id}: le fournisseur rend du "${reel.ext}", servi comme tel`);
+      out = Object.freeze({ ...out, ext: reel.ext, mime: reel.mime });
+    }
+  }
+  const r2Key = `essai/${job.id}.${out.ext}`;
+  await persistProviderResult(resultUrl, r2Key, out, job);
+
+  await query(
+    `UPDATE essai_generations SET status = 'completed', r2_key = $1, completed_at = NOW()
+      WHERE id = $2 AND status IN ('queued','processing')`,
+    [r2Key, job.id]
+  );
+}
+
 async function runJob(job) {
   const startedAt = Date.now();
   try {
-    // Calculé DANS le try, et pas au-dessus : tout ce qui précède le try est du
-    // code dont un jet ne rendrait jamais sa voie — `active` garderait le job
-    // pour toujours et la file perdrait une place à chaque fois. Rien ici ne
-    // jette aujourd'hui ; la garantie « une voie prise est une voie rendue » ne
-    // doit pas dépendre de cette lecture-là.
-    let out = mediaForKind(job.kind);
-
-    // media est réaffirmé ici, et pas seulement à l'insertion : la file est la
-    // seule à connaître la table des médias, le client saura donc toujours ce
-    // qu'il reçoit même si la route appelante ne l'a pas renseigné.
-    await query(`UPDATE essai_generations SET status = 'processing', media = $2 WHERE id = $1`, [job.id, out.media]);
-
-    // 1. Création de la tâche provider (clé du visiteur, RAM only)
-    const task = await createProviderTask(job);
-
-    // veo3 se sonde sur un autre point d'entrée que le reste du catalogue :
-    // pollTask a besoin du modèle pour choisir la bonne URL.
-    const pollMetadata = job.kind === 'video'
-      ? JSON.stringify({ videoModel: videoModelOf(job) })
-      : '{}';
-
-    // 2. Polling jusqu'à état terminal ou timeout
-    const deadline = Date.now() + (out.media === 'video' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
-    let resultUrl = null;
-    /* Une panne installée chez le fournisseur s'annonce, elle ne s'attend pas.
-     *
-     * Le sondage ne distinguait pas « la génération travaille » de « le serveur
-     * d'en face ne répond plus ». Un 524 — le code Cloudflare d'une origine
-     * muette — se traversait donc quatre minutes durant, pour finir en « délai
-     * dépassé » sans motif, alors que le fournisseur criait depuis la première
-     * seconde. Constaté le 27/08 sur une génération d'image.
-     *
-     * Quelques secousses se traversent : un réseau hoquette, un service
-     * redémarre. Au-delà d'une minute d'échecs D'AFFILÉE, ce n'est plus une
-     * secousse, et le visiteur a le droit de savoir sur quoi il attend. */
-    const MAX_PANNES_AMONT = Math.max(4, Math.round(60_000 / POLL_INTERVAL_MS));
-    let pannes = 0;
-    let dernierePanne = null;
-
-    for (;;) {
-      if (Date.now() > deadline) throw new Error('ESSAI_TIMEOUT');
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: pollMetadata });
-      if (st.status === 'failed') throw new Error(st.error || 'provider failed');
-      if (st.status === 'completed' && st.resultUrl) { resultUrl = st.resultUrl; break; }
-
-      if (st.panneAmont) {
-        pannes++;
-        dernierePanne = st.panneAmont;
-        if (pannes >= MAX_PANNES_AMONT) throw new Error(`ESSAI_AMONT_${dernierePanne}`);
-      } else {
-        pannes = 0;   // une seule réponse saine efface la série
-      }
-    }
-
-    // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
-    //    l'URL du fournisseur ne sort jamais d'ici, ni vers la base ni vers le client
-    // Le son prend le format réellement rendu — voir formatAudioRendu.
-    if (out.media === 'audio') {
-      const reel = formatAudioRendu(resultUrl);
-      if (reel && reel.ext !== out.ext) {
-        console.warn(`[ESSAI] job ${job.id}: le fournisseur rend du "${reel.ext}", servi comme tel`);
-        out = Object.freeze({ ...out, ext: reel.ext, mime: reel.mime });
-      }
-    }
-    const r2Key = `essai/${job.id}.${out.ext}`;
-    await persistProviderResult(resultUrl, r2Key, out, job);
-
-    await query(
-      `UPDATE essai_generations SET status = 'completed', r2_key = $1, completed_at = NOW()
-        WHERE id = $2 AND status IN ('queued','processing')`,
-      [r2Key, job.id]
-    );
+    await executerJob(job);
   } catch (err) {
+    /* Reprise UNIQUE sur une panne que le fournisseur déclare passagère.
+     * Elle est posée ici et pas chez l'appelant : runJob attrape lui-même et
+     * écrit « failed », si bien qu'une reprise en amont serait du code mort.
+     * La 2e tentative repart de zéro (nouveau taskId), ce qui est exactement
+     * ce que « please try again later » demande. `_repris` interdit la boucle,
+     * et le `finally` ci-dessous ne joue qu'une fois puisqu'on ne rappelle pas
+     * runJob mais sa partie utile. */
+    if (!job._repris && estPassagere(err?.message)) {
+      job._repris = true;
+      console.warn(`[ESSAI] job ${job.id} : panne passagère amont, reprise unique —`, (err?.message || '').slice(0, 120));
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        await executerJob(job);
+        return; // réussi à la reprise : le `finally` fait le ménage
+      } catch (err2) {
+        console.error(`[ESSAI] job ${job.id} failed après reprise:`, (err2?.message || 'unknown').slice(0, 200));
+        await query(
+          `UPDATE essai_generations SET status = 'failed', error = $1
+            WHERE id = $2 AND status IN ('queued','processing')`,
+          [safeErrorMessage(err2), job.id]
+        ).catch(() => {});
+        return;
+      }
+    }
     // Log générique côté serveur — jamais la clé, jamais l'URL signée
     console.error(`[ESSAI] job ${job.id} failed:`, (err?.message || 'unknown').slice(0, 200));
     await query(

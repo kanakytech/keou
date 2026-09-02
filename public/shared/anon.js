@@ -98,7 +98,7 @@ const AnonMode = (() => {
     '/api/tools/tts': 'tts',
     '/api/tools/sfx': 'sfx',
     '/api/tools/image-upscale': 'upscale',
-    '/api/tools/video-upscale': 'upscale',
+    '/api/tools/video-upscale': 'video-upscale',
   };
 
   // ── The mapper: studio route → anonymous route ──
@@ -188,8 +188,14 @@ const AnonMode = (() => {
                          'aspectRatio', 'generateAudio', 'variant', 'creativeDirection', 'format']) {
           if (body[k] !== undefined && body[k] !== null) out[k] = body[k];
         }
-      } else if (mediaTarget === 'upscale') {
+      } else if (mediaTarget === 'upscale' || mediaTarget === 'video-upscale') {
         if (body.upscaleFactor) out.upscaleFactor = String(body.upscaleFactor);
+        if (mediaTarget === 'video-upscale' && out.imageUrl) {
+          // La route vidéo lit `videoUrl` : une source externe doit arriver
+          // sous ce nom, pas sous celui d'une image.
+          out.videoUrl = out.imageUrl;
+          delete out.imageUrl;
+        }
       } else {
         // Voix et bruitage : le texte du visiteur est le prompt, il passera le
         // filtre de modération côté serveur comme n'importe quel autre.

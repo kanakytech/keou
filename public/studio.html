@@ -1719,19 +1719,35 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
       <p class="section-label">Script</p>
       <textarea class="form-input" data-tp-text rows="3" maxlength="500" placeholder="Type the words to speak&hellip;"></textarea>
       <p class="section-label">Voice</p>
+      <!-- Voix du moteur Gemini (le défaut : ElevenLabs est en panne chez KIE).
+           Les 24 noms ont été validés un par un contre l'API réelle — les noms
+           ElevenLabs qui étaient ici (Rachel, Aria…) sont refusés par ce moteur
+           et faisaient échouer CHAQUE génération de voix. -->
       <select class="form-input" data-tp-voice>
-        <option value="Rachel" selected>Rachel</option>
-        <option value="Aria">Aria</option>
-        <option value="Roger">Roger</option>
-        <option value="Sarah">Sarah</option>
-        <option value="George">George</option>
-        <option value="Laura">Laura</option>
-        <option value="Charlie">Charlie</option>
-        <option value="Charlotte">Charlotte</option>
-        <option value="Alice">Alice</option>
-        <option value="Brian">Brian</option>
-        <option value="Lily">Lily</option>
-        <option value="Daniel">Daniel</option>
+        <option value="Puck" selected>Puck — bright, upbeat</option>
+        <option value="Charon">Charon — deep, informative</option>
+        <option value="Kore">Kore — firm, confident</option>
+        <option value="Fenrir">Fenrir — excitable</option>
+        <option value="Aoede">Aoede — breezy</option>
+        <option value="Leda">Leda — youthful</option>
+        <option value="Orus">Orus — firm, grounded</option>
+        <option value="Zephyr">Zephyr — bright</option>
+        <option value="Callirrhoe">Callirrhoe — easy-going</option>
+        <option value="Autonoe">Autonoe — bright</option>
+        <option value="Enceladus">Enceladus — breathy</option>
+        <option value="Iapetus">Iapetus — clear</option>
+        <option value="Umbriel">Umbriel — easy-going</option>
+        <option value="Algieba">Algieba — smooth</option>
+        <option value="Despina">Despina — smooth</option>
+        <option value="Erinome">Erinome — clear</option>
+        <option value="Algenib">Algenib — gravelly</option>
+        <option value="Rasalgethi">Rasalgethi — informative</option>
+        <option value="Laomedeia">Laomedeia — upbeat</option>
+        <option value="Achernar">Achernar — soft</option>
+        <option value="Alnilam">Alnilam — firm</option>
+        <option value="Schedar">Schedar — even</option>
+        <option value="Gacrux">Gacrux — mature</option>
+        <option value="Sulafat">Sulafat — warm</option>
       </select>
       <button type="button" class="btn-primary full" data-tp-submit>Generate Speech</button>
       <p class="tp-note">AI voice-over &mdash; the audio result plays right here and lands in the public gallery.</p>
@@ -1762,8 +1778,13 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
       <p class="section-label">Source Video</p>
       <div class="tp-sources-row">
         <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload-video title="Upload a video file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
       </div>
-      <p class="tp-hint">Video upscaling starts from a video made in this session &mdash; render one with the Video tool first.</p>
+      <p class="tp-hint">Upscale a video from this session, upload your own file, or paste a link &mdash; the source does not have to be made here.</p>
+      <input type="url" class="form-input" data-tp-video-url placeholder="https://… link to an MP4" style="margin-top:6px">
       <p class="section-label">Scale factor</p>
       <div class="tp-chips" data-tp-factors>
         <button type="button" class="tp-chip active" data-v="2">&times;2</button>
@@ -4587,17 +4608,20 @@ function imgFallback(el) {
     }
   }
 
-  async function uploadBlob(tool, btn, blob, name) {
+  async function uploadBlob(tool, btn, blob, name, media) {
     btn.classList.add('busy');
+    var type = media === 'video' ? 'video' : 'image';
     try {
       var fd = new FormData();
-      fd.append('image', blob, name || 'source.jpg');
+      // Le champ garde le nom « image » : c'est celui que la route attend,
+      // pour l'image comme pour la vidéo (elle lit le type MIME du fichier).
+      fd.append('image', blob, name || (type === 'video' ? 'source.mp4' : 'source.jpg'));
       var res = await Auth.authFetch('/api/upload', { method: 'POST', body: fd });
       var data = await res.json();
       if (!res.ok || data.error || !data.url) throw new Error(data.error || 'Upload failed');
-      state[tool].uploads.unshift({ url: data.url, media: 'image' });
+      state[tool].uploads.unshift({ url: data.url, media: type });
       state[tool].sel = data.url;
-      state[tool].selMedia = 'image';
+      state[tool].selMedia = type;
       refreshThumbs(tool);
     } catch (e) {
       toast(e.message, true);
@@ -4790,8 +4814,43 @@ function imgFallback(el) {
     return false;
   }
 
+  /* L'agrandissement vidéo part d'une vidéo qui n'a pas à venir d'ici : c'est
+     tout son intérêt. Deux chemins en plus des rendus de session — un fichier
+     local, ou un lien. */
+  function wireVideoSource() {
+    var panel = panelOf('vidupscale');
+    if (!panel) return;
+    var btn = q(panel, '[data-tp-upload-video]');
+    if (btn) {
+      var fi = document.createElement('input');
+      fi.type = 'file'; fi.accept = 'video/mp4,video/webm,video/quicktime'; fi.hidden = true;
+      panel.appendChild(fi);
+      btn.addEventListener('click', function () { fi.click(); });
+      fi.addEventListener('change', function () {
+        var f = fi.files && fi.files[0];
+        fi.value = '';
+        if (!f) return;
+        if (f.size > 200 * 1024 * 1024) { toast('Video too large (max 200MB)', true); return; }
+        uploadBlob('vidupscale', btn, f, f.name, 'video');
+      });
+    }
+    // Un lien collé devient la source directement, sans transiter par nos serveurs.
+    var champ = q(panel, '[data-tp-video-url]');
+    if (champ) {
+      champ.addEventListener('input', function () {
+        var v = champ.value.trim();
+        if (!v) { if (state.vidupscale.selMedia === 'url') { state.vidupscale.sel = null; state.vidupscale.selMedia = null; } return; }
+        if (!/^https?:\/\/\S+$/i.test(v)) return;
+        state.vidupscale.sel = v;
+        state.vidupscale.selMedia = 'url';
+        panel.querySelectorAll('.tp-thumb.active').forEach(function (t) { t.classList.remove('active'); });
+      });
+    }
+  }
+
   function mountTools() {
     ['polish', 'remix', 'adapt', 'video', 'upscale'].forEach(wireUpload);
+    wireVideoSource();
     document.querySelectorAll('.tool-panel .tp-chips').forEach(wireChips);
     document.querySelectorAll('.tp-engines').forEach(wireChips);
 
@@ -4891,9 +4950,8 @@ function imgFallback(el) {
         media: 'audio', body: body };
     });
 
-    // 9e outil : la route essai en DIRECT (l'adaptateur anonyme mappe encore
-    // /api/tools/video-upscale sur l'agrandissement image — on ne passe pas
-    // par lui). sourceId quand la source est un rendu de session, sinon URL.
+    // 9e outil : la route essai en DIRECT — la source peut être un rendu de
+    // session (sourceId), un fichier envoyé, ou un lien externe (videoUrl).
     wireSubmit('vidupscale', function (panel, st) {
       if (!needSource(st, true)) return null;
       var f = chipValue(q(panel, '[data-tp-factors]')) || '2';
