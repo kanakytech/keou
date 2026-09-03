@@ -301,6 +301,11 @@ function safeErrorMessage(err) {
      * la file, et l'accuser d'un refus l'enverrait corriger un texte qui n'a
      * rien à se reprocher. */
     if (estPassagere(propre)) {
+      // Le message chinois de saturation ne dit rien à un visiteur : on le traduit.
+      if (/服务繁忙|请稍后重试/.test(propre)) {
+        const n = (propre.match(/(\d+)/) || [])[1];
+        return `The provider's queue for this model is full right now${n ? ` (${n} tasks waiting)` : ''} — we already retried once. Try again in a few minutes.`;
+      }
       return `The model provider is having trouble right now (${propre}) — we already retried once. Try again in a few minutes.`;
     }
     /* Le refus le plus fréquent de l'agrandissement : le résultat dépasserait
@@ -766,6 +771,10 @@ const ERREURS_PASSAGERES = [
   'timeout',
   'temporarily unavailable',
   'service unavailable',
+  // KIE relaie parfois le mot du modèle en chinois : « service occupé, N tâches
+  // en file, réessayez plus tard » — vu sur Recraft le 03/09/2026 (51 en file).
+  '请稍后重试',
+  '服务繁忙',
 ];
 function estPassagere(message) {
   /* Nos propres sentinelles passent avant tout : « ESSAI_TIMEOUT » contient
