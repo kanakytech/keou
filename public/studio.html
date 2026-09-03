@@ -1888,6 +1888,10 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
           <span class="tp-engine-name">Seedance 2</span>
           <span class="tp-engine-meta">realistic &middot; 4-15s</span>
         </button>
+        <button type="button" class="tp-engine" data-v="wan-3.0">
+          <span class="tp-engine-name">Wan 3.0</span>
+          <span class="tp-engine-meta">cinematic &middot; 2-30s &middot; audio</span>
+        </button>
       </div>
       <div class="tp-row">
         <div class="tp-col">
@@ -1900,6 +1904,8 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
             <button type="button" class="tp-chip active" data-v="8">8s</button>
             <button type="button" class="tp-chip" data-v="10">10s</button>
             <button type="button" class="tp-chip" data-v="15">15s</button>
+        <button type="button" class="tp-chip" data-v="20">20s</button>
+        <button type="button" class="tp-chip" data-v="30">30s</button>
           </div>
         </div>
         <div class="tp-col" data-tp-resolution-wrap hidden>
@@ -4960,6 +4966,7 @@ function imgFallback(el) {
     'kling-2.6': { videoModel: 'kling-2.6', durations: [5, 10], def: 5 },
     'kling-3.0': { videoModel: 'kling-3.0', durations: [3, 4, 5, 6, 8, 10, 15], def: 8 },
     'seedance-2': { videoModel: 'seedance-2', durations: [4, 5, 6, 8, 10, 15], def: 10, resolution: true },
+    'wan-3.0': { videoModel: 'wan-3.0', durations: [4, 5, 6, 8, 10, 15, 20, 30], def: 8, resolution: true },
   };
 
   var state = {};
@@ -5692,6 +5699,12 @@ function imgFallback(el) {
       if (key === 'veo3_fast') return 0.30;
       if (key === 'kling-2.6' || key === 'kling-3.0') return d * 0.06;
       if (key === 'seedance-2') return d * 0.05;
+      if (key === 'wan-3.0') {
+        // Mesuré : 0,04 $/s en 480p, 0,08 $/s en 720p.
+        var rw = q(panel, '[data-tp-resolution-wrap]');
+        var rk = rw ? (chipValue(rw) || '720p') : '720p';
+        return d * (String(rk) === '480p' ? 0.04 : 0.08);
+      }
       return d * 0.05;
     },
   };
@@ -6206,10 +6219,10 @@ function imgFallback(el) {
   }
   var SYSTEM = [
     'You are the assistant inside Keou Studio (studio.kanaky.xyz), a free, open-source creative production studio. The visitor brings their own KIE.AI key; everything they create here is public in the community gallery with a watermark; costs are billed by KIE.AI to their key.',
-    'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3 — ~$0.09 per format, so ~$0.72 for the full pack; quote the pack total); Video (a clip from a still — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
+    'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3 — ~$0.09 per format, so ~$0.72 for the full pack; quote the pack total); Video (a clip from a still or from text — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second, Wan 3.0 up to 30 s with native audio, from text or a photo — ~$0.04 per second at 480p, ~$0.08 at 720p); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
     'Be concise, warm and practical. Answer in the language the visitor writes in. Recommend the right tool and say what it will cost. Never invent tools, models or prices.',
     'When you propose an image prompt, put it ALONE in a fenced block that starts with ```prompt and ends with ``` — the studio turns it into a one-click Generate. Write prompts in English, specific and photographic: subject, setting, light, camera, mood. One prompt per block.',
-    'You can also ACT. When the visitor clearly asks you to run a tool (e.g. "make the pack of this image", "upscale my last result", "polish it", "make a video of it", "say this in a voice"), emit ONE fenced block that starts with ```action containing only JSON, then one short sentence. Schema: {"tool":"create|polish|remix|adapt|upscale|video|voice|sfx","source":"last|selected|null","prompt":"<for create/remix/video>","factor":"2|4","engine":"veo3_fast|veo3_pro|kling-2.6|kling-3.0|seedance-2","text":"<for voice/sfx>"}. The studio shows the action with its cost and a Run button — nothing runs without the visitor\'s click. Use "source":"last" for their latest result. If there is no result yet and the request needs one, say so instead of emitting an action.'
+    'You can also ACT. When the visitor clearly asks you to run a tool (e.g. "make the pack of this image", "upscale my last result", "polish it", "make a video of it", "say this in a voice"), emit ONE fenced block that starts with ```action containing only JSON, then one short sentence. Schema: {"tool":"create|polish|remix|adapt|upscale|video|voice|sfx","source":"last|selected|null","prompt":"<for create/remix/video>","factor":"2|4","engine":"veo3_fast|veo3_pro|kling-2.6|kling-3.0|seedance-2|wan-3.0","text":"<for voice/sfx>"}. The studio shows the action with its cost and a Run button — nothing runs without the visitor\'s click. Use "source":"last" for their latest result. If there is no result yet and the request needs one, say so instead of emitting an action.'
   ].join('\n\n');
   var history = [];
   var busy = false;

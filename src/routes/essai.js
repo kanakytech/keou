@@ -1003,7 +1003,7 @@ router.post('/studio/video', async (req, res) => {
         // 10 secondes en silence, et les autres modèles convertissent de toute
         // façon ce qu'ils reçoivent.
         duration: secs === null ? null : String(secs),
-        resolution: ['480p', '720p'].includes(resolution) ? resolution : null,
+        resolution: ['480p', '720p', '1080p'].includes(resolution) ? resolution : null,
         mode: VIDEO_MODES.includes(mode) ? mode : null,
         sound: sound === true,
         aspectRatio: VALID_FORMATS.includes(aspectRatio) ? aspectRatio : null,

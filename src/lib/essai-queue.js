@@ -311,7 +311,7 @@ function safeErrorMessage(err) {
 // monté sur /api dans server.js, pas sur /api/generate, et c'est bien vers
 // /api/video que le studio poste.) Un modèle inconnu retombe sur le moins cher
 // plutôt que d'échouer chez le fournisseur.
-const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2'];
+const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2', 'wan-3.0'];
 
 function videoModelOf(job) {
   return VIDEO_MODELS.includes(job.videoModel) ? job.videoModel : 'grok-imagine';

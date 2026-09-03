@@ -209,7 +209,19 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
   const headers = kieHeaders(apiKey);
   let r;
 
-  if (model === 'seedance-2') {
+  if (model === 'wan-3.0') {
+    /* Wan 3.0 (Alibaba) : texte seul ou première image, 2 à 30 s, audio natif,
+     * 480P/720P/1080P. Le ratio « adaptive » laisse le modèle choisir d'après
+     * l'image ; on ne le force que si le visiteur a demandé un format. */
+    const ratios = { '16:9': '16:9', '9:16': '9:16', '1:1': '1:1', '3:4': '3:4', '4:3': '4:3' };
+    const res = { '480p': '480P', '720p': '720P', '1080p': '1080P' }[String(resolution || '').toLowerCase()] || '720P';
+    r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'wan/3-0-video', input: {
+      prompt, ...(imageUrl ? { first_frame_url: imageUrl } : {}),
+      resolution: res, aspect_ratio: ratios[aspectRatio] || 'adaptive',
+      duration: Math.round(Math.min(30, Math.max(2, Number(duration) || 8))),
+      audio: sound !== false,
+    } }) });
+  } else if (model === 'seedance-2') {
     // Durée : entier de 4 à 15 s. Arrondi parce que le fournisseur compte en
     // secondes entières — un 7,5 reçu d'un client API partait tel quel.
     r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'bytedance/seedance-2', input: { prompt, ...(imageUrl ? { first_frame_url: imageUrl } : {}), generate_audio: generateAudio === true, resolution: resolution === '480p' ? '480p' : '720p', aspect_ratio: ratioSeedance(aspectRatio), duration: Math.round(Math.min(15, Math.max(4, Number(duration) || 10))), web_search: false } }) });
@@ -421,6 +433,9 @@ export async function upscaleVideo(apiKey, { videoUrl, upscaleFactor }) {
 }
 
 // ─── Cost Calculation (per generation, KIE.AI credit-based estimates) ───
+/* Wan 3.0 : mesuré le 03/09/2026 sur deux générations réelles de 5 s — 40 crédits
+ * en 480p, 80 en 720p, à 0,005 $ le crédit. 1080p extrapolé (×2), non mesuré. */
+const WAN_PER_SEC = { '480p': 0.04, '720p': 0.08, '1080p': 0.16 };
 export function calculateCost(type, params = {}) {
   switch (type) {
     case 'image': return 0.09;
@@ -444,6 +459,7 @@ export function calculateCost(type, params = {}) {
       }
       if (model === 'kling-2.6' || model === 'kling-3.0') return dur * 0.06;
       if (model === 'seedance-2') return dur * 0.05;
+      if (model === 'wan-3.0') return dur * (WAN_PER_SEC[String(params.resolution || '').toLowerCase()] || WAN_PER_SEC['720p']);
       return dur * 0.05; // grok-imagine
     }
     case 'img-upscale': return 0.12;
