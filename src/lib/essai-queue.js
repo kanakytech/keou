@@ -56,11 +56,14 @@ const MAX_QUEUE = 60;               // trois lots de 20 : le troisième visiteur
 // globale — au-dessus, il ne voudrait plus rien dire.
 const MAX_PER_IP = Math.min(MAX_QUEUE, Math.max(1, parseInt(process.env.ESSAI_MAX_PER_IP) || 20));
 const POLL_INTERVAL_MS = 5_000;
-const POLL_TIMEOUT_MS = 4 * 60_000; // images et sons : 4 min puis échec
+// Surchargeable par l'environnement pour les tests du chemin « rendu tardif »
+// (jamais sous 10 s) ; en production les valeurs ci-dessous s'appliquent.
+const surchargeDelai = (nom, defaut) => Math.max(10_000, parseInt(process.env[nom]) || defaut);
+const POLL_TIMEOUT_MS = surchargeDelai('ESSAI_POLL_TIMEOUT_MS', 4 * 60_000); // images et sons : 4 min puis échec
 // Une vidéo rend rarement sous 4 minutes (veo3 dépasse couramment 5) : garder
 // le délai des images ici reviendrait à abandonner des jobs qui allaient
 // aboutir, en facturant quand même les crédits du visiteur.
-const POLL_TIMEOUT_VIDEO_MS = 10 * 60_000;
+const POLL_TIMEOUT_VIDEO_MS = surchargeDelai('ESSAI_POLL_TIMEOUT_VIDEO_MS', 10 * 60_000);
 
 const queue = [];                   // jobs en attente, dans l'ordre d'arrivée
 
@@ -254,6 +257,13 @@ function safeErrorMessage(err) {
     return `The provider is unavailable (HTTP ${code}) — try again in a few minutes.`;
   }
 
+  /* Le rendu n'est pas perdu, il est en retard : la tâche tourne encore chez le
+   * fournisseur, la clé a été débitée UNE fois, et la file continue de sonder
+   * une heure durant (voir « Rendus tardifs »). Le visiteur doit savoir où
+   * chercher, pas recommencer — recommencer, c'est payer deux fois. */
+  if (raw === 'ESSAI_LATE') {
+    return 'Still rendering at the provider — your key was billed once. If it finishes within the hour, it will appear in the gallery; do not relaunch it.';
+  }
   if (raw === 'ESSAI_TIMEOUT') {
     // Le délai dépend du média (4 min pour une image, 10 pour une vidéo) : le
     // message ne cite plus de durée, il mentirait une fois sur deux.
@@ -758,6 +768,14 @@ const ERREURS_PASSAGERES = [
   'service unavailable',
 ];
 function estPassagere(message) {
+  /* Nos propres sentinelles passent avant tout : « ESSAI_TIMEOUT » contient
+   * « timeout », et la reprise unique le prenait pour une secousse du
+   * fournisseur — elle relançait createProviderTask pendant que la première
+   * tâche tournait encore chez lui. Le visiteur payait DEUX rendus pour en
+   * recevoir au mieux un. Relevé le 03/09/2026 sur le main public. Un délai
+   * de sondage dépassé n'est pas une panne : c'est un rendu en retard, et il
+   * a sa propre voie (« Rendus tardifs »). */
+  if (/^ESSAI_/.test(String(message || ''))) return false;
   const m = String(message || '').toLowerCase();
   return ERREURS_PASSAGERES.some((e) => m.includes(e));
 }
@@ -783,14 +801,22 @@ async function executerJob(job) {
 
   // 1. Création de la tâche provider (clé du visiteur, RAM only)
   const task = await createProviderTask(job);
-    // Le modèle en clair, pour la galerie et la page de partage.
-    query(`UPDATE essai_generations SET model = $1 WHERE id = $2`, [modelLabel(job), job.id]).catch(() => {});
 
   // veo3 se sonde sur un autre point d'entrée que le reste du catalogue :
   // pollTask a besoin du modèle pour choisir la bonne URL.
   const pollMetadata = job.kind === 'video'
     ? JSON.stringify({ videoModel: videoModelOf(job) })
     : job.kind === 'music' ? JSON.stringify({ suno: true }) : '{}';
+
+  /* Le modèle en clair (galerie, page de partage) ET l'identifiant de la tâche
+   * chez le fournisseur. Cet identifiant ne vivait que dans `task`, une
+   * variable locale : un rendu en retard ou un redémarrage le perdait, et avec
+   * lui tout moyen de retrouver — ou de prouver — ce que la clé du visiteur
+   * avait payé. Il est écrit AVANT le premier sondage. */
+  query(
+    `UPDATE essai_generations SET model = $1, provider_task_id = $2, provider_record_id = $3, provider_meta = $4 WHERE id = $5`,
+    [modelLabel(job), String(task.taskId || ''), task.recordId ? String(task.recordId) : null, pollMetadata, job.id]
+  ).catch((e) => console.error('[ESSAI] provider_task_id non écrit :', (e?.message || '').slice(0, 120)));
 
   // 2. Polling jusqu'à état terminal ou timeout
   // La musique prend le délai des vidéos : Suno rend une piste en une à trois minutes.
@@ -812,7 +838,11 @@ async function executerJob(job) {
   let dernierePanne = null;
 
   for (;;) {
-    if (Date.now() > deadline) throw new Error('ESSAI_TIMEOUT');
+    if (Date.now() > deadline) {
+      // La voie se libère, la tâche reste suivie : voir « Rendus tardifs ».
+      surveillerRenduTardif(job, task, pollMetadata, out);
+      throw new Error('ESSAI_LATE');
+    }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     const st = await kie.pollTask(job.apiKey, { taskId: task.taskId, recordId: task.recordId, metadata: pollMetadata });
     if (st.status === 'failed') throw new Error(st.error || 'provider failed');
@@ -827,8 +857,18 @@ async function executerJob(job) {
     }
   }
 
-  // 3. Relecture du rendu (en flux ou tamponnée selon le filigrane) + R2 —
-  //    l'URL du fournisseur ne sort jamais d'ici, ni vers la base ni vers le client
+  // 3. Relecture du rendu + R2 + état final — partagé avec la voie tardive.
+  await deposerRendu(job, out, resultUrl, ['queued', 'processing']);
+}
+
+/**
+ * Relit le rendu du fournisseur (en flux ou tamponné selon le filigrane), le
+ * dépose sur R2 et clôt la ligne. L'URL du fournisseur ne sort jamais d'ici,
+ * ni vers la base ni vers le client. `statuts` dit depuis quels états la ligne
+ * peut passer à « completed » : la voie normale part de queued/processing, la
+ * voie tardive d'un « failed » posé au dépassement du délai.
+ */
+async function deposerRendu(job, out, resultUrl, statuts) {
   // Le son prend le format réellement rendu — voir formatAudioRendu.
   if (out.media === 'audio') {
     const reel = formatAudioRendu(resultUrl);
@@ -841,11 +881,81 @@ async function executerJob(job) {
   await persistProviderResult(resultUrl, r2Key, out, job);
 
   await query(
-    `UPDATE essai_generations SET status = 'completed', r2_key = $1, completed_at = NOW()
-      WHERE id = $2 AND status IN ('queued','processing')`,
-    [r2Key, job.id]
+    `UPDATE essai_generations SET status = 'completed', r2_key = $1, error = NULL, completed_at = NOW()
+      WHERE id = $2 AND status = ANY($3)`,
+    [r2Key, job.id, statuts]
   );
-    annoncerFin(job.id, 'completed');
+  annoncerFin(job.id, 'completed');
+}
+
+/* ─── Rendus tardifs ───
+ *
+ * Un délai de sondage dépassé n'est pas une panne : la tâche tourne encore
+ * chez le fournisseur, elle sera livrée ET facturée. Avant, la file jetait
+ * ESSAI_TIMEOUT, que la reprise unique prenait pour une secousse passagère
+ * (« timeout » figure dans sa liste) : une SECONDE tâche partait sur la clé du
+ * visiteur, et la première, dont l'identifiant ne vivait que dans une variable
+ * locale, était perdue — double dépense pour au mieux un rendu.
+ *
+ * Désormais la voie se libère (le `finally` de runJob joue comme d'habitude),
+ * la ligne passe en « failed » avec un message qui dit d'attendre, et la tâche
+ * reste suivie ici : sondage toutes les 30 s pendant une heure, à la même
+ * clé. Si le rendu arrive, il est déposé comme n'importe quel autre et la
+ * ligne repasse à « completed » — dans la galerie, dans la page de partage.
+ *
+ * La clé du visiteur reste en RAM le temps de cette veille, et seulement là :
+ * jamais en base, jamais dans un log, effacée dès l'état final ou l'heure
+ * écoulée. Un redémarrage du processus perd la veille (la clé avec) ; il reste
+ * alors provider_task_id en base pour retrouver la trace. */
+const LATE_WATCH_MS = 60 * 60_000;
+const LATE_POLL_MS = 30_000;
+const tardifs = new Map(); // id → { apiKey, job, task, pollMetadata, out, until }
+
+function surveillerRenduTardif(job, task, pollMetadata, out) {
+  if (!task?.taskId) return;
+  tardifs.set(job.id, { apiKey: job.apiKey, job, task, pollMetadata, out, until: Date.now() + LATE_WATCH_MS });
+  console.warn(`[ESSAI] job ${job.id} : délai de sondage dépassé, rendu suivi encore ${Math.round(LATE_WATCH_MS / 60_000)} min (tâche ${String(task.taskId).slice(0, 24)})`);
+}
+
+/** Clôt une veille : la clé disparaît, et le motif final remplace le message d'attente. */
+async function cloreVeille(id, motif) {
+  const t = tardifs.get(id);
+  tardifs.delete(id);
+  if (t) t.apiKey = null;
+  if (motif) {
+    await query(`UPDATE essai_generations SET error = $1 WHERE id = $2 AND status = 'failed'`, [motif, id]).catch(() => {});
+  }
+}
+
+async function balayerTardifs() {
+  for (const [id, t] of [...tardifs]) {
+    if (Date.now() > t.until) {
+      await cloreVeille(id, safeErrorMessage(new Error('ESSAI_TIMEOUT')));
+      continue;
+    }
+    try {
+      const st = await kie.pollTask(t.apiKey, { taskId: t.task.taskId, recordId: t.task.recordId, metadata: t.pollMetadata });
+      if (st.status === 'failed') {
+        await cloreVeille(id, safeErrorMessage(new Error(st.error || 'provider failed')));
+      } else if (st.status === 'completed' && st.resultUrl) {
+        // On retire la veille AVANT le dépôt : un dépôt lent ne doit pas être relancé au tour suivant.
+        tardifs.delete(id);
+        const job = { ...t.job, apiKey: null };
+        await deposerRendu(job, t.out, st.resultUrl, ['failed', 'processing']);
+        t.apiKey = null;
+        console.log(`[ESSAI] job ${id} : rendu tardif livré`);
+      }
+    } catch (e) {
+      console.error(`[ESSAI] veille tardive ${id} :`, (e?.message || 'unknown').slice(0, 160));
+    }
+  }
+}
+const balayeur = setInterval(() => { balayerTardifs().catch(() => {}); }, LATE_POLL_MS);
+if (typeof balayeur.unref === 'function') balayeur.unref(); // ne retient pas le processus
+
+/** Veilles en cours — pour les tests et le tableau de bord. */
+export function lateWatchStats() {
+  return { watching: tardifs.size, ids: [...tardifs.keys()] };
 }
 
 async function runJob(job) {

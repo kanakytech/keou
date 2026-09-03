@@ -342,6 +342,12 @@ const MIGRATIONS = [
   // Le modèle qui a produit la création, en clair (« Nano Banana Pro », « Wan 3.0 ») :
   // la galerie l'affiche, la page de partage aussi. Posé quand la tâche part.
   `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS model TEXT`,
+  // Identifiant de la tâche chez le fournisseur (+ recordId Veo et métadonnées
+  // de sondage) : écrit dès la création, pour qu'un rendu en retard ou un
+  // redémarrage ne perde jamais la trace de ce que la clé du visiteur a payé.
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS provider_task_id TEXT`,
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS provider_record_id TEXT`,
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS provider_meta TEXT`,
   /* La même protection pour le studio anonyme.
    *
    * Le code de déduplication a été écrit des deux côtés du tuyau — client et
