@@ -339,6 +339,9 @@ const MIGRATIONS = [
   // <video> ou un <audio> — le kind ne suffit pas, plusieurs kinds partagent
   // un même média. Défaut 'image' : toutes les lignes existantes sont des PNG.
   `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS media TEXT NOT NULL DEFAULT 'image'`,
+  // Le modèle qui a produit la création, en clair (« Nano Banana Pro », « Wan 3.0 ») :
+  // la galerie l'affiche, la page de partage aussi. Posé quand la tâche part.
+  `ALTER TABLE essai_generations ADD COLUMN IF NOT EXISTS model TEXT`,
   /* La même protection pour le studio anonyme.
    *
    * Le code de déduplication a été écrit des deux côtés du tuyau — client et

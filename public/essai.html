@@ -246,6 +246,7 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
   .lp-nav-links{gap:4px;flex:none}
   .lp-nav-link{padding:7px 11px;font-size:12px;white-space:nowrap}
 }
+.g-model{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:100px;border:1px solid var(--border);font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--ink-faint)}
 </style>
 <script src="/shared/lightbox.js"></script>
 <script src="/shared/i18n-fr.js"></script>
@@ -663,6 +664,13 @@ h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
     p.textContent = item.prompt;
     p.title = item.prompt;
     meta.appendChild(p);
+    if (item.model) {
+      const mdl = document.createElement('span');
+      mdl.className = 'g-model';
+      mdl.textContent = item.model;
+      mdl.title = I18N.t('Model used');
+      meta.appendChild(mdl);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'g-actions';

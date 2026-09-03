@@ -388,7 +388,7 @@ router.get('/galerie', async (req, res) => {
     const offset = (page - 1) * PAGE_SIZE;
 
     const rows = await queryAll(
-      `SELECT id, prompt, created_at, media, kind FROM essai_generations
+      `SELECT id, prompt, created_at, media, kind, model FROM essai_generations
         WHERE status = 'completed' AND hidden = FALSE
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2`,
@@ -402,6 +402,7 @@ router.get('/galerie', async (req, res) => {
     const items = rows.slice(0, PAGE_SIZE).map((r) => ({
       id: r.id,
       prompt: r.prompt,
+      model: r.model || null,
       imageUrl: `/api/essai/image/${r.id}`,
       // Repli par la table des kinds, pas par un 'image' écrit en dur ici :
       // une deuxième table finirait par diverger de MEDIA_BY_KIND.

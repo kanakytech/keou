@@ -702,7 +702,7 @@ app.get('/c/:id', async (req, res) => {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return res.status(404).send('Not found');
   try {
     const { rows } = await pool.query(
-      `SELECT id, prompt, media, kind, status, hidden FROM essai_generations WHERE id = $1`, [id]);
+      `SELECT id, prompt, media, kind, status, hidden, model FROM essai_generations WHERE id = $1`, [id]);
     const row = rows[0];
     if (!row || row.status !== 'completed' || row.hidden) return res.status(404).send('Not found');
     const esc = (t) => String(t || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -730,7 +730,7 @@ app.get('/c/:id', async (req, res) => {
 <style>body{margin:0;background:#0a0a0a;color:#f2f2f2;font-family:'Space Grotesk',system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:28px 16px 48px}img,video{max-width:min(96vw,1100px);max-height:78vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}audio{width:min(96vw,640px)}p.prompt{max-width:720px;text-align:center;color:rgba(242,242,242,.7);font-size:14px;line-height:1.6;margin:18px 0 6px}a.cta{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:12px 20px;border-radius:100px;background:#c8f060;color:#0a0a0a;font-weight:700;text-decoration:none}a.cta:hover{filter:brightness(1.05)}p.meta{font-size:12px;color:rgba(242,242,242,.45);margin-top:14px}p.meta a{color:inherit}</style></head>
 <body>${body}${prompt ? `<p class="prompt">${prompt}</p>` : ''}
 <a class="cta" href="${SEO_HOST}/?utm_source=share&utm_medium=creation">Make yours — free, no account</a>
-<p class="meta">Made with <a href="${SEO_HOST}/about">Keou Studio</a>, open source · <a href="${SEO_HOST}/essai.html">community gallery</a></p></body></html>`);
+<p class="meta">Made with <a href="${SEO_HOST}/about">Keou Studio</a>${row.model ? ' · ' + esc(row.model) : ''}, open source · <a href="${SEO_HOST}/essai.html">community gallery</a></p></body></html>`);
   } catch (e) {
     console.error('[creation page]', e.message);
     res.status(500).send('Unavailable');

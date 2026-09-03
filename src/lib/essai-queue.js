@@ -352,6 +352,26 @@ function buildVideoPrompt(creativeDirection) {
  * qu'avant. On ne l'annonce simplement plus comme une économie — c'est sa clé
  * et son budget, il a droit à un compte juste.
  */
+/* Libellé humain du modèle qui va produire la création — ce que la galerie
+ * affiche sous chaque rendu. Miroir de createProviderTask : si un cas y
+ * change de modèle, il change ici. */
+function modelLabel(job) {
+  switch (job.kind) {
+    case 'text': case 'image': case 'adapt': return 'Nano Banana Pro';
+    case 'polish': case 'remix': return 'FLUX.2 Pro';
+    case 'upscale': return 'Topaz Image';
+    case 'vid-upscale': return 'Topaz Video';
+    case 'video': {
+      const m = VIDEO_MODELS.includes(job.videoModel) ? job.videoModel : 'grok-imagine';
+      if (m === 'veo3') return job.variant === 'veo3_fast' ? 'Veo 3.1 fast' : job.variant === 'veo3_lite' ? 'Veo 3.1 lite' : 'Veo 3.1';
+      return { 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2', 'wan-3.0': 'Wan 3.0', 'grok-imagine': 'Grok Imagine' }[m] || m;
+    }
+    case 'tts': { const v = String(job.voiceModel || ''); return /eleven/i.test(v) ? 'ElevenLabs' : 'Gemini TTS'; }
+    case 'sfx': return 'ElevenLabs SFX';
+    default: return null;
+  }
+}
+
 async function createProviderTask(job) {
   switch (job.kind) {
     case 'image': // studio anonyme : visuel produit depuis une image source
@@ -732,6 +752,8 @@ async function executerJob(job) {
 
   // 1. Création de la tâche provider (clé du visiteur, RAM only)
   const task = await createProviderTask(job);
+    // Le modèle en clair, pour la galerie et la page de partage.
+    query(`UPDATE essai_generations SET model = $1 WHERE id = $2`, [modelLabel(job), job.id]).catch(() => {});
 
   // veo3 se sonde sur un autre point d'entrée que le reste du catalogue :
   // pollTask a besoin du modèle pour choisir la bonne URL.
