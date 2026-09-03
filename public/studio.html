@@ -1050,6 +1050,9 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-chip[disabled]:hover{border-color:var(--s3);color:var(--ink-muted)}
 .tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
 .tp-limit.over{color:#fda4af}
+.tp-optional{font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-faint);margin-left:6px}
+.tp-engine.needs-photo{opacity:.45}
+.tp-engine.needs-photo .tp-engine-meta::after{content:' · needs a photo'}
 /* Dépôt n'importe où : un voile discret pendant le survol */
 body.drop-anywhere::after{content:attr(data-drop-hint);position:fixed;inset:12px;z-index:9970;border:2px dashed var(--accent);border-radius:18px;background:rgba(200,240,96,.05);display:flex;align-items:flex-start;justify-content:center;padding-top:22px;color:var(--accent);font-weight:700;font-size:14px;letter-spacing:.02em;pointer-events:none;animation:kMotionEnter var(--m-enter) both}
 
@@ -1846,7 +1849,7 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
   <!-- Video -->
   <section class="tool-panel" id="tool-panel-video">
     <div class="section-card tp-card">
-      <p class="section-label">Source Image</p>
+      <p class="section-label">Source Image <span class="tp-optional">optional &mdash; or describe the clip below</span></p>
       <div class="tp-sources-row">
         <div class="tp-thumbs" data-tp-thumbs></div>
         <button type="button" class="tp-src-btn" data-tp-upload>
@@ -5078,6 +5081,7 @@ function imgFallback(el) {
     var panel = panelOf(tool);
     var box = q(panel, '[data-tp-thumbs]');
     if (!box) return;
+    if (tool === 'video' && window.__marquerMoteursSansPhoto) setTimeout(window.__marquerMoteursSansPhoto, 0);
     var st = state[tool];
     var wantMedia = tool === 'vidupscale' ? 'video' : 'image';
     var seen = {};
@@ -5766,6 +5770,14 @@ function imgFallback(el) {
     var vDur = q(vPanel, '[data-tp-durations]');
     var vResWrap = q(vPanel, '[data-tp-resolution-wrap]');
     var vAudio = q(vPanel, '[data-tp-audio]');
+    function marquerMoteursSansPhoto() {
+      var st = state.video;
+      vEngines.querySelectorAll('.tp-engine').forEach(function (e) {
+        var k = e.getAttribute('data-v') || '';
+        e.classList.toggle('needs-photo', !st.sel && /^kling|^grok/.test(k));
+      });
+    }
+    window.__marquerMoteursSansPhoto = marquerMoteursSansPhoto;
     function applyEngine() {
       var key = chipValue(vEngines) || vEngines.querySelector('.tp-engine.active').getAttribute('data-v');
       var eng = ENGINES[key] || ENGINES.veo3_fast;
@@ -5791,7 +5803,14 @@ function imgFallback(el) {
     applyEngine();
 
     wireSubmit('video', function (panel, st) {
-      if (!needSource(st)) return null;
+      var desc = (q(panel, '[data-tp-prompt]') && q(panel, '[data-tp-prompt]').value || '').trim();
+      var moteurAct = panel.querySelector('.tp-engine.active');
+      var moteur = moteurAct ? moteurAct.getAttribute('data-v') : 'veo3_fast';
+      if (!st.sel) {
+        // Vidéo depuis un texte : Veo et Seedance seulement.
+        if (desc.length < 3) { toast(I18N.t('Add a photo, or describe the clip you want'), true); return null; }
+        if (/^kling|^grok/.test(moteur)) { toast(I18N.t('This engine animates a photo — add one, or pick Veo or Seedance to start from text'), true); return null; }
+      }
       var engKey = vEngines.querySelector('.tp-engine.active').getAttribute('data-v');
       var eng = ENGINES[engKey] || ENGINES.veo3_fast;
       var dur = chipValue(vDur) || String(eng.def);

@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1448 entrées. */
+   1452 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -174,6 +174,7 @@ window.KEOU_FR = {
   "Same as Desktop — paste the prompt, Claude tells you what to run in your terminal.": "Comme Desktop — collez le prompt, Claude vous dit quoi lancer dans votre terminal.",
   "Helmet, with a content security policy that includes your R2 domain automatically.": "Helmet, avec une politique de sécurité du contenu qui inclut automatiquement votre domaine R2.",
   "AI voice-over — the audio result plays right here and lands in the public gallery.": "Voix off générée par IA — le résultat s’écoute ici et rejoint la galerie publique.",
+  "This engine animates a photo — add one, or pick Veo or Seedance to start from text": "Ce moteur anime une photo — ajoutez-en une, ou choisissez Veo ou Seedance pour partir d'un texte",
   "No sales pipeline, no discovery deck. You talk to the person who writes the code.": "Pas de tunnel de vente, pas de deck de découverte. Vous parlez à la personne qui écrit le code.",
   "account. Each user pastes their own in the studio — the server does not need one.": "compte. Chaque utilisateur colle la sienne dans le studio — le serveur n’en a pas besoin.",
   "Organize your generations by client. A default campaign is created automatically.": "Organisez vos générations par client. Une campagne par défaut est créée automatiquement.",
@@ -224,6 +225,7 @@ window.KEOU_FR = {
   "No coding required. Everything is configured from the admin panel.": "Aucun code à écrire. Tout se configure depuis le panneau d’administration.",
   "Your KIE.AI credits are exhausted — top up on kie.ai and try again": "Vos crédits KIE.AI sont épuisés — rechargez sur kie.ai puis réessayez",
   "Topaz Video enlargement — ×2 or ×4, billed per second of footage.": "Agrandissement Topaz Video — ×2 ou ×4, facturé à la seconde de métrage.",
+  "Add a photo, or describe the clip you want (3 characters minimum)": "Ajoutez une photo, ou décrivez le clip voulu (3 caractères minimum)",
   "Every aspect ratio your channels need — recomposed, not cropped.": "Tous les ratios dont vos canaux ont besoin — recomposés, pas recadrés.",
   "Platform-ready variants from one approved visual, in one action.": "Des variantes prêtes pour chaque plateforme à partir d’un visuel validé, en une action.",
   "Unsupported format. Use JPEG, PNG, WebP, GIF, MP4, WebM or MOV.": "Format non pris en charge. Utilisez JPEG, PNG, WebP, GIF, MP4, WebM ou MOV.",
@@ -364,6 +366,7 @@ window.KEOU_FR = {
   "12+ characters, mixed case, number, symbol": "12 caractères minimum, majuscules et minuscules, chiffre, symbole",
   "The assistant returned nothing — try again": "L'assistant n'a rien répondu — réessayez",
   "Your OpenRouter key was refused — check it": "Votre clé OpenRouter a été refusée — vérifiez-la",
+  "Add a photo, or describe the clip you want": "Ajoutez une photo, ou décrivez le clip voulu",
   "— a free account keeps your work private.": "— un compte gratuit garde vos travaux privés.",
   "Everything an agency ships, in one studio": "Tout ce qu’une agence livre, dans un seul studio",
   "One source image in, a full campaign out.": "Une image source en entrée, une campagne complète en sortie.",
@@ -414,6 +417,7 @@ window.KEOU_FR = {
   "Could not start the remix — try again": "Impossible de lancer le remix — réessayez",
   "Create a key dedicated to this use at": "Créez une clé dédiée à cet usage sur",
   "Results appear the second they exist.": "Les résultats apparaissent à la seconde où ils existent.",
+  "optional — or describe the clip below": "facultative — ou décrivez le clip ci-dessous",
   "Keou Studio — Install the Claude MCP": "Keou Studio — Installer le MCP Claude",
   "Is the open-source version crippled?": "La version open source est-elle bridée ?",
   "Say where it sits and how it is lit:": "Dites où il se trouve et comment il est éclairé :",

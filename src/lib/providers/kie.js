@@ -212,7 +212,7 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
   if (model === 'seedance-2') {
     // Durée : entier de 4 à 15 s. Arrondi parce que le fournisseur compte en
     // secondes entières — un 7,5 reçu d'un client API partait tel quel.
-    r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'bytedance/seedance-2', input: { prompt, first_frame_url: imageUrl, generate_audio: generateAudio === true, resolution: resolution === '480p' ? '480p' : '720p', aspect_ratio: ratioSeedance(aspectRatio), duration: Math.round(Math.min(15, Math.max(4, Number(duration) || 10))), web_search: false } }) });
+    r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'bytedance/seedance-2', input: { prompt, ...(imageUrl ? { first_frame_url: imageUrl } : {}), generate_audio: generateAudio === true, resolution: resolution === '480p' ? '480p' : '720p', aspect_ratio: ratioSeedance(aspectRatio), duration: Math.round(Math.min(15, Math.max(4, Number(duration) || 10))), web_search: false } }) });
   } else if (model === 'veo3') {
     /* Le mode « première et dernière image » N'EST PAS une erreur avec une
      * seule image — c'était le principal soupçon, le schéma du fournisseur le

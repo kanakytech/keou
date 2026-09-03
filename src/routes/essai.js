@@ -861,8 +861,19 @@ router.post('/studio/generate', async (req, res) => {
     // « Source image required ». Les trois autres routes le lisaient déjà.
     const { sourceId, imageUrl, format, creativeDirection } = req.body || {};
     const cd = typeof creativeDirection === 'string' ? creativeDirection.trim().slice(0, 500) : '';
-    const source = await resolveStudioSource({ sourceId, imageUrl });
-    if (source.error) return res.status(400).json({ error: source.error });
+    /* Sans image, la description devient le sujet : Veo et Seedance savent
+     * partir d'un texte. Kling et Grok sont des modèles image → vidéo, on le
+     * dit plutôt que de laisser le fournisseur refuser. */
+    const sansSource = !sourceId && !imageUrl;
+    let source = { url: null };
+    if (sansSource) {
+      if (cd.length < 3) return res.status(400).json({ error: 'Add a photo, or describe the clip you want (3 characters minimum)' });
+      const m = typeof videoModel === 'string' ? videoModel : '';
+      if (/^kling|^grok/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo or Seedance to start from text' });
+    } else {
+      source = await resolveStudioSource({ sourceId, imageUrl });
+      if (source.error) return res.status(400).json({ error: source.error });
+    }
 
     await launchStudioJob(req, res, {
       kind: 'image',
@@ -955,8 +966,19 @@ router.post('/studio/video', async (req, res) => {
     const { sourceId, imageUrl, format, aspectRatio, creativeDirection,
             videoModel, duration, resolution, mode, sound, generateAudio, variant } = req.body || {};
     const cd = typeof creativeDirection === 'string' ? creativeDirection.trim().slice(0, 500) : '';
-    const source = await resolveStudioSource({ sourceId, imageUrl });
-    if (source.error) return res.status(400).json({ error: source.error });
+    /* Sans image, la description devient le sujet : Veo et Seedance savent
+     * partir d'un texte. Kling et Grok sont des modèles image → vidéo, on le
+     * dit plutôt que de laisser le fournisseur refuser. */
+    const sansSource = !sourceId && !imageUrl;
+    let source = { url: null };
+    if (sansSource) {
+      if (cd.length < 3) return res.status(400).json({ error: 'Add a photo, or describe the clip you want (3 characters minimum)' });
+      const m = typeof videoModel === 'string' ? videoModel : '';
+      if (/^kling|^grok/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo or Seedance to start from text' });
+    } else {
+      source = await resolveStudioSource({ sourceId, imageUrl });
+      if (source.error) return res.status(400).json({ error: source.error });
+    }
 
     // Chaque modèle reborne ensuite la durée à ce qu'il accepte (4-15 s, 3-15 s
     // ou 6-30 s selon le catalogue). La borne posée ici est celle du plus
