@@ -1050,6 +1050,8 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 .tp-chip[disabled]:hover{border-color:var(--s3);color:var(--ink-muted)}
 .tp-limit{margin:8px 0 0;font-size:12px;color:var(--ink-muted);line-height:1.5}
 .tp-limit.over{color:#fda4af}
+/* Dépôt n'importe où : un voile discret pendant le survol */
+body.drop-anywhere::after{content:attr(data-drop-hint);position:fixed;inset:12px;z-index:9970;border:2px dashed var(--accent);border-radius:18px;background:rgba(200,240,96,.05);display:flex;align-items:flex-start;justify-content:center;padding-top:22px;color:var(--accent);font-weight:700;font-size:14px;letter-spacing:.02em;pointer-events:none;animation:kMotionEnter var(--m-enter) both}
 
 /* ── Assistant ── */
 .as-card{padding-top:12px}
@@ -2563,6 +2565,50 @@ dropZone.addEventListener('click', (e) => {
     btn.disabled = false;
   });
 });
+/* Coller (Cmd/Ctrl+V) ou déposer une image N'IMPORTE OÙ sur la page : le
+   geste instinctif. Si un outil est ouvert, l'image va à cet outil ; sinon
+   à Create. La zone de dépôt garde son propre gestionnaire. */
+function outilActifHorsCreate() {
+  var m = document.getElementById('main-content');
+  var t = m ? m.getAttribute('data-tool') : null;
+  return t && t !== 'create' && t !== 'assistant' ? t : null;
+}
+function accueillirImages(files, origine) {
+  var imgs = Array.prototype.filter.call(files, function (f) { return f && (f.type.indexOf('image/') === 0 || f.type.indexOf('video/') === 0); });
+  if (!imgs.length) return false;
+  var t = outilActifHorsCreate();
+  if (t && window.KeouTools && window.KeouTools.upload) {
+    if (window.KeouTools.upload(t, imgs[0])) { toast(I18N.t(origine === 'paste' ? 'Image pasted' : 'Image added')); return true; }
+  }
+  var photos = imgs.filter(function (f) { return f.type.indexOf('image/') === 0; });
+  if (!photos.length) return false;
+  if (window.IS_ANON && window.KeouTools && window.KeouTools.switchTool) window.KeouTools.switchTool('create');
+  addFiles(photos);
+  toast(I18N.t(origine === 'paste' ? 'Image pasted into Create' : 'Image added to Create'));
+  return true;
+}
+window.keouAccueillirImages = accueillirImages; // l'assistant et les tests s'en servent
+document.addEventListener('paste', (e) => {
+  var files = e.clipboardData && e.clipboardData.files ? e.clipboardData.files : [];
+  if (!files.length) return;
+  if (isProcessing) return;
+  if (accueillirImages(files, 'paste')) e.preventDefault();
+});
+document.addEventListener('dragover', (e) => {
+  var types = e.dataTransfer ? Array.prototype.slice.call(e.dataTransfer.types || []) : [];
+  if (types.indexOf('Files') === -1) return;
+  e.preventDefault();
+  document.body.classList.add('drop-anywhere');
+});
+document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('drop-anywhere'); });
+document.addEventListener('drop', (e) => {
+  document.body.classList.remove('drop-anywhere');
+  if (e.target && e.target.closest && e.target.closest('#drop-zone')) return; // la zone a le sien
+  if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+  e.preventDefault();
+  if (isProcessing) return;
+  accueillirImages(e.dataTransfer.files, 'drop');
+});
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (!isProcessing) dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
@@ -2804,6 +2850,37 @@ $('#da-toggle').addEventListener('click', () => {
   wrap.classList.toggle('hidden');
   chevron.style.transform = wrap.classList.contains('hidden') ? '' : 'rotate(180deg)';
 });
+
+/* Lien de partage d'une création : /c/<id>, avec aperçu Open Graph. */
+function creationIdFromUrl(url) {
+  var m = String(url || '').match(/\/api\/essai\/image\/([0-9a-f-]{36})/i);
+  return m ? m[1] : null;
+}
+function copyCreationLink(url) {
+  var id = creationIdFromUrl(url);
+  if (!id) { toast(I18N.t('This result has no shareable link'), true); return; }
+  var lien = location.origin + '/c/' + id;
+  var ok = function () { toast(I18N.t('Link copied — paste it anywhere, the preview shows the image')); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lien).then(ok, function () { prompt(I18N.t('Copy this link'), lien); });
+  else prompt(I18N.t('Copy this link'), lien);
+}
+/* Mémoire de session : les créations d'un visiteur anonyme survivent à un
+   rechargement. On ne garde que des identifiants — les fichiers restent en
+   galerie — et on les rejoue au démarrage dans la grille de résultats. */
+var SESSION_KEY = 'keou.session.creations';
+function keouSessionRemember(entry) {
+  if (!window.IS_ANON || !entry || !entry.id) return;
+  try {
+    var list = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
+    list = list.filter(function (e) { return e.id !== entry.id; });
+    list.unshift({ id: entry.id, media: entry.media || 'image', kind: entry.kind || 'create', before: entry.before || null, at: Date.now() });
+    localStorage.setItem(SESSION_KEY, JSON.stringify(list.slice(0, 40)));
+  } catch (e) {}
+}
+window.keouSessionRemember = keouSessionRemember;
+// Le script des outils est un autre <script> : il ne voit pas ce module.
+window.creationIdFromUrl = creationIdFromUrl;
+window.copyCreationLink = copyCreationLink;
 
 function getCreativeDirection() {
   // En anonyme, le composeur EST la direction créative (une seule boîte,
@@ -3212,6 +3289,7 @@ async function processAll(pending) {
         (data) => setQueueState(job, data));
       job.resultUrl = resultUrl;
       job.status = 'done';
+      keouSessionRemember({ id: creationIdFromUrl(resultUrl), media: 'image', kind: job.kind === 'text' ? 'create-text' : 'create' });
       log(`${job.name}: complete`, 'success');
     } catch (e) {
       job.status = 'error';
@@ -3499,7 +3577,7 @@ function cardHTML(job) {
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}
+        ${window.IS_ANON ? `<a class="action-btn" href="${escapeHtml(job.resultUrl)}" download="keou-${escapeHtml(String(job.id).slice(0, 8))}.jpg" title="Save the watermarked file">${Icons.get('save')} Save</a><button class="action-btn" onclick="copyCreationLink(${jsArg(job.resultUrl)})" title="Copy a shareable link with preview">${Icons.get('image')} Copy link</button><a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}
       </div>` : ''}
       ${isErr ? `
       <div class="result-actions">
@@ -3620,7 +3698,7 @@ function updateCard(job) {
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('sparkle')} Polish</button>
         <button class="action-btn" onclick="openModal('${job.id}')">${Icons.get('video')} Video</button>
         ${window.IS_ANON ? '' : `<button class="action-btn" onclick="openExportPack('${job.id}', ${jsArg(job.generationId || '')})" title="Export multi-format pack">${Icons.get('save')} Pack</button>`}
-        ${window.IS_ANON ? `<a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}`;
+        ${window.IS_ANON ? `<a class="action-btn" href="${escapeHtml(job.resultUrl)}" download="keou-${escapeHtml(String(job.id).slice(0, 8))}.jpg" title="Save the watermarked file">${Icons.get('save')} Save</a><button class="action-btn" onclick="copyCreationLink(${jsArg(job.resultUrl)})" title="Copy a shareable link with preview">${Icons.get('image')} Copy link</button><a class="action-btn" href="/essai.html" title="Every anonymous creation is public in the community gallery">${Icons.get('image')} Gallery</a>` : `<button class="action-btn" onclick="downloadSingle(${jsArg(job.resultUrl)}, 'keou-' + ${jsArg(job.id)})">${Icons.get('save')} Save</button>`}`;
       el.appendChild(div);
     } else if (isErr) {
       const div = document.createElement('div');
@@ -5426,6 +5504,16 @@ function imgFallback(el) {
     if (dot) dot.className = 'status-dot done';
     var actions = document.createElement('div');
     actions.className = 'result-actions';
+    var idc = window.creationIdFromUrl ? window.creationIdFromUrl(url) : null;
+    if (idc) {
+      var sv = document.createElement('a');
+      sv.className = 'action-btn'; sv.href = url; sv.setAttribute('download', 'keou-' + idc.slice(0, 8) + (media === 'video' ? '.mp4' : media === 'audio' ? '.mp3' : '.jpg')); sv.textContent = I18N.t('Save'); sv.title = I18N.t('Save the watermarked file');
+      actions.appendChild(sv);
+      var cl = document.createElement('button');
+      cl.type = 'button'; cl.className = 'action-btn'; cl.textContent = I18N.t('Copy link'); cl.title = I18N.t('Copy a shareable link with preview');
+      cl.addEventListener('click', function () { window.copyCreationLink(url); });
+      actions.appendChild(cl);
+    }
     if (before && media !== 'video' && media !== 'audio') {
       var cb = document.createElement('button');
       cb.type = 'button'; cb.className = 'action-btn'; cb.textContent = 'Compare';
@@ -5522,6 +5610,7 @@ function imgFallback(el) {
       if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
       var got = await pollW3('/api/status/' + spec.statusType + '/' + (data.taskId || data.id), spec.interval, spec.timeout, card);
       finishCard(card, got.url, got.media || spec.media);
+      if (window.keouSessionRemember && window.creationIdFromUrl) window.keouSessionRemember({ id: window.creationIdFromUrl(got.url), media: got.media || spec.media, kind: tool, before: card && card.dataset.before || null });
       toast('Result ready');
       refreshThumbs(current);
     } catch (e) {
@@ -5782,6 +5871,56 @@ function imgFallback(el) {
       if (pill) switchTool(pill.dataset.tool);
     });
     mountTools();
+
+    /* Télécommande publique : le collage/dépôt global, la mémoire de session
+       et l'assistant s'en servent. Rien ici n'est nouveau : ce sont les
+       fonctions du panneau, rendues appelables. */
+    window.KeouTools = {
+      switchTool: switchTool,
+      upload: function (tool, file) {
+        var panel = panelOf(tool); var btn = panel && q(panel, '[data-tp-upload]');
+        if (!panel || !btn) return false;
+        uploadBlob(tool, btn, file, file.name || 'source.jpg', file.type && file.type.indexOf('video/') === 0 ? 'video' : 'image');
+        return true;
+      },
+      selectSource: function (tool, url, media) {
+        if (!state[tool]) return false;
+        state[tool].sel = url; state[tool].selMedia = media || 'image';
+        refreshThumbs(tool); if (tool === 'upscale') probeUpscaleLimits();
+        return true;
+      },
+      submit: function (tool) { var panel = panelOf(tool); var btn = panel && q(panel, '[data-tp-submit]'); if (btn && !btn.disabled) { btn.click(); return true; } return false; },
+      lastResult: function () {
+        var c = document.querySelector('#tool-results-grid .result-card.done[data-w3-url], #results-grid .result-card.done');
+        if (!c) return null;
+        var u = c.getAttribute('data-w3-url') || (c.querySelector('.result-media-wrap img') || {}).src || null;
+        return u ? { url: u, media: c.getAttribute('data-w3-media') || 'image' } : null;
+      },
+      restore: async function () {
+        var list = [];
+        try { list = JSON.parse(localStorage.getItem('keou.session.creations') || '[]'); } catch (e) {}
+        if (!list.length) return 0;
+        var n = 0;
+        // Les plus anciennes d'abord : addCard() insère en tête, la plus récente finit en premier.
+        var items = list.slice(0, 24).reverse();
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i];
+          try {
+            var r = await fetch('/api/essai/studio/status/' + it.id, { credentials: 'same-origin' });
+            if (!r.ok) continue;
+            var d = await r.json();
+            if (!d.ready || !d.resultUrl) continue;
+            var card = addCard(); if (!card) continue;
+            if (it.before) card.dataset.before = it.before;
+            finishCard(card, d.resultUrl, d.media || it.media || 'image');
+            n++;
+          } catch (e) { /* une création perdue ne bloque pas les autres */ }
+        }
+        if (n) toast(I18N.t('Your recent creations are back'));
+        return n;
+      },
+    };
+    if (window.IS_ANON) window.KeouTools.restore();
   }
   boot();
 })();

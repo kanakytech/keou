@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1440 entrées. */
+   1448 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -238,6 +238,7 @@ window.KEOU_FR = {
   "e.g. Slow luxury push-in, warm golden light, premium feel...": "ex. Travelling avant lent et luxueux, lumière dorée chaude, rendu haut de gamme…",
   "— open the Studio, upload a product image, and hit Generate.": "— ouvrez le Studio, envoyez une photo produit et cliquez sur Générer.",
   "Your KIE.AI key was refused — check it in the bar at the top": "Votre clé KIE.AI a été refusée — vérifiez-la dans la barre en haut",
+  "Link copied — paste it anywhere, the preview shows the image": "Lien copié — collez-le n'importe où, l'aperçu montre l'image",
   "Read it, fork it, self-host it, sell what you build with it": "Lisez-le, forkez-le, auto-hébergez-le, vendez ce que vous en faites",
   "— they give you free credits. Copy the long API key string.": "— ils vous donnent des crédits gratuits. Copiez la longue chaîne de clé API.",
   "Every anonymous creation is public in the community gallery": "Toute création anonyme est publique dans la galerie communautaire",
@@ -441,6 +442,7 @@ window.KEOU_FR = {
   "Everything you make here is public": "Tout ce que vous créez ici est public",
   ": no watermark, nothing published.": " : pas de filigrane, rien de publié.",
   "Ask, plan, get your prompt written": "Demandez, planifiez, faites écrire votre prompt",
+  "Copy a shareable link with preview": "Copier un lien partageable avec aperçu",
   "Keou Studio — Support the project": "Keou Studio — Soutenir le projet",
   "We sell the fitting, not the tool": "Nous vendons l’ajustement, pas l’outil",
   "Scaling to more than one instance": "Passer à plus d’une instance",
@@ -450,6 +452,7 @@ window.KEOU_FR = {
   "Clients & Campaigns — Keou Studio": "Clients & campagnes — Keou Studio",
   "Keou creation (community gallery)": "Création Keou (galerie communautaire)",
   "Please enter an Anthropic API key": "Saisissez une clé API Anthropic",
+  "This result has no shareable link": "Ce résultat n'a pas de lien partageable",
   "Sign in to your agency workspace": "Connectez-vous à l’espace de votre agence",
   "What happens during a generation": "Ce qui se passe pendant une génération",
   "Drop your product images here or": "Déposez vos images produit ici ou",
@@ -495,6 +498,7 @@ window.KEOU_FR = {
   "Hi — I’m the studio assistant.": "Bonjour — je suis l'assistant du studio.",
   "A 4K poster from a small photo": "Une affiche 4K depuis une petite photo",
   "Pick an OpenRouter model first": "Choisissez d'abord un modèle OpenRouter",
+  "Your recent creations are back": "Vos créations récentes sont de retour",
   "Integration with what you run": "Intégration à ce que vous utilisez",
   "Deployment on your own ground": "Déploiement sur votre terrain",
   "Your own models and endpoints": "Vos propres modèles et endpoints",
@@ -588,6 +592,7 @@ window.KEOU_FR = {
   "Failed to update provider": "Échec de la mise à jour du fournisseur",
   "Drop image or video files": "Déposez des fichiers image ou vidéo",
   "Write a perfume ad prompt": "Écrire un prompt de pub parfum",
+  "Save the watermarked file": "Enregistrer le fichier filigrané",
   "Create your free account": "Créez votre compte gratuit",
   "We build custom versions": "Nous faisons des versions sur mesure",
   "Bitcoin donation QR code": "QR code de don Bitcoin",
@@ -1011,6 +1016,7 @@ window.KEOU_FR = {
   "Coffee on wood": "Café sur bois",
   "Perfume bottle": "Flacon de parfum",
   "Estimated cost": "Coût estimé",
+  "Copy this link": "Copiez ce lien",
   "Custom builds": "Builds sur mesure",
   "Show password": "Afficher le mot de passe",
   "What you need": "Ce qu’il faut",
@@ -1186,6 +1192,7 @@ window.KEOU_FR = {
   "Audio track": "Piste audio",
   "Free studio": "Studio gratuit",
   "Pick a tool": "Choisissez un outil",
+  "Link copied": "Lien copié",
   "On request": "Sur demande",
   "On Railway": "Sur Railway",
   "Sign up at": "Inscrivez-vous sur",
@@ -1261,6 +1268,7 @@ window.KEOU_FR = {
   "The tools": "Les outils",
   "self-host": "auto-hébergez",
   "Thinking…": "Réflexion…",
+  "Copy link": "Copier le lien",
   "Features": "Fonctionnalités",
   "Password": "Mot de passe",
   "HTTP API": "API HTTP",

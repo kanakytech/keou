@@ -691,6 +691,52 @@ app.get('/', (req, res) => {
 // La page de présentation garde une adresse propre et indexable. Elle reste
 // servie telle quelle par express.static à /index.html ; /about est l'URL
 // canonique qu'on publie (sitemap, liens internes).
+/* Une page par création : /c/<id>. Elle porte les balises Open Graph qui font
+ * apparaître L'IMAGE quand on colle le lien sur X, Hacker News, Slack ou
+ * WhatsApp — partager une création ne renvoyait qu'à la galerie entière.
+ * Community seulement (la galerie publique est une fonction de l'édition
+ * hébergée), servie uniquement pour un rendu terminé et non masqué. */
+app.get('/c/:id', async (req, res) => {
+  if (config.edition !== 'community') return res.status(404).end();
+  const id = String(req.params.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return res.status(404).send('Not found');
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, prompt, media, kind, status, hidden FROM essai_generations WHERE id = $1`, [id]);
+    const row = rows[0];
+    if (!row || row.status !== 'completed' || row.hidden) return res.status(404).send('Not found');
+    const esc = (t) => String(t || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const media = row.media || 'image';
+    const file = `${SEO_HOST}/api/essai/image/${id}`;
+    const prompt = esc((row.prompt || '').slice(0, 200));
+    const title = 'Made with Keou Studio';
+    const desc = prompt || 'A creation from the free, open-source Keou Studio.';
+    const og = media === 'image'
+      ? `<meta property="og:image" content="${file}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${file}">`
+      : media === 'video'
+        ? `<meta property="og:type" content="video.other"><meta property="og:video" content="${file}"><meta property="og:video:type" content="video/mp4"><meta property="og:image" content="${SEO_HOST}/docs-img/studio.png"><meta name="twitter:card" content="player"><meta name="twitter:player:stream" content="${file}">`
+        : `<meta property="og:audio" content="${file}"><meta property="og:image" content="${SEO_HOST}/docs-img/studio.png"><meta name="twitter:card" content="summary_large_image">`;
+    const body = media === 'image'
+      ? `<img src="${file}" alt="${prompt}">`
+      : media === 'video'
+        ? `<video src="${file}" controls playsinline autoplay muted loop></video>`
+        : `<audio src="${file}" controls></audio>`;
+    res.set('Cache-Control', 'public, max-age=300');
+    res.type('html').send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><meta name="robots" content="noindex,follow"><link rel="canonical" href="${SEO_HOST}/c/${id}">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${SEO_HOST}/c/${id}"><meta property="og:site_name" content="Keou Studio">${og}
+<meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${esc(desc)}">
+<link rel="icon" type="image/png" href="/logo-keou.png">
+<style>body{margin:0;background:#0a0a0a;color:#f2f2f2;font-family:'Space Grotesk',system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:28px 16px 48px}img,video{max-width:min(96vw,1100px);max-height:78vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}audio{width:min(96vw,640px)}p.prompt{max-width:720px;text-align:center;color:rgba(242,242,242,.7);font-size:14px;line-height:1.6;margin:18px 0 6px}a.cta{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:12px 20px;border-radius:100px;background:#c8f060;color:#0a0a0a;font-weight:700;text-decoration:none}a.cta:hover{filter:brightness(1.05)}p.meta{font-size:12px;color:rgba(242,242,242,.45);margin-top:14px}p.meta a{color:inherit}</style></head>
+<body>${body}${prompt ? `<p class="prompt">${prompt}</p>` : ''}
+<a class="cta" href="${SEO_HOST}/?utm_source=share&utm_medium=creation">Make yours — free, no account</a>
+<p class="meta">Made with <a href="${SEO_HOST}/about">Keou Studio</a>, open source · <a href="${SEO_HOST}/essai.html">community gallery</a></p></body></html>`);
+  } catch (e) {
+    console.error('[creation page]', e.message);
+    res.status(500).send('Unavailable');
+  }
+});
+
 app.get('/about', (req, res) => {
   // Community seulement : une instance en marque blanche ne doit pas servir
   // notre page de présentation avec notre marque et nos liens.
