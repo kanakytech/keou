@@ -109,37 +109,55 @@ function nombreBorne(valeur, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
-// ─── Image Gen (nano-banana-pro) ───
+// ─── Image Gen — trois moteurs, choisis par le visiteur ───
+/* Le catalogue KIE du 03/09/2026 offre trois moteurs image qui se valent sur
+ * le produit et diffèrent sur le reste : Nano Banana Pro (Gemini 3 Pro Image,
+ * le pixel-lock historique du studio), Nano Banana 2 (Gemini 3.1 Flash Image,
+ * plus rapide et moins cher) et GPT Image 2 (OpenAI — texte net, photo
+ * produit). Un moteur inconnu retombe sur le premier : jamais une erreur pour
+ * un identifiant que l'interface n'a pas encore. Prix : calculateCost. */
+export const IMAGE_ENGINES = Object.freeze(['nano-banana-pro', 'nano-banana-2', 'gpt-image-2']);
+function moteurImage(engine) { return IMAGE_ENGINES.includes(engine) ? engine : 'nano-banana-pro'; }
 
-export async function generateImage(apiKey, { prompt, imageUrls, aspectRatio, outputFormat, resolution }) {
-  const r = await fetchWithTimeout(`${KIE}/createTask`, {
-    method: 'POST',
-    headers: kieHeaders(apiKey),
-    body: JSON.stringify({
-      input: JSON.stringify({ image_input: imageUrls, aspect_ratio: aspectRatio || '1:1', output_format: outputFormat || 'png', prompt, resolution: resolution || '2K' }),
-      model: 'nano-banana-pro',
-    }),
-  });
+/* GPT Image 2 n'accepte que 1K, 2K ou 4K, refuse le 2K sur 4:5 / 5:4, et le
+ * 1:1 ne monte pas en 4K (schéma public du 03/09/2026). On rend ce que le
+ * modèle accepte pour le cadrage demandé plutôt qu'un refus après coup. */
+function resolutionGptImage(aspectRatio, resolution) {
+  const r = String(resolution || '2K').toUpperCase();
+  if (aspectRatio === '4:5' || aspectRatio === '5:4') return '1K';
+  if (r === '4K' && aspectRatio === '1:1') return '2K';
+  return ['1K', '2K', '4K'].includes(r) ? r : '2K';
+}
+
+async function creerTacheImage(apiKey, engine, { prompt, imageUrls, aspectRatio, outputFormat, resolution }) {
+  const m = moteurImage(engine);
+  const images = (imageUrls || []).filter(Boolean);
+  let corps;
+  if (m === 'gpt-image-2') {
+    corps = images.length
+      ? { model: 'gpt-image-2-image-to-image', input: { prompt, input_urls: images, aspect_ratio: aspectRatio || 'auto', resolution: resolutionGptImage(aspectRatio, resolution) } }
+      : { model: 'gpt-image-2-text-to-image', input: { prompt, aspect_ratio: aspectRatio || '1:1', resolution: resolutionGptImage(aspectRatio, resolution) } };
+  } else if (m === 'nano-banana-2') {
+    // Schéma publié en OBJET — la version Pro, elle, veut une chaîne JSON.
+    corps = { model: 'nano-banana-2', input: { prompt, ...(images.length ? { image_input: images } : {}), aspect_ratio: aspectRatio || '1:1', resolution: resolution || '2K', output_format: outputFormat || 'png' } };
+  } else {
+    corps = { model: 'nano-banana-pro', input: JSON.stringify({ ...(images.length ? { image_input: images } : {}), aspect_ratio: aspectRatio || '1:1', output_format: outputFormat || 'png', prompt, resolution: resolution || '2K' }) };
+  }
+  const r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers: kieHeaders(apiKey), body: JSON.stringify(corps) });
   const data = await safeJson(r);
   if (!data.data?.taskId) throw new Error('No taskId returned');
   return { taskId: data.data.taskId, recordId: data.data.recordId || null };
 }
 
-// ─── Text-to-Image (nano-banana-pro, no reference image) ───
+export async function generateImage(apiKey, { prompt, imageUrls, aspectRatio, outputFormat, resolution, engine }) {
+  return creerTacheImage(apiKey, engine, { prompt, imageUrls, aspectRatio, outputFormat, resolution });
+}
+
+// ─── Text-to-Image (no reference image) ───
 // Used by the community trial: the visitor types a prompt, no product shot.
 
-export async function textToImage(apiKey, { prompt, aspectRatio, outputFormat, resolution }) {
-  const r = await fetchWithTimeout(`${KIE}/createTask`, {
-    method: 'POST',
-    headers: kieHeaders(apiKey),
-    body: JSON.stringify({
-      input: JSON.stringify({ aspect_ratio: aspectRatio || '1:1', output_format: outputFormat || 'png', prompt, resolution: resolution || '1K' }),
-      model: 'nano-banana-pro',
-    }),
-  });
-  const data = await safeJson(r);
-  if (!data.data?.taskId) throw new Error('No taskId returned');
-  return { taskId: data.data.taskId, recordId: data.data.recordId || null };
+export async function textToImage(apiKey, { prompt, aspectRatio, outputFormat, resolution, engine }) {
+  return creerTacheImage(apiKey, engine, { prompt, imageUrls: [], aspectRatio, outputFormat, resolution: resolution || '1K' });
 }
 
 // ─── Polish (flux-2 image-to-image) ───
@@ -221,6 +239,38 @@ export async function generateVideo(apiKey, { model, prompt, imageUrl, duration,
       duration: Math.round(Math.min(30, Math.max(2, Number(duration) || 8))),
       audio: sound !== false,
     } }) });
+  } else if (model === 'seedance-2.5') {
+    /* Seedance 2.5 (ByteDance, catalogue du 03/09/2026) : 4 à 30 s, audio
+     * natif, 480p/720p/1080p, texte seul ou première image. Mêmes ratios que
+     * Seedance 2, « adaptive » en repli. */
+    r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'bytedance/seedance-2-5', input: {
+      prompt, ...(imageUrl ? { first_frame_url: imageUrl } : {}),
+      generate_audio: generateAudio === true || sound === true,
+      resolution: ['480p', '720p', '1080p'].includes(resolution) ? resolution : '720p',
+      aspect_ratio: ratioSeedance(aspectRatio),
+      duration: Math.round(Math.min(30, Math.max(4, Number(duration) || 8))),
+      web_search: false,
+    } }) });
+  } else if (model === 'kling-o3') {
+    /* Kling 3.0 Omni : deux chemins selon qu'on part d'une photo ou d'un
+     * texte. 3 à 15 s, 720p/1080p/4k, audio natif en option. Avec une photo,
+     * « auto » suit le cadrage de l'image sauf demande explicite. Les
+     * multi-plans restent éteints : un seul plan, produit verrouillé. */
+    const resO3 = ['720p', '1080p', '4k'].includes(String(resolution || '').toLowerCase()) ? String(resolution).toLowerCase() : '720p';
+    const dureeO3 = Math.round(Math.min(15, Math.max(3, Number(duration) || 5)));
+    const audioO3 = sound === true || generateAudio === true;
+    if (imageUrl) {
+      r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'kling-3.0-omni/image-to-video', input: {
+        prompt, image_urls: [imageUrl], duration: dureeO3, resolution: resO3,
+        aspect_ratio: ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : 'auto',
+        audio: audioO3, customize_multi_shots: false,
+      } }) });
+    } else {
+      r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers, body: JSON.stringify({ model: 'kling-3.0-omni/text-to-video', input: {
+        prompt, duration: dureeO3, resolution: resO3, aspect_ratio: ratioKling3(aspectRatio),
+        audio: audioO3, customize_multi_shots: false,
+      } }) });
+    }
   } else if (model === 'seedance-2') {
     // Durée : entier de 4 à 15 s. Arrondi parce que le fournisseur compte en
     // secondes entières — un 7,5 reçu d'un client API partait tel quel.
@@ -286,6 +336,7 @@ const VOIX_PAR_DEFAUT = 'EkK5I93UQWFDigLMpZcX';   // « James » dans leur catal
  * passe par Gemini, au même catalogue. KIE_TTS_MODEL permet de revenir. */
 const MOTEURS_VOIX = Object.freeze([
   'google/gemini-3-1-flash-tts',
+  'elevenlabs/text-to-dialogue-v3',
   'elevenlabs/text-to-speech-multilingual-v2',
   'elevenlabs/text-to-speech-turbo-2-5',
 ]);
@@ -336,6 +387,20 @@ export async function tts(apiKey, { text, voice, voiceModel, stability, similari
       headers: kieHeaders(apiKey),
       body: JSON.stringify({ model: modele, input }),
     });
+    const data = await safeJson(r);
+    if (!data.data?.taskId) throw new Error('TTS task failed');
+    return { taskId: data.data.taskId, recordId: data.data.recordId || null };
+  }
+
+  if (modele === 'elevenlabs/text-to-dialogue-v3') {
+    /* ElevenLabs V3 (catalogue du 03/09/2026) : un dialogue = une liste de
+     * répliques, chacune avec un identifiant de voix (20 caractères). Une voix
+     * off, c'est une réplique. La stabilité n'y prend que trois valeurs. */
+    const identifiantV3 = (typeof voice === 'string' && /^[A-Za-z0-9]{20}$/.test(voice.trim())) ? voice.trim() : VOIX_PAR_DEFAUT;
+    const input = { dialogue: [{ text, voice: identifiantV3 }] };
+    const stabV3 = nombreBorne(stability, 0, 1);
+    if (stabV3 !== undefined) input.stability = stabV3 < 0.34 ? 0 : stabV3 < 0.67 ? 0.5 : 1;
+    const r = await fetchWithTimeout(`${KIE}/createTask`, { method: 'POST', headers: kieHeaders(apiKey), body: JSON.stringify({ model: modele, input }) });
     const data = await safeJson(r);
     if (!data.data?.taskId) throw new Error('TTS task failed');
     return { taskId: data.data.taskId, recordId: data.data.recordId || null };
@@ -404,6 +469,76 @@ export async function sfx(apiKey, { text, duration_seconds }) {
   return { taskId: data.data.taskId, recordId: data.data.recordId || null };
 }
 
+// ─── Cutout (Recraft remove background) ───
+
+export async function removeBackground(apiKey, { imageUrl }) {
+  /* recraft/remove-background : une image publique (PNG/JPG/WEBP, 5 Mo et
+   * 16 MP au plus), un WEBP à fond transparent en retour. Pas d'autre réglage
+   * chez le fournisseur : le fond blanc, quand il est demandé, se compose chez
+   * nous (src/lib/essai-queue.js, preparerDetourage). */
+  const r = await fetchWithTimeout(`${KIE}/createTask`, {
+    method: 'POST',
+    headers: kieHeaders(apiKey),
+    body: JSON.stringify({ model: 'recraft/remove-background', input: { image: imageUrl } }),
+  });
+  const data = await safeJson(r);
+  if (!data.data?.taskId) throw new Error('Cutout task failed');
+  return { taskId: data.data.taskId, recordId: data.data.recordId || null };
+}
+
+// ─── Music (Suno V5.5) ───
+
+const SUNO = 'https://api.kie.ai/api/v1/generate';
+
+export async function music(apiKey, { prompt, style, title, instrumental, duration, callBackUrl }) {
+  /* L'API Suno de KIE n'est PAS le marché : autre chemin, autre sondage
+   * (pollSuno, via metadata.suno) et un callBackUrl OBLIGATOIRE — on donne une
+   * route qui répond 200 et ne fait rien, le résultat se lit en sondant.
+   * Mode « custom » parce que c'est le seul où la durée compte (V5_5) : style
+   * et titre y sont requis. Instrumental : la description devient le style.
+   * Avec voix : le texte du visiteur est chanté tel quel. */
+  const texte = String(prompt || '').trim();
+  const corps = {
+    prompt: texte.slice(0, 3000),
+    customMode: true,
+    instrumental: instrumental !== false,
+    model: 'V5_5',
+    style: String(style || texte).trim().slice(0, 1000) || 'Cinematic',
+    title: String(title || texte).trim().slice(0, 80) || 'Untitled',
+    callBackUrl,
+  };
+  const secondes = nombreBorne(duration, 10, 360);
+  if (secondes !== undefined) corps.duration = Math.round(secondes);
+  const r = await fetchWithTimeout(SUNO, { method: 'POST', headers: kieHeaders(apiKey), body: JSON.stringify(corps) });
+  const data = await safeJson(r);
+  if (!data.data?.taskId) throw new Error('Music task failed');
+  return { taskId: data.data.taskId, recordId: null };
+}
+
+/**
+ * Sondage Suno : /api/v1/generate/record-info, statuts en majuscules, deux
+ * pistes rendues — on garde la première qui a une URL audio. Un échec de
+ * rappel (CALLBACK_EXCEPTION) n'est un échec que si aucune piste n'existe.
+ */
+async function pollSuno(apiKey, taskId) {
+  const r = await fetchWithTimeout(`${SUNO}/record-info?taskId=${encodeURIComponent(taskId)}`, { headers: kieHeaders(apiKey) });
+  if (r.status === 401 || r.status === 403) return { status: 'failed', error: 'KIE.AI auth error — check API key' };
+  if (!r.ok) return { status: 'processing', panneAmont: r.status };
+  const data = await r.json().catch(() => null);
+  const code = Number(data?.code);
+  if (code === 401) return { status: 'failed', error: 'KIE.AI auth error — check API key' };
+  if (code === 402) return { status: 'failed', error: 'KIE.AI credits exhausted — top up your account' };
+  const d = data?.data || {};
+  const statut = String(d.status || '').toUpperCase();
+  const pistes = Array.isArray(d.response?.sunoData) ? d.response.sunoData : [];
+  const piste = pistes.find((p) => p && typeof p.audio_url === 'string' && /^https?:\/\//.test(p.audio_url));
+  if (piste && (statut === 'SUCCESS' || statut === 'CALLBACK_EXCEPTION')) return { status: 'completed', resultUrl: piste.audio_url };
+  if (['CREATE_TASK_FAILED', 'GENERATE_AUDIO_FAILED', 'SENSITIVE_WORD_ERROR', 'CALLBACK_EXCEPTION'].includes(statut)) {
+    return { status: 'failed', error: d.errorMessage || `Music generation failed (${statut})` };
+  }
+  return { status: 'processing' };
+}
+
 // ─── Upscale Image (Topaz) ───
 
 export async function upscaleImage(apiKey, { imageUrl, upscaleFactor }) {
@@ -436,9 +571,28 @@ export async function upscaleVideo(apiKey, { videoUrl, upscaleFactor }) {
 /* Wan 3.0 : mesuré le 03/09/2026 sur deux générations réelles de 5 s — 40 crédits
  * en 480p, 80 en 720p, à 0,005 $ le crédit. 1080p extrapolé (×2), non mesuré. */
 const WAN_PER_SEC = { '480p': 0.04, '720p': 0.08, '1080p': 0.16 };
+/* Nouveaux moteurs du 03/09/2026 — chiffres MESURÉS sur une génération réelle
+ * chacun (creditsConsumed rendu par KIE, 0,005 $ le crédit) :
+ *   Nano Banana 2   8 crédits en 1K, 12 en 2K (le studio génère en 2K)
+ *   GPT Image 2     6 crédits en 1K, 10 en 2K
+ *   Recraft         1 crédit le détourage
+ *   Suno V5.5      12 crédits la génération (deux pistes rendues, une gardée)
+ *   Seedance 2.5  112 crédits pour 4 s en 480p → 0,14 $/s ; 720p et 1080p
+ *                 extrapolés ×2 et ×4, comme chez Wan — NON mesurés.
+ *   Kling O3       42 crédits pour 3 s en 720p → 0,07 $/s ; 1080p et 4K
+ *                 extrapolés ×2 et ×4 — NON mesurés.
+ *   ElevenLabs V3  « Internal Error » deux fois sur deux le 03/09 : le
+ *                 moteur est câblé, la puce reste cachée tant que KIE ne
+ *                 l'a pas rétabli (public/studio.html). */
+const TARIF_IMAGE = { 'nano-banana-pro': 0.09, 'nano-banana-2': 0.06, 'gpt-image-2': 0.05 };
+const SEEDANCE25_PER_SEC = { '480p': 0.14, '720p': 0.28, '1080p': 0.56 };
+const KLINGO3_PER_SEC = { '720p': 0.07, '1080p': 0.14, '4k': 0.28 };
+const TARIF_CUTOUT = 0.005;
+const TARIF_MUSIC = 0.06;
+const TARIF_VOIX = { 'elevenlabs/text-to-dialogue-v3': 0.10 };
 export function calculateCost(type, params = {}) {
   switch (type) {
-    case 'image': return 0.09;
+    case 'image': case 'text': return TARIF_IMAGE[params.engine] ?? TARIF_IMAGE['nano-banana-pro'];
     case 'polish':
     case 'remix':
       return 0.09;
@@ -460,12 +614,16 @@ export function calculateCost(type, params = {}) {
       if (model === 'kling-2.6' || model === 'kling-3.0') return dur * 0.06;
       if (model === 'seedance-2') return dur * 0.05;
       if (model === 'wan-3.0') return dur * (WAN_PER_SEC[String(params.resolution || '').toLowerCase()] || WAN_PER_SEC['720p']);
+      if (model === 'seedance-2.5') return dur * (SEEDANCE25_PER_SEC[String(params.resolution || '').toLowerCase()] || SEEDANCE25_PER_SEC['720p']);
+      if (model === 'kling-o3') return dur * (KLINGO3_PER_SEC[String(params.resolution || '').toLowerCase()] || KLINGO3_PER_SEC['720p']);
       return dur * 0.05; // grok-imagine
     }
     case 'img-upscale': return 0.12;
     case 'vid-upscale': return 0.70;
-    case 'tts': return 0.05;
+    case 'tts': return TARIF_VOIX[params.voiceModel] ?? 0.05;
     case 'sfx': return 0.05;
+    case 'cutout': return TARIF_CUTOUT;
+    case 'music': return TARIF_MUSIC;
     default: return 0.05;
   }
 }
@@ -474,10 +632,17 @@ export function calculateCost(type, params = {}) {
 
 export async function pollTask(apiKey, { taskId, recordId, metadata }) {
   let videoModel = '';
+  let suno = false;
   try {
     const meta = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata || {});
     videoModel = meta.videoModel || '';
+    suno = meta.suno === true;
   } catch (err) { console.error('[KIE POLL META]', err.message); }
+  // La musique vit sur l'API Suno, pas sur le marché : autre sondage.
+  if (suno) {
+    try { return await pollSuno(apiKey, taskId); }
+    catch { return { status: 'processing' }; }
+  }
   const isVeo = videoModel === 'veo3' || videoModel === 'veo3_fast' || videoModel === 'veo3_lite';
 
   const params = new URLSearchParams({ taskId });

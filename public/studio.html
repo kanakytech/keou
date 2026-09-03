@@ -959,6 +959,8 @@ body .ks-select .ks-select-option.selected{background:var(--s2);color:var(--ink)
 #main-content[data-tool="voice"]{--tool-accent:#f9a8d4;--tool-tint:rgba(249,168,212,.14);--tool-tint-soft:rgba(249,168,212,.10)}
 #main-content[data-tool="sfx"]{--tool-accent:#86efac;--tool-tint:rgba(134,239,172,.14);--tool-tint-soft:rgba(134,239,172,.10)}
 #main-content[data-tool="vidupscale"]{--tool-accent:#a5b4fc;--tool-tint:rgba(165,180,252,.14);--tool-tint-soft:rgba(165,180,252,.10)}
+#main-content[data-tool="cutout"]{--tool-accent:#5eead4;--tool-tint:rgba(94,234,212,.14);--tool-tint-soft:rgba(94,234,212,.10)}
+#main-content[data-tool="music"]{--tool-accent:#fdba74;--tool-tint:rgba(253,186,116,.14);--tool-tint-soft:rgba(253,186,116,.10)}
 
 /* ── Bascule de panneau : sortant 140ms, entrant 180ms — jamais de saut ── */
 .tool-panel{display:none}
@@ -1400,6 +1402,14 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="13" y2="11"/><rect x="3" y="9" width="12" height="12" rx="2"/><polygon points="8 13 8 17 12 15"/></svg>
       <span>Video Upscale</span>
     </button>
+    <button type="button" class="tool-pill" data-tool="cutout" style="--pill-accent:#5eead4;--pill-glow:rgba(94,234,212,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+      <span>Cutout</span>
+    </button>
+    <button type="button" class="tool-pill" data-tool="music" style="--pill-accent:#fdba74;--pill-glow:rgba(253,186,116,.22)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <span>Music</span>
+    </button>
     <button type="button" class="tool-pill tool-more" id="tools-more" aria-haspopup="dialog" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span>More</span>
@@ -1486,6 +1496,20 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
         <span class="tools-item-text">
           <span class="tools-item-name">Video Upscale</span>
           <span class="tools-item-sub">Sharpen a generated clip</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="cutout" style="--item-accent:#5eead4;--item-glow:rgba(94,234,212,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Cutout</span>
+          <span class="tools-item-sub">Remove the background, keep the product</span>
+        </span>
+      </button>
+      <button type="button" class="tools-item" data-tool="music" style="--item-accent:#fdba74;--item-glow:rgba(253,186,116,.22)">
+        <span class="tools-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <span class="tools-item-text">
+          <span class="tools-item-name">Music</span>
+          <span class="tools-item-sub">A jingle or soundtrack from a description</span>
         </span>
       </button>
       </div>
@@ -1624,6 +1648,27 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
       </button>
     </div>
 
+    <!-- Moteur d'image (anonyme) : trois modèles du catalogue KIE, prix mesurés
+         le 03/09/2026 — la liste et les tarifs vivent dans IMAGE_ENGINES
+         (script « Vague 3 — tools ») et src/lib/providers/kie.js. -->
+    <div class="anon-only" id="image-engine-section">
+      <p class="section-label">Engine</p>
+      <div class="tp-engines" id="image-engines">
+        <button type="button" class="tp-engine active" data-v="nano-banana-pro">
+          <span class="tp-engine-name">Nano Banana Pro</span>
+          <span class="tp-engine-meta">pixel-locked product &middot; 2K</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="nano-banana-2">
+          <span class="tp-engine-name">Nano Banana 2</span>
+          <span class="tp-engine-meta">fast &middot; 2K</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="gpt-image-2">
+          <span class="tp-engine-name">GPT Image 2</span>
+          <span class="tp-engine-meta">product photography &middot; sharp text</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Variant Count -->
     <p class="section-label">Variants per image</p>
     <div class="variant-grid">
@@ -1740,6 +1785,7 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
       <div class="as-model">
         <label class="as-model-label" for="as-provider">Model</label>
         <select id="as-provider" class="as-select" data-as-provider>
+          <option value="kie:gemini-3-7-flash-openai">KIE.AI · Gemini 3.7 Flash (your KIE key)</option>
           <option value="kie:gemini-2.5-flash">KIE.AI · Gemini 2.5 Flash (your KIE key)</option>
           <option value="kie:gemini-3-flash">KIE.AI · Gemini 3 Flash (your KIE key)</option>
           <option value="kie:gpt-5-2">KIE.AI · GPT 5.2 (your KIE key)</option>
@@ -1892,6 +1938,14 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
           <span class="tp-engine-name">Wan 3.0</span>
           <span class="tp-engine-meta">cinematic &middot; 2-30s &middot; audio</span>
         </button>
+        <button type="button" class="tp-engine" data-v="seedance-2.5">
+          <span class="tp-engine-name">Seedance 2.5</span>
+          <span class="tp-engine-meta">references &middot; 4-30s &middot; audio</span>
+        </button>
+        <button type="button" class="tp-engine" data-v="kling-o3">
+          <span class="tp-engine-name">Kling O3</span>
+          <span class="tp-engine-meta">omni &middot; 3-15s &middot; audio &middot; 4K</span>
+        </button>
       </div>
       <div class="tp-row">
         <div class="tp-col">
@@ -1913,6 +1967,7 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
           <div class="tp-chips" data-tp-resolutions>
             <button type="button" class="tp-chip" data-v="480p">480p</button>
             <button type="button" class="tp-chip active" data-v="720p">720p</button>
+            <button type="button" class="tp-chip" data-v="1080p" hidden>1080p</button>
           </div>
         </div>
         <div class="tp-col">
@@ -1968,6 +2023,16 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
     <div class="section-card tp-card">
       <p class="section-label">Script</p>
       <textarea class="form-input" data-tp-text rows="3" maxlength="500" placeholder="Type the words to speak&hellip;"></textarea>
+      <p class="section-label">Engine</p>
+      <!-- Deux moteurs de voix du catalogue KIE : Gemini (24 voix nommées) et
+           ElevenLabs V3 (identifiants de voix, 30 retenus ici sur les 60+). -->
+      <div class="tp-chips" data-tp-voice-engine>
+        <button type="button" class="tp-chip active" data-v="google/gemini-3-1-flash-tts">Gemini TTS</button>
+        <!-- Câblé de bout en bout, mais KIE répond « Internal Error » sur tout
+             ElevenLabs depuis août (revérifié deux fois le 03/09/2026) : la puce
+             attend, cachée. Retirer `hidden` le jour où leur service revient. -->
+        <button type="button" class="tp-chip" data-v="elevenlabs/text-to-dialogue-v3" hidden>ElevenLabs V3</button>
+      </div>
       <p class="section-label">Voice</p>
       <!-- Voix du moteur Gemini (le défaut : ElevenLabs est en panne chez KIE).
            Les 24 noms ont été validés un par un contre l'API réelle — les noms
@@ -1998,6 +2063,40 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
         <option value="Schedar">Schedar — even</option>
         <option value="Gacrux">Gacrux — mature</option>
         <option value="Sulafat">Sulafat — warm</option>
+      </select>
+      <select class="form-input" data-tp-voice-eleven hidden>
+        <option value="EkK5I93UQWFDigLMpZcX" selected>James — warm narrator</option>
+        <option value="Z3R5wn05IrDiVCyEkUrK">Arabella</option>
+        <option value="NNl6r8mD7vthiJatiJt1">Bradford</option>
+        <option value="YOq2y2Up4RgXP2HyXjE5">Xavier</option>
+        <option value="1SM7GgM6IMuvQlz2BwM3">Mark</option>
+        <option value="5l5f8iK3YPeGga21rQIX">Adeline</option>
+        <option value="scOwDtmlUjD3prqpp97I">Sam</option>
+        <option value="BZgkqPqms7Kj9ulSkVzn">Eve</option>
+        <option value="DGzg6RaUqxGRTHSBjfgF">Brock</option>
+        <option value="x70vRnQBMBu4FAYhjJbO">Nathan</option>
+        <option value="Sm1seazb4gs7RSlUVw7c">Anika</option>
+        <option value="TX3LPaxmHKxFdv7VOQHJ">Liam</option>
+        <option value="N2lVS1w4EtoT3dr4eOWO">Callum</option>
+        <option value="FGY2WhTYpPnrIDTdsKH5">Laura</option>
+        <option value="kPzsL2i3teMYv0FxEYQ6">Brittney</option>
+        <option value="hpp4J3VqNfWAUOO0d1Us">Bella</option>
+        <option value="nPczCjzI2devNBz1zQrb">Brian</option>
+        <option value="uYXf8XasLslADfZ2MB4u">Hope</option>
+        <option value="gs0tAILXbY5DNrJrsM6F">Jeff</option>
+        <option value="vBKc2FfBKJfcZNyEt1n6">Finn</option>
+        <option value="DYkrAHD8iwork3YSUBbs">Tom</option>
+        <option value="56AoDkrOh6qfVPDXZ7Pt">Cassidy</option>
+        <option value="lcMyyd2HUfFzxdCaC4Ta">Lucy</option>
+        <option value="6aDn1KB0hjpdcocrUkmq">Tiffany</option>
+        <option value="Sq93GQT4X1lKDXsQcixO">Felix</option>
+        <option value="pPdl9cQBQq4p6mRkZy2Z">Emma</option>
+        <option value="zYcjlYFOd3taleS0gkk3">Edward</option>
+        <option value="TC0Zp7WVFzhA8zpTlRqV">Aria</option>
+        <option value="aD6riP1btT197c6dACmy">Rachel M</option>
+        <option value="eVItLK1UvXctxuaRV2Oq">Jean</option>
+        <option value="1wGbFxmAM3Fgw63G1zZJ">Allison</option>
+        <option value="MJ0RnG71ty4LH3dvNfSd">Leon</option>
       </select>
       <button type="button" class="btn-primary full" data-tp-submit>Generate Speech</button>
       <p class="tp-note">AI voice-over &mdash; the audio result plays right here and lands in the public gallery.</p>
@@ -2042,6 +2141,64 @@ body.keou-anon #da-toggle,body.keou-anon #da-input-wrap{display:none!important}
       </div>
       <button type="button" class="btn-primary full" data-tp-submit>Upscale this video</button>
       <p class="tp-note">Topaz Video enlargement &mdash; &times;2 or &times;4, billed per second of footage.</p>
+    </div>
+  </section>
+
+  <!-- Cutout — détourage Recraft : le produit seul, fond transparent ou blanc.
+       Route essai en direct (/api/essai/studio/cutout), même sondage. -->
+  <section class="tool-panel" id="tool-panel-cutout">
+    <div class="section-card tp-card">
+      <p class="section-label">Source Image</p>
+      <div class="tp-sources-row">
+        <div class="tp-thumbs" data-tp-thumbs></div>
+        <button type="button" class="tp-src-btn" data-tp-upload>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="tp-src-btn" data-tp-sample>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span>Sample</span>
+        </button>
+      </div>
+      <p class="tp-hint">Pick a result from this session, or add a product photo.</p>
+      <p class="section-label">Background</p>
+      <div class="tp-chips" data-tp-background>
+        <button type="button" class="tp-chip active" data-v="transparent">Transparent PNG</button>
+        <button type="button" class="tp-chip" data-v="white">White</button>
+      </div>
+      <button type="button" class="btn-primary full" data-tp-submit>Remove background</button>
+      <p class="tp-note">Clean cutout of the product with Recraft &mdash; ready for a listing, a composite or a print. Input up to 5 MB and 16 MP.</p>
+    </div>
+  </section>
+
+  <!-- Music — Suno V5.5 : jingle ou bande-son depuis une description, ou des
+       paroles chantées. Route essai en direct (/api/essai/studio/music). -->
+  <section class="tool-panel" id="tool-panel-music">
+    <div class="section-card tp-card">
+      <p class="section-label">Describe the track</p>
+      <textarea class="form-input" data-tp-text rows="3" maxlength="500" placeholder="Upbeat electronic jingle for a sneaker ad, bright synths, punchy beat&hellip; or paste your lyrics"></textarea>
+      <div class="tp-row">
+        <div class="tp-col">
+          <p class="section-label">Vocals</p>
+          <div class="tp-chips" data-tp-vocals>
+            <button type="button" class="tp-chip active" data-v="instrumental">Instrumental</button>
+            <button type="button" class="tp-chip" data-v="vocals">With vocals</button>
+          </div>
+        </div>
+        <div class="tp-col">
+          <p class="section-label">Length</p>
+          <div class="tp-chips" data-tp-durations>
+            <button type="button" class="tp-chip" data-v="15">15s</button>
+            <button type="button" class="tp-chip active" data-v="30">30s</button>
+            <button type="button" class="tp-chip" data-v="60">60s</button>
+            <button type="button" class="tp-chip" data-v="120">2 min</button>
+          </div>
+        </div>
+      </div>
+      <p class="section-label">Style <span class="tp-optional">optional</span></p>
+      <input type="text" class="form-input" data-tp-style maxlength="200" placeholder="Electronic, cinematic, lo-fi, acoustic&hellip;" style="margin-bottom:12px">
+      <button type="button" class="btn-primary full" data-tp-submit>Generate music</button>
+      <p class="tp-note">A soundtrack or jingle with Suno V5.5 &mdash; with vocals, your text becomes the lyrics. The track lands in the public gallery like every result.</p>
     </div>
   </section>
 
@@ -2777,7 +2934,8 @@ function updateGenerateBtnBase() {
     // facture rien et le tarif par visuel n'est pas le nôtre — c'est la clé du
     // visiteur qui est débitée, à une résolution différente. On ne chiffre pas.
     const cost = (total * COST_PER_CREATIVE).toFixed(2);
-    $('#estimator-cost').textContent = window.IS_ANON ? 'Your own API key' : `$${cost}`;
+    // En anonyme, le moteur choisi fixe le tarif (window.KEOU_IMAGE_COST) : on chiffre ce que la clé du visiteur paiera.
+    $('#estimator-cost').textContent = window.IS_ANON ? `~$${(total * (window.KEOU_IMAGE_COST || 0.09)).toFixed(2)} on your key` : `$${cost}`;
     est.style.display = '';
   } else {
     est.style.display = 'none';
@@ -3140,6 +3298,7 @@ async function processAll(pending) {
 
       // Submit to API (creates DB record + KIE task)
       const genBody = { imgUrl: job.uploadUrl, format, idempotencyKey: job.id };
+      if (window.IS_ANON && window.KEOU_IMAGE_ENGINE) genBody.engine = window.KEOU_IMAGE_ENGINE;
       if (projectId) genBody.projectId = projectId;
       const campaignId = getCampaignId();
       if (campaignId) genBody.campaignId = campaignId;
@@ -3164,7 +3323,7 @@ async function processAll(pending) {
             if (pk) hdrs['X-Provider-Key'] = pk;
             genRes = await fetch('/api/essai/generer', {
               method: 'POST', credentials: 'same-origin', headers: hdrs,
-              body: JSON.stringify({ prompt: job.prompt, format, consent: true, idempotencyKey: job.id }),
+              body: JSON.stringify({ prompt: job.prompt, format, consent: true, idempotencyKey: job.id, engine: window.KEOU_IMAGE_ENGINE || undefined }),
               signal: ctrl.signal,
             });
           } else {
@@ -3979,6 +4138,7 @@ window.retryJob = async (id) => {
        * décrit. Et une clé d'idempotence FRAÎCHE : réutiliser j.id ferait
        * prendre ce retry délibéré pour un doublon du premier envoi refusé. */
       const genBody = { imgUrl: j.uploadUrl, format, idempotencyKey: j.id + ':retry:' + crypto.randomUUID().slice(0, 8) };
+      if (window.IS_ANON && window.KEOU_IMAGE_ENGINE) genBody.engine = window.KEOU_IMAGE_ENGINE;
       const cd = getCreativeDirection();
       if (cd) genBody.creativeDirection = cd;
       if (projectId) genBody.projectId = projectId;
@@ -4956,7 +5116,7 @@ function imgFallback(el) {
 (function () {
   'use strict';
 
-  var TOOL_KEYS = ['assistant', 'create', 'polish', 'remix', 'adapt', 'video', 'upscale', 'voice', 'sfx', 'vidupscale'];
+  var TOOL_KEYS = ['assistant', 'create', 'polish', 'remix', 'adapt', 'video', 'upscale', 'voice', 'sfx', 'vidupscale', 'cutout', 'music'];
 
   /* Moteurs vidéo : identifiants EXACTS acceptés par la file
      (src/lib/essai-queue.js VIDEO_MODELS + variantes Veo de la route). */
@@ -4967,7 +5127,16 @@ function imgFallback(el) {
     'kling-3.0': { videoModel: 'kling-3.0', durations: [3, 4, 5, 6, 8, 10, 15], def: 8 },
     'seedance-2': { videoModel: 'seedance-2', durations: [4, 5, 6, 8, 10, 15], def: 10, resolution: true },
     'wan-3.0': { videoModel: 'wan-3.0', durations: [4, 5, 6, 8, 10, 15, 20, 30], def: 8, resolution: true },
+    'seedance-2.5': { videoModel: 'seedance-2.5', durations: [4, 5, 6, 8, 10, 15, 20, 30], def: 8, resolution: true, resolutions: ['480p', '720p', '1080p'] },
+    'kling-o3': { videoModel: 'kling-o3', durations: [3, 4, 5, 6, 8, 10, 15], def: 5, resolution: true, resolutions: ['720p', '1080p'] },
   };
+
+  /* Moteurs image de Create (anonyme) — tarifs mesurés le 03/09/2026, même
+     table que src/lib/providers/kie.js (TARIF_IMAGE). Le choix est lu par le
+     lot Create via window.KEOU_IMAGE_ENGINE. */
+  var IMAGE_ENGINES = { 'nano-banana-pro': 0.09, 'nano-banana-2': 0.06, 'gpt-image-2': 0.05 };
+  window.KEOU_IMAGE_ENGINE = 'nano-banana-pro';
+  window.KEOU_IMAGE_COST = IMAGE_ENGINES['nano-banana-pro'];
 
   var state = {};
   TOOL_KEYS.forEach(function (k) { state[k] = { sel: null, selMedia: null, uploads: [] }; });
@@ -5607,8 +5776,8 @@ function imgFallback(el) {
     var card = addCard();
     // Avant/après seulement là où les deux images se superposent (même
     // cadrage) : retouche, remix, agrandissement. Adapt change le format.
-    if (card && spec.media === 'image' && spec.body.imageUrl && ['polish', 'remix', 'upscale'].indexOf(tool) !== -1) {
-      card.dataset.before = spec.body.imageUrl;
+    if (card && spec.media === 'image' && (spec.body.imageUrl || spec.before) && ['polish', 'remix', 'upscale', 'cutout'].indexOf(tool) !== -1) {
+      card.dataset.before = spec.before || spec.body.imageUrl;
     }
     try {
       var res;
@@ -5690,7 +5859,12 @@ function imgFallback(el) {
      serveur (src/lib/providers/kie.js, calculateCost). Affiché sur le bouton
      lui-même : on sait ce qu'on va dépenser AVANT de cliquer. */
   var COST = {
-    polish: 0.09, remix: 0.09, adapt: 0.09, upscale: 0.12, vidupscale: 0.70, voice: 0.05, sfx: 0.05,
+    polish: 0.09, remix: 0.09, adapt: 0.09, upscale: 0.12, vidupscale: 0.70, sfx: 0.05,
+    cutout: 0.005, music: 0.06,
+    voice: function (panel) {
+      var eng = chipValue(q(panel, '[data-tp-voice-engine]')) || 'google/gemini-3-1-flash-tts';
+      return /dialogue-v3/.test(eng) ? 0.10 : 0.05;
+    },
     video: function (panel) {
       var eng = panel.querySelector('.tp-engine.active');
       var key = eng ? eng.getAttribute('data-v') : 'veo3_fast';
@@ -5699,6 +5873,13 @@ function imgFallback(el) {
       if (key === 'veo3_fast') return 0.30;
       if (key === 'kling-2.6' || key === 'kling-3.0') return d * 0.06;
       if (key === 'seedance-2') return d * 0.05;
+      if (key === 'seedance-2.5' || key === 'kling-o3') {
+        var rw2 = q(panel, '[data-tp-resolution-wrap]');
+        var rk2 = rw2 ? (chipValue(rw2) || '720p') : '720p';
+        // Mesuré le 03/09 : Seedance 2.5 = 0,14 $/s en 480p (720p/1080p extrapolés) ; Kling O3 voir kie.js.
+        var grille = key === 'kling-o3' ? { '720p': 0.07, '1080p': 0.14, '4k': 0.28 } : { '480p': 0.14, '720p': 0.28, '1080p': 0.56 };
+        return d * (grille[String(rk2)] || grille['720p']);
+      }
       if (key === 'wan-3.0') {
         // Mesuré : 0,04 $/s en 480p, 0,08 $/s en 720p.
         var rw = q(panel, '[data-tp-resolution-wrap]');
@@ -5708,7 +5889,7 @@ function imgFallback(el) {
       return d * 0.05;
     },
   };
-  function fmtCost(v) { return '~$' + v.toFixed(2); }
+  function fmtCost(v) { return '~$' + (v < 0.01 ? v.toFixed(3) : v.toFixed(2)); }
   function refreshCost(tool) {
     var panel = panelOf(tool); if (!panel) return;
     var btn = q(panel, '[data-tp-submit]'); if (!btn) return;
@@ -5738,7 +5919,7 @@ function imgFallback(el) {
   }
 
   function mountTools() {
-    ['polish', 'remix', 'adapt', 'video', 'upscale'].forEach(wireUpload);
+    ['polish', 'remix', 'adapt', 'video', 'upscale', 'cutout'].forEach(wireUpload);
     refreshAllCosts();
     // La vidéo change de prix avec le moteur et la durée : on recalcule après
     // tout clic dans le panneau, une fois que les autres gestionnaires ont
@@ -5751,6 +5932,38 @@ function imgFallback(el) {
     var ap = panelOf('adapt');
     if (ap) ap.addEventListener('click', function () { setTimeout(function () { refreshAdaptLabel(); }, 0); }, true);
     wireVideoSource();
+
+    // Moteur image de Create : le choix vit sur window pour le lot existant.
+    var imgEngines = document.getElementById('image-engines');
+    if (imgEngines) {
+      imgEngines.querySelectorAll('.tp-engine').forEach(function (b) {
+        var meta = b.querySelector('.tp-engine-meta'); var k = b.getAttribute('data-v');
+        if (meta && IMAGE_ENGINES[k] !== undefined) meta.textContent = meta.textContent + ' \u00b7 ' + fmtCost(IMAGE_ENGINES[k]);
+      });
+      imgEngines.addEventListener('click', function (e) {
+        var b = e.target.closest('.tp-engine'); if (!b) return;
+        imgEngines.querySelectorAll('.tp-engine').forEach(function (c) { c.classList.remove('active'); });
+        b.classList.add('active');
+        window.KEOU_IMAGE_ENGINE = b.getAttribute('data-v') || 'nano-banana-pro';
+        window.KEOU_IMAGE_COST = IMAGE_ENGINES[window.KEOU_IMAGE_ENGINE] || 0.09;
+        if (window.updateGenerateBtn) window.updateGenerateBtn();
+      });
+    }
+
+    // Moteur de voix : chaque moteur montre sa propre liste de voix.
+    var voicePanel = panelOf('voice');
+    if (voicePanel) {
+      voicePanel.addEventListener('click', function (e) {
+        if (!e.target.closest('[data-tp-voice-engine] .tp-chip')) return;
+        setTimeout(function () {
+          var eleven = /dialogue-v3/.test(chipValue(q(voicePanel, '[data-tp-voice-engine]')) || '');
+          var g = q(voicePanel, '[data-tp-voice]'), el = q(voicePanel, '[data-tp-voice-eleven]');
+          if (g) { if (eleven) g.setAttribute('hidden', ''); else g.removeAttribute('hidden'); }
+          if (el) { if (eleven) el.removeAttribute('hidden'); else el.setAttribute('hidden', ''); }
+          refreshCost('voice');
+        }, 0);
+      }, true);
+    }
     document.querySelectorAll('.tool-panel .tp-chips').forEach(wireChips);
     document.querySelectorAll('.tp-engines').forEach(wireChips);
 
@@ -5792,7 +6005,7 @@ function imgFallback(el) {
       var st = state.video;
       vEngines.querySelectorAll('.tp-engine').forEach(function (e) {
         var k = e.getAttribute('data-v') || '';
-        e.classList.toggle('needs-photo', !st.sel && /^kling|^grok/.test(k));
+        e.classList.toggle('needs-photo', !st.sel && /^(kling-2\.6|kling-3\.0|grok)/.test(k));
       });
     }
     window.__marquerMoteursSansPhoto = marquerMoteursSansPhoto;
@@ -5808,7 +6021,19 @@ function imgFallback(el) {
         var d = vDur.querySelector('.tp-chip[data-v="' + eng.def + '"]');
         if (d) d.classList.add('active');
       }
-      if (vResWrap) { if (eng.resolution) vResWrap.removeAttribute('hidden'); else vResWrap.setAttribute('hidden', ''); }
+      if (vResWrap) {
+        if (eng.resolution) vResWrap.removeAttribute('hidden'); else vResWrap.setAttribute('hidden', '');
+        // Chaque moteur n'accepte que ses résolutions : les autres puces s'effacent.
+        var permises = eng.resolutions || ['480p', '720p'];
+        vResWrap.querySelectorAll('.tp-chip').forEach(function (c) {
+          if (permises.indexOf(c.getAttribute('data-v')) !== -1) c.removeAttribute('hidden'); else c.setAttribute('hidden', '');
+        });
+        if (!vResWrap.querySelector('.tp-chip.active:not([hidden])')) {
+          vResWrap.querySelectorAll('.tp-chip').forEach(function (c) { c.classList.remove('active'); });
+          var r0 = vResWrap.querySelector('.tp-chip[data-v="720p"]:not([hidden])') || vResWrap.querySelector('.tp-chip:not([hidden])');
+          if (r0) r0.classList.add('active');
+        }
+      }
     }
     vEngines.addEventListener('click', function (e) {
       var b = e.target.closest('.tp-engine');
@@ -5827,7 +6052,7 @@ function imgFallback(el) {
       if (!st.sel) {
         // Vidéo depuis un texte : Veo et Seedance seulement.
         if (desc.length < 3) { toast(I18N.t('Add a photo, or describe the clip you want'), true); return null; }
-        if (/^kling|^grok/.test(moteur)) { toast(I18N.t('This engine animates a photo — add one, or pick Veo or Seedance to start from text'), true); return null; }
+        if (/^(kling-2\.6|kling-3\.0|grok)/.test(moteur)) { toast(I18N.t('This engine animates a photo — add one, or pick Veo, Seedance, Wan or Kling O3 to start from text'), true); return null; }
       }
       var engKey = vEngines.querySelector('.tp-engine.active').getAttribute('data-v');
       var eng = ENGINES[engKey] || ENGINES.veo3_fast;
@@ -5862,9 +6087,35 @@ function imgFallback(el) {
     wireSubmit('voice', function (panel) {
       var t = (q(panel, '[data-tp-text]').value || '').trim();
       if (!t) { toast('Enter the text to speak first', true); return null; }
-      var voice = q(panel, '[data-tp-voice]').value || 'Rachel';
+      // Le moteur choisit sa liste de voix : noms Gemini, identifiants ElevenLabs.
+      var engine = chipValue(q(panel, '[data-tp-voice-engine]')) || 'google/gemini-3-1-flash-tts';
+      var eleven = /dialogue-v3/.test(engine);
+      var voice = (eleven ? q(panel, '[data-tp-voice-eleven]') : q(panel, '[data-tp-voice]')).value || (eleven ? 'EkK5I93UQWFDigLMpZcX' : 'Puck');
       return { route: '/api/tools/tts', statusType: 'tts', interval: 6000, timeout: 240000,
-        media: 'audio', body: { text: t, voice: voice } };
+        media: 'audio', body: { text: t, voice: voice, voiceModel: engine } };
+    });
+
+    // Détourage : la source peut être un rendu de session (sourceId) ou un envoi.
+    wireSubmit('cutout', function (panel, st) {
+      if (!needSource(st)) return null;
+      var body = { background: chipValue(q(panel, '[data-tp-background]')) || 'transparent' };
+      var m = String(st.sel).match(/\/api\/essai\/image\/([0-9a-f-]{36})/i);
+      if (m) body.sourceId = m[1]; else body.imageUrl = st.sel;
+      return { route: '/api/essai/studio/cutout', direct: true, statusType: 'cutout', before: st.sel,
+        interval: 5000, timeout: 240000, media: 'image', body: body };
+    });
+
+    // Musique : description ou paroles, instrumental ou chanté, 15 s à 2 min.
+    wireSubmit('music', function (panel) {
+      var t = (q(panel, '[data-tp-text]').value || '').trim();
+      if (t.length < 3) { toast(I18N.t('Describe the track first'), true); return null; }
+      var body = { text: t, instrumental: (chipValue(q(panel, '[data-tp-vocals]')) || 'instrumental') !== 'vocals' };
+      var st = (q(panel, '[data-tp-style]') && q(panel, '[data-tp-style]').value || '').trim();
+      if (st) body.style = st;
+      var d = chipValue(q(panel, '[data-tp-durations]'));
+      if (d) body.duration_seconds = Number(d);
+      return { route: '/api/essai/studio/music', direct: true, statusType: 'music',
+        interval: 8000, timeout: 600000, media: 'audio', body: body };
     });
 
     wireSubmit('sfx', function (panel) {
@@ -5942,7 +6193,7 @@ function imgFallback(el) {
       runAction: function (a) {
         a = a || {};
         var tool = String(a.tool || '').toLowerCase();
-        var alias = { 'video-upscale': 'vidupscale', 'videoupscale': 'vidupscale', 'tts': 'voice', 'speech': 'voice', 'sound': 'sfx' };
+        var alias = { 'video-upscale': 'vidupscale', 'videoupscale': 'vidupscale', 'tts': 'voice', 'speech': 'voice', 'sound': 'sfx', 'remove-background': 'cutout', 'background': 'cutout', 'song': 'music', 'jingle': 'music', 'soundtrack': 'music' };
         tool = alias[tool] || tool;
         if (TOOL_KEYS.indexOf(tool) === -1 || tool === 'assistant') return { ok: false, message: 'Unknown tool' };
         var self = this;
@@ -5955,7 +6206,7 @@ function imgFallback(el) {
           return { ok: true, message: 'Creating' };
         }
         var panel = panelOf(tool); if (!panel) return { ok: false, message: 'Unknown tool' };
-        var needsSource = ['polish', 'remix', 'adapt', 'upscale', 'vidupscale'].indexOf(tool) !== -1 || (tool === 'video' && !a.prompt);
+        var needsSource = ['polish', 'remix', 'adapt', 'upscale', 'vidupscale', 'cutout'].indexOf(tool) !== -1 || (tool === 'video' && !a.prompt);
         if (needsSource) {
           var src = null;
           if (a.source === 'selected' && state[tool].sel) src = { url: state[tool].sel, media: state[tool].selMedia || 'image' };
@@ -5966,7 +6217,7 @@ function imgFallback(el) {
         }
         if (tool === 'remix' && a.prompt) { var rp = q(panel, '[data-tp-prompt]'); if (rp) rp.value = String(a.prompt).slice(0, 500); }
         if (tool === 'video' && a.prompt) { var vp = q(panel, '[data-tp-prompt]'); if (vp) vp.value = String(a.prompt).slice(0, 500); }
-        if ((tool === 'voice' || tool === 'sfx') && a.text) { var tx = q(panel, '[data-tp-text]'); if (tx) tx.value = String(a.text).slice(0, 500); }
+        if ((tool === 'voice' || tool === 'sfx' || tool === 'music') && (a.text || a.prompt)) { var tx = q(panel, '[data-tp-text]'); if (tx) tx.value = String(a.text || a.prompt).slice(0, 500); }
         if ((tool === 'upscale' || tool === 'vidupscale') && a.factor) {
           var chip = panel.querySelector('[data-tp-factors] .tp-chip[data-v="' + (String(a.factor) === '4' ? '4' : '2') + '"]');
           if (chip && !chip.disabled) { panel.querySelectorAll('[data-tp-factors] .tp-chip').forEach(function (x) { x.classList.remove('active'); }); chip.classList.add('active'); }
@@ -6219,10 +6470,10 @@ function imgFallback(el) {
   }
   var SYSTEM = [
     'You are the assistant inside Keou Studio (studio.kanaky.xyz), a free, open-source creative production studio. The visitor brings their own KIE.AI key; everything they create here is public in the community gallery with a watermark; costs are billed by KIE.AI to their key.',
-    'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3 — ~$0.09 per format, so ~$0.72 for the full pack; quote the pack total); Video (a clip from a still or from text — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second, Wan 3.0 up to 30 s with native audio, from text or a photo — ~$0.04 per second at 480p, ~$0.08 at 720p); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
+    'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it — three engines: Nano Banana Pro ~$0.09, Nano Banana 2 ~$0.06, GPT Image 2 ~$0.05 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3 — ~$0.09 per format, so ~$0.72 for the full pack; quote the pack total); Cutout (background removed with Recraft, transparent PNG or white, ~$0.005); Video (a clip from a still or from text — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second, Wan 3.0 up to 30 s with native audio ~$0.04 per second at 480p / ~$0.08 at 720p, Seedance 2.5 up to 30 s with audio — the priciest: ~$0.14 per second at 480p, ~$0.28 at 720p, Kling O3 3-15 s with native audio ~$0.07 per second at 720p / ~$0.14 at 1080p; Kling 2.6, Kling 3.0 and Grok need a photo, the others also start from text); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, Gemini TTS, 24 voices, ~$0.05 — ElevenLabs is down at the provider right now); Music (a jingle or soundtrack with Suno V5.5, 15 s to 2 min, instrumental or sung from your text, ~$0.06 per track); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
     'Be concise, warm and practical. Answer in the language the visitor writes in. Recommend the right tool and say what it will cost. Never invent tools, models or prices.',
     'When you propose an image prompt, put it ALONE in a fenced block that starts with ```prompt and ends with ``` — the studio turns it into a one-click Generate. Write prompts in English, specific and photographic: subject, setting, light, camera, mood. One prompt per block.',
-    'You can also ACT. When the visitor clearly asks you to run a tool (e.g. "make the pack of this image", "upscale my last result", "polish it", "make a video of it", "say this in a voice"), emit ONE fenced block that starts with ```action containing only JSON, then one short sentence. Schema: {"tool":"create|polish|remix|adapt|upscale|video|voice|sfx","source":"last|selected|null","prompt":"<for create/remix/video>","factor":"2|4","engine":"veo3_fast|veo3_pro|kling-2.6|kling-3.0|seedance-2|wan-3.0","text":"<for voice/sfx>"}. The studio shows the action with its cost and a Run button — nothing runs without the visitor\'s click. Use "source":"last" for their latest result. If there is no result yet and the request needs one, say so instead of emitting an action.'
+    'You can also ACT. When the visitor clearly asks you to run a tool (e.g. "make the pack of this image", "upscale my last result", "polish it", "make a video of it", "say this in a voice"), emit ONE fenced block that starts with ```action containing only JSON, then one short sentence. Schema: {"tool":"create|polish|remix|adapt|cutout|upscale|video|voice|music|sfx","source":"last|selected|null","prompt":"<for create/remix/video>","factor":"2|4","engine":"veo3_fast|veo3_pro|kling-2.6|kling-3.0|seedance-2|wan-3.0|seedance-2.5|kling-o3","text":"<for voice/music/sfx>"}. The studio shows the action with its cost and a Run button — nothing runs without the visitor\'s click. Use "source":"last" for their latest result. If there is no result yet and the request needs one, say so instead of emitting an action.'
   ].join('\n\n');
   var history = [];
   var busy = false;
@@ -6237,7 +6488,7 @@ function imgFallback(el) {
       if (lang === 'action') {
         var act = null; try { act = JSON.parse(body); } catch (e) {}
         if (act && act.tool) {
-          var NOMS = { create: 'Create', polish: 'Polish', remix: 'Remix', adapt: 'Adapt', upscale: 'Upscale', video: 'Video', voice: 'Voice', sfx: 'SFX', vidupscale: 'Video Upscale', 'video-upscale': 'Video Upscale' };
+          var NOMS = { create: 'Create', polish: 'Polish', remix: 'Remix', adapt: 'Adapt', upscale: 'Upscale', video: 'Video', voice: 'Voice', sfx: 'SFX', vidupscale: 'Video Upscale', 'video-upscale': 'Video Upscale', cutout: 'Cutout', music: 'Music' };
           var nomOutil = NOMS[String(act.tool).toLowerCase()] || act.tool;
           var cout = (window.KeouTools && window.KeouTools.estimate) ? window.KeouTools.estimate(String(act.tool).toLowerCase() === 'video-upscale' ? 'vidupscale' : String(act.tool).toLowerCase()) : '';
           var detail = act.prompt || act.text || (act.factor ? '×' + act.factor : '') || (act.engine || '');
@@ -6276,7 +6527,7 @@ function imgFallback(el) {
 
     /** Le choix courant : { provider: 'kie'|'or', model } */
     function selection() {
-      var v = provSel.value || 'kie:gemini-2.5-flash';
+      var v = provSel.value || 'kie:gemini-3-7-flash-openai';
       if (v === 'or:custom') return { provider: 'or', model: orModel.value.trim() };
       var i = v.indexOf(':');
       return { provider: v.slice(0, i), model: v.slice(i + 1) };

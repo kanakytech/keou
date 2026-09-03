@@ -152,12 +152,12 @@ const runtimeChecks = [
   async () => {
     // calculateCost returns numbers for all known types
     const kie = await import('../src/lib/providers/kie.js');
-    const types = ['image', 'polish', 'remix', 'adapt', 'video', 'img-upscale', 'vid-upscale', 'tts', 'sfx'];
+    const types = ['image', 'text', 'polish', 'remix', 'adapt', 'video', 'img-upscale', 'vid-upscale', 'tts', 'sfx', 'cutout', 'music'];
     for (const t of types) {
       const cost = kie.calculateCost(t, { duration: 8, model: 'grok-imagine' });
       if (typeof cost !== 'number' || cost < 0) throw new Error(`cost for ${t} invalid: ${cost}`);
     }
-    return 'KIE calculateCost OK on all 9 types';
+    return 'KIE calculateCost OK on all 12 types';
   },
   async () => {
     // Essai prompt filter — blocks banned categories, passes clean prompts

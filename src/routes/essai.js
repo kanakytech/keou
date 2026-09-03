@@ -84,6 +84,11 @@ const VALID_FORMATS = ['1:1', '4:5', '16:9', '9:16', '3:4', '4:3', '3:2', '2:3']
 const VIDEO_MODES = ['std', 'pro', 'fun', 'normal'];
 // Déclinaisons veo3 acceptées par le fournisseur.
 const VEO_VARIANTS = ['veo3', 'veo3_fast', 'veo3_lite'];
+// Moteurs image du studio (Create) — même liste que le fournisseur (kie.js IMAGE_ENGINES).
+const IMAGE_ENGINES = ['nano-banana-pro', 'nano-banana-2', 'gpt-image-2'];
+// Moteurs de voix que kie.tts connaît ; une valeur hors liste laisse le défaut jouer.
+const VOICE_MODELS = ['google/gemini-3-1-flash-tts', 'elevenlabs/text-to-dialogue-v3', 'elevenlabs/text-to-speech-multilingual-v2', 'elevenlabs/text-to-speech-turbo-2-5'];
+const CUTOUT_BACKGROUNDS = ['transparent', 'white'];
 const PAGE_SIZE = 24;
 const MAX_REPORTS_BEFORE_HIDE = 3;
 
@@ -292,7 +297,7 @@ router.post('/generer', async (req, res) => {
       return res.status(400).json({ error: 'API key required — paste your KIE.AI key (it stays in your browser)' });
     }
 
-    const { prompt, format, consent, idempotencyKey } = req.body || {};
+    const { prompt, format, consent, idempotencyKey, engine } = req.body || {};
     if (consent !== true) {
       return res.status(400).json({ error: 'Consent required: everything created here is public' });
     }
@@ -331,7 +336,7 @@ router.post('/generer', async (req, res) => {
       return res.status(409).json({ error: 'Duplicate request — generation already in progress' });
     }
 
-    const q = enqueue({ id, prompt: cleanPrompt, format: cleanFormat, apiKey, ip: clientIp(req) });
+    const q = enqueue({ id, prompt: cleanPrompt, format: cleanFormat, apiKey, ip: clientIp(req), engine: IMAGE_ENGINES.includes(engine) ? engine : null });
     if (!q.ok) {
       await query(`DELETE FROM essai_generations WHERE id = $1`, [id]).catch(() => {});
       return res.status(q.code).json({ error: q.error });
@@ -860,7 +865,7 @@ router.post('/studio/generate', async (req, res) => {
     // (public/shared/anon.js) l'envoie dès que la source est un rendu
     // précédent : enchaîner un visuel produit sur sa propre création répondait
     // « Source image required ». Les trois autres routes le lisaient déjà.
-    const { sourceId, imageUrl, format, creativeDirection } = req.body || {};
+    const { sourceId, imageUrl, format, creativeDirection, engine } = req.body || {};
     const cd = typeof creativeDirection === 'string' ? creativeDirection.trim().slice(0, 500) : '';
     /* Sans image, la description devient le sujet : Veo et Seedance savent
      * partir d'un texte. Kling et Grok sont des modèles image → vidéo, on le
@@ -870,7 +875,8 @@ router.post('/studio/generate', async (req, res) => {
     if (sansSource) {
       if (cd.length < 3) return res.status(400).json({ error: 'Add a photo, or describe the clip you want (3 characters minimum)' });
       const m = typeof videoModel === 'string' ? videoModel : '';
-      if (/^kling|^grok/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo or Seedance to start from text' });
+      // Kling 2.6, Kling 3.0 et Grok animent une photo ; Veo, Seedance, Wan et Kling O3 partent aussi d'un texte.
+      if (/^(kling-2\.6|kling-3\.0|grok)/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo, Seedance, Wan or Kling O3 to start from text' });
     } else {
       source = await resolveStudioSource({ sourceId, imageUrl });
       if (source.error) return res.status(400).json({ error: source.error });
@@ -888,6 +894,7 @@ router.post('/studio/generate', async (req, res) => {
       format,
       imageUrl: source.url,
       creativeDirection: cd || null,
+      params: { engine: IMAGE_ENGINES.includes(engine) ? engine : null },
     });
   } catch (e) {
     console.error('[ESSAI studio generate]', e.message);
@@ -975,7 +982,8 @@ router.post('/studio/video', async (req, res) => {
     if (sansSource) {
       if (cd.length < 3) return res.status(400).json({ error: 'Add a photo, or describe the clip you want (3 characters minimum)' });
       const m = typeof videoModel === 'string' ? videoModel : '';
-      if (/^kling|^grok/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo or Seedance to start from text' });
+      // Kling 2.6, Kling 3.0 et Grok animent une photo ; Veo, Seedance, Wan et Kling O3 partent aussi d'un texte.
+      if (/^(kling-2\.6|kling-3\.0|grok)/.test(m)) return res.status(400).json({ error: 'This engine animates a photo — add one, or pick Veo, Seedance, Wan or Kling O3 to start from text' });
     } else {
       source = await resolveStudioSource({ sourceId, imageUrl });
       if (source.error) return res.status(400).json({ error: source.error });
@@ -1004,7 +1012,7 @@ router.post('/studio/video', async (req, res) => {
         // 10 secondes en silence, et les autres modèles convertissent de toute
         // façon ce qu'ils reçoivent.
         duration: secs === null ? null : String(secs),
-        resolution: ['480p', '720p', '1080p'].includes(resolution) ? resolution : null,
+        resolution: ['480p', '720p', '1080p', '4k'].includes(resolution) ? resolution : null,
         mode: VIDEO_MODES.includes(mode) ? mode : null,
         sound: sound === true,
         aspectRatio: VALID_FORMATS.includes(aspectRatio) ? aspectRatio : null,
@@ -1128,6 +1136,8 @@ router.post('/studio/tts', async (req, res) => {
         // relayer un champ arbitrairement long. Une valeur inconnue rend une
         // erreur du fournisseur, pas une facture.
         voice: typeof voice === 'string' && voice.trim() ? voice.trim().slice(0, 64) : null,
+        // Le moteur de voix (Gemini ou ElevenLabs V3) — hors liste, le défaut du fournisseur joue.
+        voiceModel: VOICE_MODELS.includes(voiceModel) ? voiceModel : null,
         stability: boundedNumber(stability, 0, 1),
         similarity_boost: boundedNumber(similarity_boost, 0, 1),
         style: boundedNumber(style, 0, 1),
@@ -1172,6 +1182,65 @@ router.post('/studio/sfx', async (req, res) => {
     if (!res.headersSent) res.status(500).json({ error: 'Could not start the sound effect — try again' });
   }
 });
+
+// ─── Studio : détourage (Recraft remove background) ───
+router.post('/studio/cutout', async (req, res) => {
+  try {
+    const { sourceId, imageUrl, background } = req.body || {};
+    const source = await resolveStudioSource({ sourceId, imageUrl });
+    if (source.error) return res.status(400).json({ error: source.error });
+    const fond = CUTOUT_BACKGROUNDS.includes(background) ? background : 'transparent';
+    await launchStudioJob(req, res, {
+      kind: 'cutout',
+      galleryPrompt: fond === 'white' ? 'Background removed, white — anonymous studio' : 'Background removed — anonymous studio',
+      userText: null,
+      format: null,
+      imageUrl: source.url,
+      params: { background: fond },
+    });
+  } catch (e) {
+    console.error('[ESSAI studio cutout]', e.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not start the cutout — try again' });
+  }
+});
+
+// ─── Studio : musique (Suno V5.5) ───
+router.post('/studio/music', async (req, res) => {
+  try {
+    const { text, style, instrumental, duration_seconds } = req.body || {};
+    const cleanText = typeof text === 'string' ? text.trim() : '';
+    if (cleanText.length < 3) return res.status(400).json({ error: 'Describe the track first (3 characters minimum)' });
+    if (cleanText.length > MAX_TTS_CHARS) {
+      return res.status(400).json({ error: `text must be ${MAX_TTS_CHARS} characters or less` });
+    }
+    // Le style part aussi chez le fournisseur : il passe le même filtre que le texte.
+    const cleanStyle = typeof style === 'string' ? style.trim().slice(0, 200) : '';
+    if (cleanStyle) {
+      const check = checkPrompt(cleanStyle);
+      if (check.blocked) return res.status(422).json({ error: check.message, category: check.category });
+    }
+    await launchStudioJob(req, res, {
+      kind: 'music',
+      galleryPrompt: cleanText,
+      userText: cleanText,
+      format: null,
+      params: {
+        text: cleanText,
+        musicStyle: cleanStyle || null,
+        instrumental: instrumental !== false,
+        // 10 s à 3 min : au-delà, une piste de galerie n'a plus de sens.
+        duration_seconds: boundedNumber(duration_seconds, 10, 180),
+      },
+    });
+  } catch (e) {
+    console.error('[ESSAI studio music]', e.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not start the music — try again' });
+  }
+});
+
+// Suno exige un callBackUrl ; on le reçoit et on n'en fait rien — le résultat
+// se lit en sondant. Répondre 200 évite qu'une tâche finisse en CALLBACK_EXCEPTION.
+router.post('/callback/suno', (req, res) => res.json({ ok: true }));
 
 // ─── Studio : statut au format studio.html ({ ready, resultUrl, state }) ───
 router.get('/studio/status/:id', async (req, res) => {

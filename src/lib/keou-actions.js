@@ -225,7 +225,7 @@ export async function executeGenerateVideo(userId, { imageUrl, videoModel, creat
   assertSafeUrl(imageUrl);
   const provider = await getProvider();
   const apiKey = await getProviderApiKey(provider.name);
-  const model = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2'].includes(videoModel) ? videoModel : 'grok-imagine';
+  const model = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2', 'wan-3.0', 'seedance-2.5', 'kling-o3'].includes(videoModel) ? videoModel : 'grok-imagine';
   const effectiveProjectId = await resolveOwnedProjectId(userId, projectId);
   const effectiveCampaignId = await resolveEffectiveCampaignId(effectiveProjectId, campaignId);
 

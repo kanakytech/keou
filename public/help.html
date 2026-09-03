@@ -225,13 +225,15 @@ body.keou-anon .platform-only{display:none!important}
       <h3>The tools</h3>
       <table class="help-table">
         <tr><th>Tool</th><th>What it does</th><th>Estimated cost</th></tr>
-        <tr><td>Create</td><td>Describe what you want and get an image with no photo at all — or drop a product photo and it stays pixel-locked while the scene is generated around it. Try a sample if you have nothing at hand.</td><td>~$0.09 per image</td></tr>
+        <tr><td>Create</td><td>Describe what you want and get an image with no photo at all — or drop a product photo and it stays pixel-locked while the scene is generated around it. Try a sample if you have nothing at hand. Three engines: Nano Banana Pro (the pixel-locked default), Nano Banana 2 (faster) and GPT Image 2 (product photography, sharp text).</td><td>~$0.09 per image with Nano Banana Pro, ~$0.06 with Nano Banana 2, ~$0.05 with GPT Image 2</td></tr>
         <tr><td>Polish</td><td>Professional retouch of a photo or a result: lighting, sharpness, clean finish.</td><td>~$0.09</td></tr>
         <tr><td>Remix</td><td>A new creative direction from the same product.</td><td>~$0.09</td></tr>
         <tr><td>Adapt</td><td>The whole pack in one click: the same image recomposed for every ratio (1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3). Tap a format to leave it out.</td><td>~$0.09 per format</td></tr>
-        <tr><td>Video</td><td>A cinematic clip from a still. Engines: Veo 3.1 fast, Veo 3.1 pro, Kling 2.6, Kling 3.0, Seedance 2, Wan 3.0 (up to 30 s, native audio, from text or from a photo). Duration and format adapt to the engine.</td><td>from ~$0.30 (Veo fast) to ~$1.25 (Veo pro); Kling ~$0.06 per second; Wan 3.0 ~$0.04 per second at 480p, ~$0.08 at 720p</td></tr>
+        <tr><td>Cutout</td><td>The background removed with Recraft, the product kept: a transparent PNG or a white background, ready for a listing, a composite or a print. Input up to 5 MB and 16 MP. Opens a before/after slider.</td><td>~$0.005</td></tr>
+        <tr><td>Video</td><td>A cinematic clip from a still or from text. Engines: Veo 3.1 fast, Veo 3.1 pro, Kling 2.6, Kling 3.0, Seedance 2, Wan 3.0 (up to 30 s, native audio), Seedance 2.5 (up to 30 s, native audio, 1080p) and Kling O3 (3 to 15 s, native audio, up to 4K). Kling 2.6, Kling 3.0 and Grok animate a photo; the others also start from a description. Duration, resolution and format adapt to the engine.</td><td>from ~$0.30 (Veo fast) to ~$1.25 (Veo pro); Kling 2.6/3.0 ~$0.06 per second; Wan 3.0 ~$0.04 per second at 480p, ~$0.08 at 720p; Seedance 2.5 ~$0.14 per second at 480p, ~$0.28 at 720p (the priciest engine); Kling O3 ~$0.07 per second at 720p, ~$0.14 at 1080p</td></tr>
         <tr><td>Upscale</td><td>Sharp enlargement ×2 or ×4 with Topaz. The studio measures your image first: factors that would exceed the provider's 20,000 px limit are switched off, and files over 10 MB are refused before anything is sent.</td><td>~$0.12</td></tr>
-        <tr><td>Voice</td><td>Narration from text, 24 voices.</td><td>~$0.05</td></tr>
+        <tr><td>Voice</td><td>Narration from text with Gemini TTS, 24 named voices. ElevenLabs V3 is wired in and appears the day the provider brings it back online.</td><td>~$0.05</td></tr>
+        <tr><td>Music</td><td>A jingle or a soundtrack with Suno V5.5, 15 seconds to 2 minutes, instrumental or sung — with vocals, your text becomes the lyrics. An optional style field steers the genre.</td><td>~$0.06 per track</td></tr>
         <tr><td>SFX</td><td>Sound design from a description. The provider's sound model is intermittent at the moment: the studio retries once and tells you plainly when it is their side.</td><td>~$0.05</td></tr>
         <tr><td>Video Upscale</td><td>Topaz Video ×2 or ×4 on a clip from this session, an uploaded file (MP4, WebM, MOV, up to 200 MB) or a link.</td><td>~$0.70</td></tr>
       </table>
@@ -308,11 +310,12 @@ body.keou-anon .platform-only{display:none!important}
       <table class="help-table">
         <thead><tr><th>Capability</th><th>KIE.AI</th><th>Fal.ai</th></tr></thead>
         <tbody>
-          <tr><td>Image Generation</td><td>Nano Banana Pro</td><td>Nano Banana Pro</td></tr>
+          <tr><td>Image Generation</td><td>Nano Banana Pro / Nano Banana 2 / GPT Image 2</td><td>Nano Banana Pro</td></tr>
           <tr><td>Image Polish</td><td>Flux 2 Pro</td><td>Flux 2 Pro Edit</td></tr>
-          <tr><td>Video</td><td>Kling / Veo / Grok / Seedance</td><td>Kling / Veo / Grok / Seedance</td></tr>
+          <tr><td>Video</td><td>Kling 2.6 / 3.0 / O3, Veo 3.1, Grok, Seedance 2 / 2.5, Wan 3.0</td><td>Kling / Veo / Grok / Seedance</td></tr>
+          <tr><td>Cutout</td><td>Recraft Remove Background</td><td>—</td></tr>
           <tr><td>Upscale</td><td>Topaz ×2 / ×4</td><td>Topaz ×2 / ×4</td></tr>
-          <tr><td>Audio</td><td>ElevenLabs TTS + SFX</td><td>ElevenLabs TTS + SFX</td></tr>
+          <tr><td>Audio</td><td>Gemini TTS, ElevenLabs V3, ElevenLabs SFX, Suno V5.5 (music)</td><td>ElevenLabs TTS + SFX</td></tr>
         </tbody>
       </table>
     </section>

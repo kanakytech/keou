@@ -148,6 +148,7 @@ const AnonMode = (() => {
         target = 'generate';
         out.format = body.format || '1:1';
         if (body.creativeDirection) out.creativeDirection = body.creativeDirection;
+        if (body.engine) out.engine = body.engine; // moteur image choisi dans Create
       } else {
         target = u.slice('/api/'.length); // polish | remix | adapt
         out.format = body.ratio || body.format || '1:1';
@@ -205,6 +206,7 @@ const AnonMode = (() => {
         out.text = typeof body.text === 'string' ? body.text : '';
         if (mediaTarget === 'tts') {
           if (body.voice) out.voice = body.voice;
+          if (body.voiceModel) out.voiceModel = body.voiceModel;
           // Réglages fins seulement s'ils sont réellement réglés : un NaN ou un
           // null partirait tel quel chez le fournisseur.
           for (const k of ['stability', 'similarity_boost', 'style', 'speed']) {

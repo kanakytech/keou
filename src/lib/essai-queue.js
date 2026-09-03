@@ -132,6 +132,8 @@ export const MEDIA_BY_KIND = Object.freeze({
   remix:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
   adapt:   Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
   upscale: Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
+  // Détourage (Recraft) : WEBP transparent chez le fournisseur, PNG chez nous.
+  cutout:  Object.freeze({ media: 'image', ext: 'png', mime: 'image/png',  watermark: true }),
   video:   Object.freeze({ media: 'video', ext: 'mp4', mime: 'video/mp4',  watermark: true }),
   // Agrandissement vidéo (Topaz Video) : la source EST une vidéo, la sortie
   // aussi — distinct de `upscale` (image) pour que MEDIA_BY_KIND serve le bon
@@ -139,6 +141,8 @@ export const MEDIA_BY_KIND = Object.freeze({
   'vid-upscale': Object.freeze({ media: 'video', ext: 'mp4', mime: 'video/mp4', watermark: true }),
   tts:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
   sfx:     Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
+  // Musique (Suno V5.5) : une piste MP3, sans filigrane comme tout son.
+  music:   Object.freeze({ media: 'audio', ext: 'mp3', mime: 'audio/mpeg', watermark: false }),
 });
 
 /**
@@ -311,7 +315,10 @@ function safeErrorMessage(err) {
 // monté sur /api dans server.js, pas sur /api/generate, et c'est bien vers
 // /api/video que le studio poste.) Un modèle inconnu retombe sur le moins cher
 // plutôt que d'échouer chez le fournisseur.
-const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2', 'wan-3.0'];
+const VIDEO_MODELS = ['grok-imagine', 'kling-2.6', 'kling-3.0', 'veo3', 'seedance-2', 'wan-3.0', 'seedance-2.5', 'kling-o3'];
+
+// Suno exige un rappel : une route qui répond 200 sans rien faire (src/routes/essai.js).
+const CALLBACK_SUNO = (process.env.PUBLIC_BASE_URL || 'https://studio.kanaky.xyz').replace(/\/$/, '') + '/api/essai/callback/suno';
 
 function videoModelOf(job) {
   return VIDEO_MODELS.includes(job.videoModel) ? job.videoModel : 'grok-imagine';
@@ -357,16 +364,19 @@ function buildVideoPrompt(creativeDirection) {
  * change de modèle, il change ici. */
 function modelLabel(job) {
   switch (job.kind) {
-    case 'text': case 'image': case 'adapt': return 'Nano Banana Pro';
+    case 'text': case 'image': return ({ 'nano-banana-2': 'Nano Banana 2', 'gpt-image-2': 'GPT Image 2' })[job.engine] || 'Nano Banana Pro';
+    case 'adapt': return 'Nano Banana Pro';
+    case 'cutout': return 'Recraft';
+    case 'music': return 'Suno V5.5';
     case 'polish': case 'remix': return 'FLUX.2 Pro';
     case 'upscale': return 'Topaz Image';
     case 'vid-upscale': return 'Topaz Video';
     case 'video': {
       const m = VIDEO_MODELS.includes(job.videoModel) ? job.videoModel : 'grok-imagine';
       if (m === 'veo3') return job.variant === 'veo3_fast' ? 'Veo 3.1 fast' : job.variant === 'veo3_lite' ? 'Veo 3.1 lite' : 'Veo 3.1';
-      return { 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2', 'wan-3.0': 'Wan 3.0', 'grok-imagine': 'Grok Imagine' }[m] || m;
+      return { 'kling-2.6': 'Kling 2.6', 'kling-3.0': 'Kling 3.0', 'seedance-2': 'Seedance 2', 'wan-3.0': 'Wan 3.0', 'seedance-2.5': 'Seedance 2.5', 'kling-o3': 'Kling O3', 'grok-imagine': 'Grok Imagine' }[m] || m;
     }
-    case 'tts': { const v = String(job.voiceModel || ''); return /eleven/i.test(v) ? 'ElevenLabs' : 'Gemini TTS'; }
+    case 'tts': { const v = String(job.voiceModel || ''); return /dialogue-v3/i.test(v) ? 'ElevenLabs V3' : /eleven/i.test(v) ? 'ElevenLabs' : 'Gemini TTS'; }
     case 'sfx': return 'ElevenLabs SFX';
     default: return null;
   }
@@ -381,6 +391,7 @@ async function createProviderTask(job) {
         aspectRatio: job.format,
         outputFormat: 'png',
         resolution: '2K',
+        engine: job.engine,
       });
     case 'polish': // flux-2 : '2K' est la seule résolution éprouvée en prod
       return kie.polish(job.apiKey, {
@@ -455,6 +466,16 @@ async function createProviderTask(job) {
         videoUrl: job.videoUrl || job.imageUrl,
         upscaleFactor: job.upscaleFactor === '2' ? '2' : '4',
       });
+    case 'cutout':
+      return kie.removeBackground(job.apiKey, { imageUrl: job.imageUrl });
+    case 'music':
+      return kie.music(job.apiKey, {
+        prompt: job.text,
+        style: job.musicStyle,
+        instrumental: job.instrumental !== false,
+        duration: job.duration_seconds || 30,
+        callBackUrl: CALLBACK_SUNO,
+      });
     case 'tts': {
       /* Pas de voix imposée : le fournisseur a la sienne, et « Rachel » est un
        * NOM de l'ancienne API ElevenLabs. Depuis, KIE ne parle plus que
@@ -486,6 +507,7 @@ async function createProviderTask(job) {
         // (resolveStudioSource accepte n'importe quelle création terminée),
         // il n'a donc aucune raison de naître plus mou que les autres.
         resolution: '2K',
+        engine: job.engine,
       });
   }
 }
@@ -667,6 +689,14 @@ function formatAudioRendu(url) {
  *   - filigrane à poser → sharp exige le fichier entier, on tamponne, sous
  *     plafond et en coupant dès le dépassement.
  */
+/** Le détourage arrive en WEBP transparent : on le sert en PNG (la table le
+ *  dit), sur fond blanc si le visiteur l'a demandé — composé ici, le
+ *  fournisseur ne connaît que la transparence. */
+async function preparerDetourage(raw, background) {
+  const img = sharp(raw);
+  return (background === 'white' ? img.flatten({ background: '#ffffff' }) : img).png().toBuffer();
+}
+
 async function persistProviderResult(resultUrl, key, out, job) {
   assertSafeUrl(resultUrl);
   const cap = MAX_BYTES[out.media] || MAX_BYTES.image;
@@ -684,7 +714,8 @@ async function persistProviderResult(resultUrl, key, out, job) {
     // plafond.
   }
 
-  const raw = await downloadCapped(resultUrl, cap);
+  let raw = await downloadCapped(resultUrl, cap);
+  if (job.kind === 'cutout') raw = await preparerDetourage(raw, job.background);
   await uploadToR2(marquer ? await apposerFiligrane(raw, out) : raw, key, out.mime);
 }
 
@@ -759,10 +790,11 @@ async function executerJob(job) {
   // pollTask a besoin du modèle pour choisir la bonne URL.
   const pollMetadata = job.kind === 'video'
     ? JSON.stringify({ videoModel: videoModelOf(job) })
-    : '{}';
+    : job.kind === 'music' ? JSON.stringify({ suno: true }) : '{}';
 
   // 2. Polling jusqu'à état terminal ou timeout
-  const deadline = Date.now() + (out.media === 'video' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
+  // La musique prend le délai des vidéos : Suno rend une piste en une à trois minutes.
+  const deadline = Date.now() + (out.media === 'video' || job.kind === 'music' ? POLL_TIMEOUT_VIDEO_MS : POLL_TIMEOUT_MS);
   let resultUrl = null;
   /* Une panne installée chez le fournisseur s'annonce, elle ne s'attend pas.
    *
@@ -942,6 +974,8 @@ export function enqueue({
   upscaleFactor = null,
   // agrandissement vidéo (Topaz Video) : source vidéo distincte de l'image
   videoUrl = null,
+  // moteur image (Create), fond du détourage, style et voix de la musique
+  engine = null, background = null, musicStyle = null, instrumental = null,
 }) {
   // Les deux refus nomment la limite qui a joué et chiffrent l'attente. Un refus
   // muet est ce qui a fait perdre une heure à un visiteur persuadé que son lot
@@ -972,6 +1006,7 @@ export function enqueue({
     videoModel, duration, resolution, mode, sound, aspectRatio, generateAudio, variant,
     text, voice, voiceModel, stability, similarity_boost, style, speed, duration_seconds,
     upscaleFactor, videoUrl,
+    engine, background, musicStyle, instrumental,
   });
   // Rang d'arrivée, pas ordre de service : depuis que la file se sert au tour
   // par tour, ce nombre est une estimation haute pour l'UI, pas une promesse.
