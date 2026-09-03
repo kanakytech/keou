@@ -1,6 +1,6 @@
 /* Traductions françaises — généré par scripts/i18n-build.mjs, ne pas éditer à la main.
    La clé est la chaîne anglaise EXACTE telle qu'elle apparaît dans le HTML.
-   1452 entrées. */
+   1455 entrées. */
 window.KEOU_FR = {
   "Every image, video and sound created here appears in the community gallery below, with its prompt, visible to everyone. Images and videos carry a studio.kanaky.xyz watermark; sound carries none. Any visitor can open a creation full size and save it — the watermark is what protects the work, not a missing button. Prohibited content (sexual, minors, violence, hate, real people, identity documents) is refused and can be reported.": "Toute image, vidéo et son créés ici apparaissent dans la galerie communautaire ci-dessous, avec leur prompt, visibles de tous. Les images et les vidéos portent un filigrane studio.kanaky.xyz ; le son n’en porte aucun. N’importe quel visiteur peut agrandir une création et l’enregistrer — c’est le filigrane qui protège le travail, pas un bouton absent. Les contenus interdits (sexuels, mineurs, violence, haine, personnes réelles, documents d’identité) sont refusés et peuvent être signalés.",
   "No, and this is worth being precise about. It used to be — polish, remix, export packs and the production prompt stack were held back as an upgrade funnel. That's over. The public repository now carries the complete studio, including the prompt stack that makes the output good. Two things stay private, and neither is a feature: our provider costs and margin table, and the Stripe plumbing that bills our own hosted instance.": "Non, et le point mérite d’être précis. Elle l’a été — retouche, remix, packs de formats et prompt stack de production étaient retenus pour pousser vers le palier payant. C’est terminé. Le dépôt public porte désormais le studio complet, y compris le prompt stack qui rend le résultat bon. Deux choses restent privées, et ce ne sont pas des fonctionnalités : nos coûts fournisseurs et notre table de marge, et la plomberie Stripe qui facture notre propre instance hébergée.",
@@ -387,6 +387,7 @@ window.KEOU_FR = {
   "Prompt too long (500 characters maximum)": "Prompt trop long (500 caractères maximum)",
   "Unsupported format. Use MP4, MOV or MKV.": "Format non pris en charge — utilisez MP4, MOV ou MKV",
   "KIE.AI · Gemini 2.5 Flash (your KIE key)": "KIE.AI · Gemini 2.5 Flash (votre clé KIE)",
+  "Running — see the results below the tool": "En cours — voyez les résultats sous l'outil",
   "Access is managed by your agency admin.": "L’accès est géré par l’administrateur de votre agence.",
   "Create a secure password to get started": "Créez un mot de passe solide pour commencer",
   "-- visuals produced in the last 30 days": "-- visuels produits ces 30 derniers jours",
@@ -1309,6 +1310,7 @@ window.KEOU_FR = {
   "instead.": "à la place.",
   "Resolved": "Résolus",
   "Sending…": "Envoi…",
+  "Launched": "Lancé",
   "Sign in": "Se connecter",
   "Install": "Installation",
   "Operate": "Exploiter",
@@ -1453,6 +1455,7 @@ window.KEOU_FR = {
   "You": "Vous",
   "All": "Tous",
   "Off": "Désactivée",
+  "Run": "Lancer",
   "or": "ou",
 };
 

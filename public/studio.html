@@ -1095,6 +1095,11 @@ body.drop-anywhere::after{content:attr(data-drop-hint);position:fixed;inset:12px
 .as-prompt-use:hover{filter:brightness(1.05)}
 .as-prompt-use:active{transform:scale(.97)}
 .as-prompt-use svg{width:13px;height:13px}
+.as-action-run{margin-top:10px;display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:100px;border:1px solid var(--accent);background:var(--accent);color:#0a0a0a;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:transform var(--m-fast),filter var(--m-fast)}
+.as-action-run:hover{filter:brightness(1.05)}
+.as-action-run:active{transform:scale(.97)}
+.as-action-run[disabled]{opacity:.6;cursor:default}
+.as-action-run svg{width:11px;height:11px}
 .as-compose{display:flex;gap:10px;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--s3)}
 .as-input{flex:1;min-height:42px;max-height:160px;resize:none;padding:10px 12px;border-radius:12px;border:1px solid var(--s3);background:var(--s2);color:var(--ink);font:inherit;font-size:14px;line-height:1.45;outline:none;transition:border-color var(--m-fast),box-shadow var(--m-fast)}
 .as-input:focus{border-color:var(--tool-accent);box-shadow:0 0 0 3px var(--tool-tint)}
@@ -5915,6 +5920,49 @@ function imgFallback(el) {
         var u = c.getAttribute('data-w3-url') || (c.querySelector('.result-media-wrap img') || {}).src || null;
         return u ? { url: u, media: c.getAttribute('data-w3-media') || 'image' } : null;
       },
+      estimate: function (tool) {
+        var panel = panelOf(tool); var t = panel && panel.querySelector('[data-tp-submit] .tp-cost');
+        return t ? t.textContent : '';
+      },
+      /* Une action de l'assistant : {tool, source, prompt, factor, engine, text}.
+         Rend { ok, message }. Ne fait que ce que le panneau permet déjà. */
+      runAction: function (a) {
+        a = a || {};
+        var tool = String(a.tool || '').toLowerCase();
+        var alias = { 'video-upscale': 'vidupscale', 'videoupscale': 'vidupscale', 'tts': 'voice', 'speech': 'voice', 'sound': 'sfx' };
+        tool = alias[tool] || tool;
+        if (TOOL_KEYS.indexOf(tool) === -1 || tool === 'assistant') return { ok: false, message: 'Unknown tool' };
+        var self = this;
+        if (tool === 'create') {
+          var c = document.getElementById('anon-composer');
+          if (!c || !a.prompt) return { ok: false, message: 'No prompt to create from' };
+          c.value = String(a.prompt).slice(0, 500); c.dispatchEvent(new Event('input', { bubbles: true }));
+          switchTool('create');
+          setTimeout(function () { var g = document.getElementById('generate-btn'); if (g) g.click(); }, 220);
+          return { ok: true, message: 'Creating' };
+        }
+        var panel = panelOf(tool); if (!panel) return { ok: false, message: 'Unknown tool' };
+        var needsSource = ['polish', 'remix', 'adapt', 'upscale', 'vidupscale'].indexOf(tool) !== -1 || (tool === 'video' && !a.prompt);
+        if (needsSource) {
+          var src = null;
+          if (a.source === 'selected' && state[tool].sel) src = { url: state[tool].sel, media: state[tool].selMedia || 'image' };
+          if (!src) src = self.lastResult();
+          if (!src) return { ok: false, message: 'Nothing to work on yet — create or upload an image first' };
+          if (tool === 'vidupscale' && src.media !== 'video') return { ok: false, message: 'Video Upscale needs a video' };
+          self.selectSource(tool, src.url, src.media);
+        }
+        if (tool === 'remix' && a.prompt) { var rp = q(panel, '[data-tp-prompt]'); if (rp) rp.value = String(a.prompt).slice(0, 500); }
+        if (tool === 'video' && a.prompt) { var vp = q(panel, '[data-tp-prompt]'); if (vp) vp.value = String(a.prompt).slice(0, 500); }
+        if ((tool === 'voice' || tool === 'sfx') && a.text) { var tx = q(panel, '[data-tp-text]'); if (tx) tx.value = String(a.text).slice(0, 500); }
+        if ((tool === 'upscale' || tool === 'vidupscale') && a.factor) {
+          var chip = panel.querySelector('[data-tp-factors] .tp-chip[data-v="' + (String(a.factor) === '4' ? '4' : '2') + '"]');
+          if (chip && !chip.disabled) { panel.querySelectorAll('[data-tp-factors] .tp-chip').forEach(function (x) { x.classList.remove('active'); }); chip.classList.add('active'); }
+        }
+        if (tool === 'video' && a.engine) { var eng = panel.querySelector('.tp-engine[data-v="' + String(a.engine).replace(/"/g, '') + '"]'); if (eng) eng.click(); }
+        switchTool(tool);
+        setTimeout(function () { self.submit(tool); }, 260);
+        return { ok: true, message: 'Running ' + tool };
+      },
       restore: async function () {
         var list = [];
         try { list = JSON.parse(localStorage.getItem('keou.session.creations') || '[]'); } catch (e) {}
@@ -6160,7 +6208,8 @@ function imgFallback(el) {
     'You are the assistant inside Keou Studio (studio.kanaky.xyz), a free, open-source creative production studio. The visitor brings their own KIE.AI key; everything they create here is public in the community gallery with a watermark; costs are billed by KIE.AI to their key.',
     'Tools and estimated costs: Create (an image from a description with no photo, or a product photo kept pixel-locked while the scene is generated around it, ~$0.09 per image); Polish (professional retouch, ~$0.09); Remix (new creative direction from the same product, ~$0.09); Adapt (the whole pack: the same image recomposed for 8 ratios 1:1, 4:5, 9:16, 16:9, 3:4, 4:3, 3:2, 2:3, ~$0.09 per format); Video (a clip from a still — Veo 3.1 fast ~$0.30, Veo 3.1 pro ~$1.25, Kling 2.6/3.0 ~$0.06 per second, Seedance 2 ~$0.05 per second); Upscale (Topaz ×2 or ×4, ~$0.12, result capped at 20,000 px on the longest side, input up to 10 MB); Voice (narration from text, 24 voices, ~$0.05); SFX (sound design from a description, ~$0.05, the provider is intermittent right now); Video Upscale (Topaz Video ×2/×4 on a session clip, an uploaded file up to 200 MB, or a link, ~$0.70).',
     'Be concise, warm and practical. Answer in the language the visitor writes in. Recommend the right tool and say what it will cost. Never invent tools, models or prices.',
-    'When you propose an image prompt, put it ALONE in a fenced block that starts with ```prompt and ends with ``` — the studio turns it into a one-click Generate. Write prompts in English, specific and photographic: subject, setting, light, camera, mood. One prompt per block.'
+    'When you propose an image prompt, put it ALONE in a fenced block that starts with ```prompt and ends with ``` — the studio turns it into a one-click Generate. Write prompts in English, specific and photographic: subject, setting, light, camera, mood. One prompt per block.',
+    'You can also ACT. When the visitor clearly asks you to run a tool (e.g. "make the pack of this image", "upscale my last result", "polish it", "make a video of it", "say this in a voice"), emit ONE fenced block that starts with ```action containing only JSON, then one short sentence. Schema: {"tool":"create|polish|remix|adapt|upscale|video|voice|sfx","source":"last|selected|null","prompt":"<for create/remix/video>","factor":"2|4","engine":"veo3_fast|veo3_pro|kling-2.6|kling-3.0|seedance-2","text":"<for voice/sfx>"}. The studio shows the action with its cost and a Run button — nothing runs without the visitor\'s click. Use "source":"last" for their latest result. If there is no result yet and the request needs one, say so instead of emitting an action.'
   ].join('\n\n');
   var history = [];
   var busy = false;
@@ -6172,7 +6221,20 @@ function imgFallback(el) {
     while ((m = re.exec(text))) {
       out += inline(text.slice(last, m.index));
       var lang = (m[1] || '').toLowerCase(), body = m[2].trim();
-      if (lang === 'prompt') {
+      if (lang === 'action') {
+        var act = null; try { act = JSON.parse(body); } catch (e) {}
+        if (act && act.tool) {
+          var NOMS = { create: 'Create', polish: 'Polish', remix: 'Remix', adapt: 'Adapt', upscale: 'Upscale', video: 'Video', voice: 'Voice', sfx: 'SFX', vidupscale: 'Video Upscale', 'video-upscale': 'Video Upscale' };
+          var nomOutil = NOMS[String(act.tool).toLowerCase()] || act.tool;
+          var cout = (window.KeouTools && window.KeouTools.estimate) ? window.KeouTools.estimate(String(act.tool).toLowerCase() === 'video-upscale' ? 'vidupscale' : String(act.tool).toLowerCase()) : '';
+          var detail = act.prompt || act.text || (act.factor ? '×' + act.factor : '') || (act.engine || '');
+          out += '<div class="as-prompt as-action"><span class="as-prompt-label">' + esc(I18N.t('Action')) + ' · ' + esc(nomOutil) + (cout ? ' · ' + esc(cout) : '') + '</span>'
+            + (detail ? '<div class="as-prompt-text">' + esc(String(detail).slice(0, 300)) + '</div>' : '')
+            + '<button type="button" class="as-action-run" data-action="' + esc(JSON.stringify(act)) + '"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>' + esc(I18N.t('Run')) + '</button></div>';
+        } else {
+          out += '<pre>' + esc(body) + '</pre>';
+        }
+      } else if (lang === 'prompt') {
         out += '<div class="as-prompt"><span class="as-prompt-label">' + esc(I18N.t('Prompt')) + '</span><div class="as-prompt-text">' + esc(body) + '</div>'
           + '<button type="button" class="as-prompt-use" data-prompt="' + esc(body) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>' + esc(I18N.t('Use this prompt')) + '</button></div>';
       } else {
@@ -6276,6 +6338,14 @@ function imgFallback(el) {
     panel.addEventListener('click', function (e) {
       var chip = e.target.closest('[data-as-suggest]');
       if (chip) { input.value = chip.getAttribute('data-as-suggest'); autosize(); submit(); return; }
+      var run = e.target.closest('.as-action-run');
+      if (run) {
+        var act = null; try { act = JSON.parse(run.getAttribute('data-action') || '{}'); } catch (err) {}
+        var r = (window.KeouTools && window.KeouTools.runAction) ? window.KeouTools.runAction(act || {}) : { ok: false, message: 'Tools unavailable' };
+        if (r.ok) { run.disabled = true; run.textContent = I18N.t('Launched'); toast(I18N.t('Running — see the results below the tool')); }
+        else toast(I18N.t(r.message), true);
+        return;
+      }
       var use = e.target.closest('.as-prompt-use');
       if (use) {
         var c = document.getElementById('anon-composer');
@@ -6308,7 +6378,10 @@ function imgFallback(el) {
         // 4 000 : les modèles qui raisonnent dépensent d'abord des tokens à
         // réfléchir (548 pour un « OK » chez nemotron) — avec 2 000, une
         // question longue finissait la borne avant d'écrire un mot.
-        var body = { messages: [{ role: 'system', content: SYSTEM }].concat(history.slice(-12)), stream: true, max_tokens: 4000 };
+        var ctxLast = (window.KeouTools && window.KeouTools.lastResult) ? window.KeouTools.lastResult() : null;
+        var ctxTool = (document.getElementById('main-content') || {}).getAttribute ? document.getElementById('main-content').getAttribute('data-tool') : '';
+        var contexte = 'Visitor context: latest result = ' + (ctxLast ? ctxLast.media + ' (available as "last")' : 'none yet') + '. Open tool = ' + (ctxTool || 'assistant') + '.';
+        var body = { messages: [{ role: 'system', content: SYSTEM + '\n\n' + contexte }].concat(history.slice(-12)), stream: true, max_tokens: 4000 };
         if (isOr) { body.model = sel.model; body.usage = { include: true }; body.reasoning = { exclude: true }; }
         var res = await fetch(endpointFor(sel), { method: 'POST', headers: headers, body: JSON.stringify(body) });
         if (!res.ok) {
