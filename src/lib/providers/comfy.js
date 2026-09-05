@@ -304,6 +304,63 @@ export function clearKontextCache() { _kontextCache = { v: undefined, exp: 0 }; 
  * référence, Kontext génère comme FLUX : très au-dessus de SDXL en rendu
  * photo, texte et cohérence — et zéro octet de plus à télécharger.
  */
+/**
+ * FLUX livré en checkpoint TOUT-EN-UN (Comfy-Org/flux1-dev, ~16 Go, un seul
+ * fichier qui porte l'unet, les deux encodeurs et le VAE).
+ *
+ * C'est la distribution que la plupart des gens téléchargent, et le studio ne
+ * la voyait pas : il ne cherchait que le montage en fichiers séparés
+ * (UNETLoader + DualCLIPLoader + VAELoader). Une box avec FLUX installé
+ * retombait donc sur SDXL sans que personne comprenne pourquoi.
+ */
+let _fluxCkptCache = { v: undefined, exp: 0 };
+export function clearFluxCkptCache() { _fluxCkptCache = { v: undefined, exp: 0 }; }
+
+async function detectFluxCheckpoint() {
+  const now = Date.now();
+  if (_fluxCkptCache.v !== undefined && now < _fluxCkptCache.exp) return _fluxCkptCache.v;
+  const ckpts = await loaderChoices('CheckpointLoaderSimple', 'ckpt_name').catch(() => []);
+  // « flux » ET pas « ltx » : les deux cohabitent sur la même machine.
+  const v = ckpts.find((n) => /flux/i.test(n) && !/ltx/i.test(n)) || null;
+  _fluxCkptCache = { v, exp: now + 60_000 };
+  return v;
+}
+
+/**
+ * Texte→image FLUX depuis le checkpoint tout-en-un.
+ *
+ * `width`/`height` sont explicites : l'image de départ d'une vidéo doit être
+ * NATIVEMENT nette à la résolution où le modèle vidéo la regardera. Une image
+ * molle agrandie apporte du détail inventé ; une image générée large puis
+ * réduite au lanczos apporte du détail réel. C'est la différence qu'on voit
+ * à l'image sur un plan de 4 secondes.
+ */
+async function fluxCkptTxt2imgGraph(prompt, ratio, { width, height, steps } = {}) {
+  const ckpt = await detectFluxCheckpoint();
+  if (!ckpt) throw new Error('Local engine: FLUX checkpoint not installed');
+  const [w, h] = width && height ? [width, height] : dims(ratio);
+  // schnell est DISTILLÉ pour 4 pas : lui en imposer 28 coûte sept fois
+  // le temps sans rien ajouter à l'image. samplerFor tranche par le nom.
+  const pas = steps || samplerFor(ckpt).steps;
+  return {
+    1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: ckpt } },
+    2: { class_type: 'ModelSamplingFlux', inputs: { model: ['1', 0], max_shift: 1.15, base_shift: 0.5, width: w, height: h } },
+    3: { class_type: 'EmptySD3LatentImage', inputs: { width: w, height: h, batch_size: 1 } },
+    4: { class_type: 'CLIPTextEncode', inputs: { text: prompt || '', clip: ['1', 1] } },
+    5: { class_type: 'FluxGuidance', inputs: { conditioning: ['4', 0], guidance: 3.5 } },
+    6: { class_type: 'CLIPTextEncode', inputs: { text: '', clip: ['1', 1] } },
+    7: {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['2', 0], positive: ['5', 0], negative: ['6', 0], latent_image: ['3', 0],
+        seed: seed(), steps: pas, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
+      },
+    },
+    8: { class_type: 'VAEDecode', inputs: { samples: ['7', 0], vae: ['1', 2] } },
+    9: { class_type: 'SaveImage', inputs: { images: ['8', 0], filename_prefix: prefixe() } },
+  };
+}
+
 async function fluxTxt2imgGraph(prompt, ratio) {
   const k = await detectKontext();
   if (!k) throw new Error('Local engine: FLUX not installed');
@@ -397,9 +454,16 @@ export async function generateImage(_apiKey, { prompt, instruction, imageUrls, a
   return submit(await txt2imgGraph(prompt, aspectRatio || '1:1'));
 }
 
-export async function textToImage(_apiKey, { prompt, instruction, aspectRatio }) {
+export async function textToImage(_apiKey, { prompt, instruction, aspectRatio, width, height }) {
+  const brief = buildLocalImagePrompt(extractDirection(prompt, instruction));
+  // Ordre de préférence : FLUX (checkpoint tout-en-un OU fichiers séparés),
+  // puis SDXL. FLUX est très au-dessus en rendu photo, en texte et en
+  // cohérence — on ne retombe sur SDXL que s'il n'y a rien d'autre.
+  if (await detectFluxCheckpoint()) {
+    return submit(await fluxCkptTxt2imgGraph(brief, aspectRatio || '1:1', { width, height }));
+  }
   if (await detectKontext()) {
-    return submit(await fluxTxt2imgGraph(buildLocalImagePrompt(extractDirection(prompt, instruction)), aspectRatio || '1:1'));
+    return submit(await fluxTxt2imgGraph(brief, aspectRatio || '1:1'));
   }
   return submit(await txt2imgGraph(prompt, aspectRatio || '1:1'));
 }
@@ -446,7 +510,16 @@ const VIDEO_NEGATIVE = 'blurry, low quality, distorted, deformed, flickering, wa
 // Dimensions par moteur — toujours des multiples de 32 (contrainte des VAE
 // vidéo), longueurs ≡ 1 mod 4 (Wan) / mod 8 (LTX), valeurs des templates.
 const WAN5B_DIMS = { '1:1': [768, 768], '16:9': [1280, 704], '9:16': [704, 1280], '4:3': [960, 704], '3:4': [704, 960], '21:9': [1280, 544] };
-const WAN14B_DIMS = { '1:1': [640, 640], '16:9': [832, 480], '9:16': [480, 832], '4:3': [704, 544], '3:4': [544, 704] };
+// Résolution native de Wan 2.2 14B. Le jeu 832x480 était calibré pour une
+// carte de 32 Go ; il plafonnait la qualité bien avant le modèle. Mesuré le
+// 05/09 : un master 4K60 tiré d'un 832x480 garde une luminance moyenne de
+// 32/255 et montre du warping RIFE dans les zones sombres — il n'y a pas
+// assez d'information source à reconstruire. 1280x720 donne 2,3x plus de
+// pixels réels et demande ~48 Go de VRAM sur le 14B.
+const WAN14B_DIMS = { '1:1': [960, 960], '16:9': [1280, 720], '9:16': [720, 1280], '4:3': [1024, 768], '3:4': [768, 1024] };
+// LTX-2.3 : dimensions FINALES. L'étage 1 échantillonne à la moitié, donc
+// chaque côté doit être divisible par 64 (le latent veut des multiples de 32).
+const LTX23_DIMS = { '1:1': [1024, 1024], '16:9': [1280, 704], '9:16': [704, 1280], '4:3': [1024, 768], '3:4': [768, 1024], '21:9': [1216, 512] };
 const LTX_DIMS = { '1:1': [640, 640], '16:9': [768, 512], '9:16': [512, 768], '4:3': [704, 544], '3:4': [544, 704] };
 
 async function loaderChoices(nodeType, inputName) {
@@ -472,13 +545,16 @@ export async function detectVideoEngines() {
   const now = Date.now();
   if (_videoCache.v && now < _videoCache.exp) return _videoCache.v;
 
-  const [unets, clips, vaes, ckpts, loras, saveNode] = await Promise.all([
+  const [unets, clips, vaes, ckpts, loras, saveNode, gemmas, latentUp, inplaceNode] = await Promise.all([
     loaderChoices('UNETLoader', 'unet_name'),
     loaderChoices('CLIPLoader', 'clip_name'),
     loaderChoices('VAELoader', 'vae_name'),
     loaderChoices('CheckpointLoaderSimple', 'ckpt_name'),
     loaderChoices('LoraLoaderModelOnly', 'lora_name'),
     comfyJson('/object_info/SaveVideo').catch(() => ({})),
+    loaderChoices('LTXAVTextEncoderLoader', 'text_encoder'),
+    loaderChoices('LatentUpscaleModelLoader', 'model_name'),
+    comfyJson('/object_info/LTXVImgToVideoInplace').catch(() => ({})),
   ]);
   const has = (list, re) => list.find((n) => re.test(n)) || null;
   // SaveVideo est core depuis v0.3.34 (mai 2025) — absent = install trop
@@ -495,6 +571,19 @@ export async function detectVideoEngines() {
           clip: umt5, vae: has(vaes, /wan_2\.1_vae/i),
           loraHigh: has(loras, /lightx2v.*high_noise/i), loraLow: has(loras, /lightx2v.*low_noise/i),
         } : null,
+    // LTX-2.3 22B — le seul moteur local dont l'agrandissement se fait DANS
+    // le latent, par un upscaler entraîné avec le modèle. Tout le reste
+    // (ESRGAN & co) invente des pixels image par image, d'où le fourmillement
+    // sur les arêtes. Exigeant : ~30 Go de VRAM, et les nodes LTX 2.x ne sont
+    // arrivés dans ComfyUI qu'en septembre 2026 — d'où la vérification du
+    // node, pas seulement des fichiers.
+    ltx23: nodesOk && inplaceNode?.LTXVImgToVideoInplace && has(ckpts, /ltx-2\.3.*22b/i)
+      && has(gemmas, /gemma/i) && has(latentUp, /spatial-upscaler/i)
+      ? {
+          ckpt: has(ckpts, /ltx-2\.3.*22b/i), gemma: has(gemmas, /gemma/i),
+          upscaler: has(latentUp, /spatial-upscaler/i),
+          lora: has(loras, /ltx_2\.3.*distilled/i),
+        } : null,
     ltx: nodesOk && has(ckpts, /ltx-video-2b/i) && has(clips, /t5xxl/i)
       ? { ckpt: has(ckpts, /ltx-video-2b/i), clip: has(clips, /t5xxl/i) } : null,
   };
@@ -505,8 +594,11 @@ export async function detectVideoEngines() {
 function pickVideoEngine(engines, wantsI2V) {
   const pin = (process.env.LOCAL_VIDEO_ENGINE || '').toLowerCase();
   if (pin && engines[pin]) return pin;
-  // 5B d'abord : un seul modèle, t2v ET i2v, 8 Go de VRAM. 14B ensuite
+  // LTX-2.3 d'abord quand il est là : c'est le seul à tenir la cohérence
+  // temporelle à l'agrandissement. Puis 5B (un seul modèle, t2v ET i2v,
+  // 8 Go de VRAM), puis 14B ensuite
   // (i2v uniquement, qualité max). LTX en repli léger et rapide.
+  if (engines.ltx23) return 'ltx23';
   if (engines.wan5b) return 'wan5b';
   if (engines.wan14b && wantsI2V) return 'wan14b';
   if (engines.ltx) return 'ltx';
@@ -519,6 +611,97 @@ function pickVideoEngine(engines, wantsI2V) {
 function framesPour(duration, fps = 24) {
   const sec = Math.max(2, Math.min(10, Number(duration) || 5));
   return Math.round((sec * fps) / 4) * 4 + 1;
+}
+
+// LTX-2.3 travaille par paquets de 8 images + 1 : 97 (4 s), 121 (5 s), 241 (10 s).
+function framesPourLtx23(duration, fps = 24) {
+  const sec = Math.max(2, Math.min(10, Number(duration) || 4));
+  return Math.round((sec * fps) / 8) * 8 + 1;
+}
+
+// Sigmas du template officiel video_ltx2_3_i2v.json. L'étage 2 repart à 0,85
+// : assez de bruit pour reconstruire du détail à la nouvelle échelle, pas
+// assez pour réinventer la scène.
+const LTX23_SIGMAS_1 = '1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0';
+const LTX23_SIGMAS_2 = '0.85, 0.7250, 0.4219, 0.0';
+
+/**
+ * LTX-2.3 22B, pipeline officiel à deux étages.
+ *
+ * Étage 1 : échantillonnage à la MOITIÉ de la résolution demandée.
+ * Étage 2 : LTXVLatentUpsampler x2 dans l'espace latent — l'agrandisseur natif
+ *   du modèle, entraîné avec lui — puis un second échantillonnage court qui
+ *   régénère le détail à la nouvelle échelle.
+ *
+ * C'est ce qui sépare ce moteur de tout le reste : l'agrandissement n'est pas
+ * un post-traitement image par image (ESRGAN & co, d'où le fourmillement sur
+ * les arêtes), c'est le modèle lui-même qui régénère en gardant sa cohérence
+ * temporelle. Mesuré le 06/09 : 4 s en 1280x704 rendues en 38 s, sans dérive
+ * de la carrosserie ni des jantes entre la première et la dernière image.
+ *
+ * LTX 2.3 est un modèle AUDIO-vidéo : le latent audio doit accompagner le
+ * latent vidéo dans l'échantillonneur même quand on ne garde que l'image,
+ * sinon le modèle reçoit une forme qu'il n'a jamais vue.
+ */
+async function ltx23Graph({ prompt, imageUrl, aspectRatio, duration }) {
+  const e = (await detectVideoEngines()).ltx23;
+  const [width, height] = LTX23_DIMS[aspectRatio] || LTX23_DIMS['16:9'];
+  const frames = framesPourLtx23(duration);
+  const fps = 24;
+
+  const g = {
+    1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: e.ckpt } },
+    2: { class_type: 'LTXAVTextEncoderLoader', inputs: { text_encoder: e.gemma, ckpt_name: e.ckpt, device: 'default' } },
+    7: { class_type: 'EmptyLTXVLatentVideo', inputs: { width: width / 2, height: height / 2, length: frames, batch_size: 1 } },
+    9: { class_type: 'LTXVAudioVAELoader', inputs: { ckpt_name: e.ckpt } },
+    10: { class_type: 'LTXVEmptyLatentAudio', inputs: { audio_vae: ['9', 0], frames_number: frames, frame_rate: 25, batch_size: 1 } },
+    12: { class_type: 'CLIPTextEncode', inputs: { text: prompt, clip: ['2', 0] } },
+    13: { class_type: 'CLIPTextEncode', inputs: { text: VIDEO_NEGATIVE, clip: ['2', 0] } },
+    14: { class_type: 'LTXVConditioning', inputs: { positive: ['12', 0], negative: ['13', 0], frame_rate: fps } },
+    16: { class_type: 'RandomNoise', inputs: { noise_seed: Math.floor(Math.random() * 1e15) } },
+    17: { class_type: 'KSamplerSelect', inputs: { sampler_name: 'euler' } },
+    18: { class_type: 'ManualSigmas', inputs: { sigmas: LTX23_SIGMAS_1 } },
+    20: { class_type: 'LTXVSeparateAVLatent', inputs: { av_latent: ['19', 0] } },
+    21: { class_type: 'LatentUpscaleModelLoader', inputs: { model_name: e.upscaler } },
+    22: { class_type: 'LTXVLatentUpsampler', inputs: { samples: ['20', 0], upscale_model: ['21', 0], vae: ['1', 2] } },
+    25: { class_type: 'LTXVCropGuides', inputs: { positive: ['14', 0], negative: ['14', 1], latent: ['20', 0] } },
+    27: { class_type: 'RandomNoise', inputs: { noise_seed: 42 } },
+    28: { class_type: 'ManualSigmas', inputs: { sigmas: LTX23_SIGMAS_2 } },
+    30: { class_type: 'LTXVSeparateAVLatent', inputs: { av_latent: ['29', 0] } },
+    31: { class_type: 'VAEDecodeTiled', inputs: { samples: ['30', 0], vae: ['1', 2], tile_size: 768, overlap: 64, temporal_size: 4096, temporal_overlap: 4 } },
+    32: { class_type: 'CreateVideo', inputs: { images: ['31', 0], fps } },
+    33: { class_type: 'SaveVideo', inputs: { video: ['32', 0], filename_prefix: prefixe('keou-video/keou'), format: 'auto', codec: 'auto' } },
+  };
+
+  // La LoRA distillée n'est pas obligatoire : sans elle le modèle tourne, avec
+  // elle il converge en moins d'étapes. On ne la rend jamais requise.
+  const modele = e.lora
+    ? (g[3] = { class_type: 'LoraLoaderModelOnly', inputs: { model: ['1', 0], lora_name: e.lora, strength_model: 0.5 } }, ['3', 0])
+    : ['1', 0];
+
+  // Image de départ : redimensionnée puis passée par LTXVPreprocess, qui
+  // applique la compression JPEG que le modèle attend sur son conditionnement.
+  // LTXVImgToVideoInplace injecte l'image DANS le latent — aux deux étages,
+  // sinon l'étage 2 perd l'ancrage et redessine le sujet.
+  let latentVideo = ['7', 0];
+  if (imageUrl) {
+    const up = await uploadFromUrl(imageUrl);
+    g[4] = { class_type: 'LoadImage', inputs: { image: up.name } };
+    g[5] = { class_type: 'ImageScale', inputs: { image: ['4', 0], upscale_method: 'lanczos', width, height, crop: 'center' } };
+    g[6] = { class_type: 'LTXVPreprocess', inputs: { image: ['5', 0], img_compression: 18 } };
+    g[8] = { class_type: 'LTXVImgToVideoInplace', inputs: { vae: ['1', 2], image: ['6', 0], latent: ['7', 0], strength: 0.7, bypass: false } };
+    g[23] = { class_type: 'LTXVImgToVideoInplace', inputs: { vae: ['1', 2], image: ['6', 0], latent: ['22', 0], strength: 1, bypass: false } };
+    latentVideo = ['8', 0];
+  }
+
+  g[11] = { class_type: 'LTXVConcatAVLatent', inputs: { video_latent: latentVideo, audio_latent: ['10', 0] } };
+  g[15] = { class_type: 'CFGGuider', inputs: { model: modele, positive: ['14', 0], negative: ['14', 1], cfg: 1 } };
+  g[19] = { class_type: 'SamplerCustomAdvanced', inputs: { noise: ['16', 0], guider: ['15', 0], sampler: ['17', 0], sigmas: ['18', 0], latent_image: ['11', 0] } };
+  g[24] = { class_type: 'LTXVConcatAVLatent', inputs: { video_latent: imageUrl ? ['23', 0] : ['22', 0], audio_latent: ['20', 1] } };
+  g[26] = { class_type: 'CFGGuider', inputs: { model: modele, positive: ['25', 0], negative: ['25', 1], cfg: 1 } };
+  g[29] = { class_type: 'SamplerCustomAdvanced', inputs: { noise: ['27', 0], guider: ['26', 0], sampler: ['17', 0], sigmas: ['28', 0], latent_image: ['24', 0] } };
+
+  return g;
 }
 
 async function wan5bGraph({ prompt, imageUrl, aspectRatio, duration }) {
@@ -637,11 +820,17 @@ export async function generateVideo(_apiKey, { prompt, imageUrl, aspectRatio, du
   const engine = pickVideoEngine(engines, !!imageUrl);
   if (!engine) {
     throw new Error(
-      'Local engine: no video model installed. For local video, add Wan 2.2 5B to your ComfyUI (diffusion_models/wan2.2_ti2v_5B_fp16.safetensors + text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors + vae/wan2.2_vae.safetensors — ~17 GB, runs on 8 GB VRAM) or LTX-Video 2B — or use a cloud provider key for video.'
+      'Local engine: no video model installed. Best quality — LTX-2.3 22B '
+      + '(checkpoints/ltx-2.3-22b-dev-fp8.safetensors + text_encoders/gemma_3_12B_it_fp8_e4m3fn.safetensors '
+      + '+ latent_upscale_models/ltx-2.3-spatial-upscaler-x2-1.1.safetensors — ~42 GB, needs ~30 GB VRAM and '
+      + 'ComfyUI >= Sept 2026 for the LTX 2.x nodes). Lighter — Wan 2.2 5B '
+      + '(diffusion_models/wan2.2_ti2v_5B_fp16.safetensors + text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors '
+      + '+ vae/wan2.2_vae.safetensors — ~17 GB, 8 GB VRAM). Or use a cloud provider key for video.'
     );
   }
   const params = { prompt, imageUrl, aspectRatio: aspectRatio || '16:9', duration };
-  const graph = engine === 'wan5b' ? await wan5bGraph(params)
+  const graph = engine === 'ltx23' ? await ltx23Graph(params)
+    : engine === 'wan5b' ? await wan5bGraph(params)
     : engine === 'wan14b' ? await wan14bGraph(params)
     : await ltxGraph(params);
   return submit(graph);

@@ -94,11 +94,19 @@ try {
   const t = await comfy.textToImage('', { prompt: 'a bottle on a beach', aspectRatio: '3:4' });
   assert.ok(t.taskId.startsWith('stub-'), 'taskId manquant');
   const graph = submitted[t.taskId];
-  assert.equal(graph[4].inputs.width, 896);
-  assert.equal(graph[4].inputs.height, 1152);
+  // Un checkpoint FLUX passe par le graphe FLUX, pas par celui de SDXL : le
+  // latent doit être un EmptySD3LatentImage (16 canaux). EmptyLatentImage en
+  // fabrique un de 4 — ce que le test exigeait avant, et qu'aucun modèle FLUX
+  // ne peut décoder. La structure était vérifiée, l'exécution jamais.
   assert.equal(graph[1].inputs.ckpt_name, 'flux1-schnell-fp8.safetensors');
-  assert.equal(graph[5].inputs.steps, 4, 'schnell doit tourner en 4 pas');
-  ok('textToImage : graphe t2i correct (dims, checkpoint auto, pas schnell)');
+  assert.equal(graph[3].class_type, 'EmptySD3LatentImage', 'FLUX veut un latent SD3');
+  assert.equal(graph[3].inputs.width, 896);
+  assert.equal(graph[3].inputs.height, 1152);
+  assert.equal(graph[2].class_type, 'ModelSamplingFlux', 'décalage de bruit FLUX absent');
+  assert.equal(graph[5].class_type, 'FluxGuidance', 'guidage distillé FLUX absent');
+  assert.equal(graph[7].inputs.steps, 4, 'schnell doit tourner en 4 pas');
+  assert.equal(graph[7].inputs.cfg, 1, 'FLUX est distillé : cfg 1');
+  ok('textToImage : graphe FLUX correct (latent SD3, dims, 4 pas pour schnell)');
 } catch (e) { ko('textToImage', e); }
 
 // 2. image de référence → img2img avec upload
