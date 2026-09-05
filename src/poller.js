@@ -188,6 +188,7 @@ async function cleanupStaleGenerations() {
 // ─── Start / Stop ───
 
 let pollTimer = null;
+let repersistTimer = null;
 let cleanupTimer = null;
 
 export function startPoller() {
@@ -198,8 +199,45 @@ export function startPoller() {
 
   pollTimer = setInterval(pollProcessingTasks, POLL_INTERVAL);
   cleanupTimer = setInterval(cleanupStaleGenerations, 10 * 60_000);
+  // Rattrapage R2 des résultats locaux servis depuis la machine (URL périssable).
+  repersistTimer = setInterval(repersistLocalResults, 60_000);
+  setTimeout(repersistLocalResults, 5_000);
 
-  console.log(`  [POLLER] Background poller started (every ${POLL_INTERVAL / 1000}s)`);
+  // ─── Rattrapage : résultats locaux jamais copiés sur R2 ───
+// Quand la copie vers R2 a échoué (tunnel coupé), la génération est servie via
+// /api/local-view ou l'URL brute du tunnel — deux URLs qui meurent avec la
+// machine. Tant qu'elle est joignable, on réessaie de les mettre à l'abri.
+async function repersistLocalResults() {
+  let rows = [];
+  try {
+    rows = await queryAll(
+      `SELECT id, type, result_url FROM generations
+        WHERE status='completed' AND r2_key IS NULL
+          AND (result_url LIKE '/api/local-view%' OR result_url LIKE '%trycloudflare.com%')
+        ORDER BY id DESC LIMIT 5`
+    );
+  } catch { return; }
+  if (!rows.length || !config.localEngine?.url) return;
+  for (const g of rows) {
+    try {
+      // /api/local-view?… → l'URL /view directe de ComfyUI, que le serveur sait joindre
+      const src = g.result_url.startsWith('/api/local-view')
+        ? `${config.localEngine.url.replace(/\/+$/, '')}/view${g.result_url.slice('/api/local-view'.length)}`
+        : g.result_url;
+      const isVideo = g.type === 'video' || g.type === 'vid-upscale';
+      const ext = isVideo ? 'mp4' : (g.type === 'tts' || g.type === 'sfx') ? 'mp3' : 'png';
+      const r2Key = `results/${g.id}.${ext}`;
+      const finalUrl = await persistFromUrl(src, r2Key);
+      const res = await query(`UPDATE generations SET result_url=$1, r2_key=$2 WHERE id=$3 AND r2_key IS NULL`, [finalUrl, r2Key, g.id]);
+      // Deux ticks peuvent se chevaucher : seul celui qui a écrit le dit.
+      if (res.rowCount) console.log(`  [POLLER] #${g.id} rattrapé → R2`);
+    } catch (err) {
+      console.warn(`  [POLLER] #${g.id} rattrapage R2 impossible : ${err.message}`);
+    }
+  }
+}
+
+console.log(`  [POLLER] Background poller started (every ${POLL_INTERVAL / 1000}s)`);
 }
 
 export function stopPoller() {

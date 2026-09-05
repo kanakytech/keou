@@ -74,6 +74,16 @@ export const config = {
     url: process.env.LOCAL_ENGINE_URL || process.env.COMFYUI_URL || '',
     checkpoint: process.env.LOCAL_CHECKPOINT || '',       // sinon : premier modèle installé
     upscaleModel: process.env.LOCAL_UPSCALE_MODEL || '',  // sinon : premier modèle installé
+    // Repli sur le cloud quand la machine ne répond pas. OPT-IN délibéré :
+    // par défaut, une box éteinte donne une erreur claire plutôt qu'une
+    // facture KIE que l'exploitant n'a pas demandée. À poser sur une
+    // instance hébergée où des utilisateurs payants ne doivent jamais voir
+    // un échec parce qu'un pod GPU était froid.
+    fallback: process.env.LOCAL_ENGINE_FALLBACK === 'true',
+    // Durée de vie d'un verdict « la machine répond ». Plus court sur un
+    // endpoint serverless qui s'éteint tout seul, plus long sur une box
+    // allumée en permanence.
+    probeTtlMs: Number(process.env.LOCAL_ENGINE_PROBE_TTL_MS) || 30_000,
   },
 
   defaultProvider: process.env.DEFAULT_PROVIDER || 'kie', // "kie" | "fal" | "local"

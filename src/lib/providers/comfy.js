@@ -16,6 +16,7 @@
  */
 
 import { config } from '../../config.js';
+import { buildLocalEditPrompt, buildLocalImagePrompt, extractDirection } from '../studio-prompts.js';
 
 export const name = 'local';
 
@@ -52,6 +53,14 @@ async function comfyJson(path, opts = {}) {
   return r.json();
 }
 
+// ComfyUI expose historiquement les choix sous `[valeurs, options]`. Certains
+// nœuds récents utilisent plutôt `['COMBO', { options: valeurs }]`.
+function modelChoices(spec) {
+  if (Array.isArray(spec?.[0])) return spec[0];
+  if (Array.isArray(spec?.[1]?.options)) return spec[1].options;
+  return [];
+}
+
 /**
  * Sonde de santé — même principe que la sonde ffmpeg du serveur : dire au
  * boot et dans /health ce que le moteur local voit réellement, plutôt que de
@@ -64,8 +73,8 @@ export async function probeLocalEngine() {
       comfyJson('/object_info/CheckpointLoaderSimple'),
       comfyJson('/object_info/UpscaleModelLoader').catch(() => null),
     ]);
-    const checkpoints = ckpt?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0] || [];
-    const upscaleModels = up?.UpscaleModelLoader?.input?.required?.model_name?.[0] || [];
+    const checkpoints = modelChoices(ckpt?.CheckpointLoaderSimple?.input?.required?.ckpt_name);
+    const upscaleModels = modelChoices(up?.UpscaleModelLoader?.input?.required?.model_name);
     const videoEngines = await detectVideoEngines().catch(() => ({}));
     return {
       configured: true, reachable: true, url: config.localEngine.url,
@@ -92,7 +101,7 @@ async function firstChoice(nodeType, inputName, cacheKey, preferred) {
   if (c.value && now < c.exp && !preferred) return c.value;
 
   const info = await comfyJson(`/object_info/${nodeType}`);
-  const choices = info?.[nodeType]?.input?.required?.[inputName]?.[0];
+  const choices = modelChoices(info?.[nodeType]?.input?.required?.[inputName]);
   if (!Array.isArray(choices) || choices.length === 0) {
     throw new Error(`ComfyUI has no ${nodeType} models installed — add one to the models folder`);
   }
@@ -128,6 +137,12 @@ const DIMS = {
 const dims = (ratio) => DIMS[ratio] || DIMS['1:1'];
 
 const seed = () => Math.floor(Math.random() * 1e15);
+
+// Le compteur de ComfyUI (keou_00001_, 00002_…) REDÉMARRE à chaque relance du
+// script de boot : un résultat pas encore copié sur R2 peut être écrasé par le
+// job suivant qui reçoit le même nom. Un préfixe unique par job supprime la
+// collision — le nom n'a de toute façon aucun sens métier, R2 range par id.
+const prefixe = (base = 'keou') => `${base}_${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36).padStart(2, '0')}`;
 
 // ─── Entrées image ───
 // Le node LoadImage de ComfyUI ne lit que son dossier input/ local : toute
@@ -165,7 +180,7 @@ function baseGraph(ckpt, prompt, { steps, cfg }) {
       },
     },
     6: { class_type: 'VAEDecode', inputs: { samples: ['5', 0], vae: ['1', 2] } },
-    7: { class_type: 'SaveImage', inputs: { images: ['6', 0], filename_prefix: 'keou' } },
+    7: { class_type: 'SaveImage', inputs: { images: ['6', 0], filename_prefix: prefixe() } },
   };
 }
 
@@ -194,6 +209,152 @@ async function img2imgGraph(prompt, imageUrl, ratio, denoise) {
   return g;
 }
 
+// ─── FLUX.1 Kontext — édition par instruction ───
+//
+// SDXL en img2img ne sait PAS « garde ce produit, refais le décor » : une
+// passe de débruitage conserve tout (denoise bas) ou tout change (denoise
+// haut), sans notion d'objet à préserver. C'est précisément ce que réclame
+// le brief de direction du studio (« verrouillage absolu » du produit), et
+// c'est pour ça qu'un logo revenait intact sur fond inchangé.
+//
+// Kontext est un modèle d'ÉDITION : l'image source entre comme latent de
+// référence (ReferenceLatent) plutôt que comme point de départ du bruit, et
+// l'instruction textuelle décrit la transformation. C'est l'équivalent en
+// poids ouverts des modèles d'édition cloud.
+
+let _kontextCache = { v: undefined, exp: 0 };
+
+/**
+ * Un node ABSENT fait répondre ComfyUI 200 avec un objet VIDE — pas 404.
+ * Tester le code HTTP conclut donc que tout existe, y compris ce qui n'existe
+ * pas. On teste le contenu.
+ */
+async function nodeExiste(nom) {
+  try {
+    const d = await comfyJson(`/object_info/${nom}`);
+    return !!(d && d[nom]);
+  } catch { return false; }
+}
+
+export async function detectKontext() {
+  const now = Date.now();
+  if (_kontextCache.v !== undefined && now < _kontextCache.exp) return _kontextCache.v;
+
+  const [unets, clips, vaes, refOk] = await Promise.all([
+    loaderChoices('UNETLoader', 'unet_name'),
+    loaderChoices('DualCLIPLoader', 'clip_name1'),
+    loaderChoices('VAELoader', 'vae_name'),
+    // ReferenceLatent n'existe qu'à partir de ComfyUI v0.3.44. Sans lui,
+    // Kontext ne peut pas recevoir son image de référence : on préfère un
+    // refus net à un graphe qui part et rend n'importe quoi.
+    nodeExiste('ReferenceLatent'),
+  ]);
+  const trouve = (liste, re) => liste.find((n) => re.test(n)) || null;
+
+  const unet = trouve(unets, /flux1.*kontext/i);
+  const clipL = trouve(clips, /clip_l/i);
+  const t5 = trouve(clips, /t5xxl/i);
+  const vae = trouve(vaes, /^ae\.|flux.*ae/i);
+
+  const v = refOk && unet && clipL && t5 && vae ? { unet, clipL, t5, vae } : null;
+  _kontextCache = { v, exp: now + 60_000 };
+  return v;
+}
+
+/**
+ * Graphe Kontext. `instruction` décrit la TRANSFORMATION (« pose ce logo sur
+ * le sable, ombres et reflets réalistes »), pas la scène finale.
+ */
+async function kontextGraph(instruction, imageUrl, ratio) {
+  const k = await detectKontext();
+  if (!k) throw new Error('Local engine: FLUX Kontext not installed — instruction editing needs flux1-dev-kontext, clip_l, t5xxl and ae in ComfyUI, on ComfyUI >= v0.3.44');
+  const up = await uploadFromUrl(imageUrl);
+  const [width, height] = dims(ratio);
+  return {
+    1: { class_type: 'UNETLoader', inputs: { unet_name: k.unet, weight_dtype: 'fp8_e4m3fn' } },
+    2: { class_type: 'DualCLIPLoader', inputs: { clip_name1: k.clipL, clip_name2: k.t5, type: 'flux' } },
+    3: { class_type: 'VAELoader', inputs: { vae_name: k.vae } },
+    4: { class_type: 'LoadImage', inputs: { image: up.name } },
+    5: { class_type: 'ImageScale', inputs: { image: ['4', 0], upscale_method: 'lanczos', width, height, crop: 'center' } },
+    6: { class_type: 'VAEEncode', inputs: { pixels: ['5', 0], vae: ['3', 0] } },
+    7: { class_type: 'CLIPTextEncode', inputs: { text: instruction || '', clip: ['2', 0] } },
+    // Le latent de référence : c'est CE branchement qui distingue une édition
+    // d'un simple img2img.
+    8: { class_type: 'ReferenceLatent', inputs: { conditioning: ['7', 0], latent: ['6', 0] } },
+    9: { class_type: 'FluxGuidance', inputs: { conditioning: ['8', 0], guidance: 2.5 } },
+    10: { class_type: 'CLIPTextEncode', inputs: { text: '', clip: ['2', 0] } },
+    // FLUX est un modèle guidance-distilled : cfg 1 et scheduler simple.
+    // Un vrai CFG le fait diverger.
+    11: {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['1', 0], positive: ['9', 0], negative: ['10', 0], latent_image: ['6', 0],
+        seed: seed(), steps: 20, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
+      },
+    },
+    12: { class_type: 'VAEDecode', inputs: { samples: ['11', 0], vae: ['3', 0] } },
+    13: { class_type: 'SaveImage', inputs: { images: ['12', 0], filename_prefix: prefixe() } },
+  };
+}
+
+export function clearKontextCache() { _kontextCache = { v: undefined, exp: 0 }; }
+
+/**
+ * Texte→image avec l'unet Kontext (poids FLUX.1-dev). Sans latent de
+ * référence, Kontext génère comme FLUX : très au-dessus de SDXL en rendu
+ * photo, texte et cohérence — et zéro octet de plus à télécharger.
+ */
+async function fluxTxt2imgGraph(prompt, ratio) {
+  const k = await detectKontext();
+  if (!k) throw new Error('Local engine: FLUX not installed');
+  const [width, height] = dims(ratio);
+  return {
+    1: { class_type: 'UNETLoader', inputs: { unet_name: k.unet, weight_dtype: 'fp8_e4m3fn' } },
+    2: { class_type: 'DualCLIPLoader', inputs: { clip_name1: k.clipL, clip_name2: k.t5, type: 'flux' } },
+    3: { class_type: 'VAELoader', inputs: { vae_name: k.vae } },
+    // ModelSamplingFlux : le décalage de bruit recommandé pour FLUX à ~1 Mpx.
+    4: { class_type: 'ModelSamplingFlux', inputs: { model: ['1', 0], max_shift: 1.15, base_shift: 0.5, width, height } },
+    5: { class_type: 'EmptySD3LatentImage', inputs: { width, height, batch_size: 1 } },
+    6: { class_type: 'CLIPTextEncode', inputs: { text: prompt || '', clip: ['2', 0] } },
+    7: { class_type: 'FluxGuidance', inputs: { conditioning: ['6', 0], guidance: 3.5 } },
+    8: { class_type: 'CLIPTextEncode', inputs: { text: '', clip: ['2', 0] } },
+    9: {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['4', 0], positive: ['7', 0], negative: ['8', 0], latent_image: ['5', 0],
+        seed: seed(), steps: 24, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
+      },
+    },
+    10: { class_type: 'VAEDecode', inputs: { samples: ['9', 0], vae: ['3', 0] } },
+    11: { class_type: 'SaveImage', inputs: { images: ['10', 0], filename_prefix: prefixe() } },
+  };
+}
+
+// ─── Capacités ───
+// Le routeur demande « sais-tu faire ça ? » AVANT de choisir un fournisseur,
+// pour envoyer au cloud ce que la machine ne sait pas faire plutôt que de
+// laisser l'utilisateur découvrir un refus. Les réponses sont toutes issues
+// des caches de détection déjà en place (60 s) : aucun aller-retour de plus.
+export async function supports(action) {
+  switch (action) {
+    // Un checkpoint image est le minimum vital d'une box : si la machine
+    // répond, SDXL (ou équivalent) est là. Kontext n'est pas requis — sans
+    // lui on retombe sur img2img, dégradé mais fonctionnel.
+    case 'image': case 'polish': case 'remix': case 'adapt': return true;
+    case 'img-upscale': {
+      const modeles = await loaderChoices('UpscaleModelLoader', 'model_name').catch(() => []);
+      return modeles.length > 0;
+    }
+    case 'video': {
+      const e = await detectVideoEngines().catch(() => ({}));
+      return Object.values(e).some(Boolean);
+    }
+    // ComfyUI core n'a ni TTS, ni SFX, ni agrandisseur vidéo digne de ce nom.
+    case 'tts': case 'sfx': case 'vid-upscale': return false;
+    default: return false;
+  }
+}
+
 async function submit(graph) {
   const data = await comfyJson('/prompt', {
     method: 'POST',
@@ -212,22 +373,42 @@ async function submit(graph) {
 // ─── Contrat provider — images ───
 // La signature (apiKey, params) est celle du routeur ; la clé est ignorée.
 
-export async function generateImage(_apiKey, { prompt, imageUrls, aspectRatio }) {
-  // Avec une image produit de référence, on reste proche du pixel d'origine
-  // (denoise 0.45) : c'est l'équivalent local — approché, pas identique — du
-  // verrouillage produit des modèles d'édition cloud.
+export async function generateImage(_apiKey, { prompt, instruction, imageUrls, aspectRatio }) {
   if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+    // Une image de référence = une demande d'ÉDITION. Kontext sait tenir le
+    // produit et refaire le décor ; SDXL non. On prend le bon outil quand il
+    // est installé, et on retombe sur l'approximation historique sinon —
+    // denoise 0.45, qui conserve beaucoup et transforme peu.
+    //
+    // `prompt` arrive enveloppé dans le brief de direction du studio (un JSON
+    // en chinois écrit pour les modèles d'édition cloud). Kontext lit une
+    // consigne impérative en clair — « pose cette bouteille sur du sable
+    // mouillé » — pas un objet JSON. keou-actions.js passe donc AUSSI la
+    // direction brute dans `instruction` ; c'est elle que Kontext reçoit.
+    if (await detectKontext()) {
+      const direction = extractDirection(prompt, instruction);
+      return submit(await kontextGraph(buildLocalEditPrompt(direction), imageUrls[0], aspectRatio || '1:1'));
+    }
     return submit(await img2imgGraph(prompt, imageUrls[0], aspectRatio || '1:1', 0.45));
+  }
+  if (await detectKontext()) {
+    return submit(await fluxTxt2imgGraph(buildLocalImagePrompt(extractDirection(prompt, instruction)), aspectRatio || '1:1'));
   }
   return submit(await txt2imgGraph(prompt, aspectRatio || '1:1'));
 }
 
-export async function textToImage(_apiKey, { prompt, aspectRatio }) {
+export async function textToImage(_apiKey, { prompt, instruction, aspectRatio }) {
+  if (await detectKontext()) {
+    return submit(await fluxTxt2imgGraph(buildLocalImagePrompt(extractDirection(prompt, instruction)), aspectRatio || '1:1'));
+  }
   return submit(await txt2imgGraph(prompt, aspectRatio || '1:1'));
 }
 
 export async function polish(_apiKey, { prompt, imageUrl, aspectRatio }) {
-  // Nettoyage léger : on retouche sans réinventer.
+  // Une retouche est une édition : Kontext sait polir sans réinventer.
+  if (await detectKontext()) {
+    return submit(await kontextGraph(buildLocalEditPrompt('apply professional studio-grade retouching: cleaner lighting, richer materials, refined color grading — change nothing else'), imageUrl, aspectRatio || '1:1'));
+  }
   return submit(await img2imgGraph(prompt, imageUrl, aspectRatio || '1:1', 0.3));
 }
 
@@ -249,7 +430,7 @@ export async function upscaleImage(_apiKey, { imageUrl }) {
     1: { class_type: 'LoadImage', inputs: { image: up.name } },
     2: { class_type: 'UpscaleModelLoader', inputs: { model_name: model } },
     3: { class_type: 'ImageUpscaleWithModel', inputs: { upscale_model: ['2', 0], image: ['1', 0] } },
-    4: { class_type: 'SaveImage', inputs: { images: ['3', 0], filename_prefix: 'keou-upscale' } },
+    4: { class_type: 'SaveImage', inputs: { images: ['3', 0], filename_prefix: prefixe('keou-upscale') } },
   };
   return submit(graph);
 }
@@ -271,7 +452,7 @@ const LTX_DIMS = { '1:1': [640, 640], '16:9': [768, 512], '9:16': [512, 768], '4
 async function loaderChoices(nodeType, inputName) {
   try {
     const info = await comfyJson(`/object_info/${nodeType}`);
-    return info?.[nodeType]?.input?.required?.[inputName]?.[0] || [];
+    return modelChoices(info?.[nodeType]?.input?.required?.[inputName]);
   } catch { return []; }
 }
 
@@ -332,7 +513,15 @@ function pickVideoEngine(engines, wantsI2V) {
   return null;
 }
 
-async function wan5bGraph({ prompt, imageUrl, aspectRatio }) {
+// Wan travaille par paquets de 4 images + 1 : 81 (3,3 s), 121 (5 s, natif),
+// 161, 201, 241 (10 s). Au-delà de 5 s, la cohérence peut dériver et la VRAM
+// grimpe — on borne à 241 et on laisse le résultat parler.
+function framesPour(duration, fps = 24) {
+  const sec = Math.max(2, Math.min(10, Number(duration) || 5));
+  return Math.round((sec * fps) / 4) * 4 + 1;
+}
+
+async function wan5bGraph({ prompt, imageUrl, aspectRatio, duration }) {
   const e = (await detectVideoEngines()).wan5b;
   const [width, height] = WAN5B_DIMS[aspectRatio] || WAN5B_DIMS['16:9'];
   const g = {
@@ -342,14 +531,14 @@ async function wan5bGraph({ prompt, imageUrl, aspectRatio }) {
     48: { class_type: 'ModelSamplingSD3', inputs: { model: ['37', 0], shift: 8 } },
     6: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: prompt || '' } },
     7: { class_type: 'CLIPTextEncode', inputs: { clip: ['38', 0], text: VIDEO_NEGATIVE } },
-    55: { class_type: 'Wan22ImageToVideoLatent', inputs: { vae: ['39', 0], width, height, length: 121, batch_size: 1 } },
+    55: { class_type: 'Wan22ImageToVideoLatent', inputs: { vae: ['39', 0], width, height, length: framesPour(duration), batch_size: 1 } },
     3: {
       class_type: 'KSampler',
       inputs: { model: ['48', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['55', 0], seed: seed(), steps: 20, cfg: 5, sampler_name: 'uni_pc', scheduler: 'simple', denoise: 1 },
     },
     8: { class_type: 'VAEDecode', inputs: { samples: ['3', 0], vae: ['39', 0] } },
     57: { class_type: 'CreateVideo', inputs: { images: ['8', 0], fps: 24 } },
-    58: { class_type: 'SaveVideo', inputs: { video: ['57', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+    58: { class_type: 'SaveVideo', inputs: { video: ['57', 0], filename_prefix: prefixe('keou-video/keou'), format: 'auto', codec: 'auto' } },
   };
   if (imageUrl) {
     const up = await uploadFromUrl(imageUrl);
@@ -359,9 +548,10 @@ async function wan5bGraph({ prompt, imageUrl, aspectRatio }) {
   return g;
 }
 
-async function wan14bGraph({ prompt, imageUrl, aspectRatio }) {
+async function wan14bGraph({ prompt, imageUrl, aspectRatio, duration }) {
   const e = (await detectVideoEngines()).wan14b;
   const [width, height] = WAN14B_DIMS[aspectRatio] || WAN14B_DIMS['16:9'];
+  const fps = 16;
   const up = await uploadFromUrl(imageUrl);
   const hasLora = !!(e.loraHigh && e.loraLow);
   // Avec les LoRA lightx2v : 4 pas / cfg 1 / bascule au pas 2 — le défaut du
@@ -379,7 +569,7 @@ async function wan14bGraph({ prompt, imageUrl, aspectRatio }) {
     89: { class_type: 'CLIPTextEncode', inputs: { clip: ['84', 0], text: VIDEO_NEGATIVE } },
     104: { class_type: 'ModelSamplingSD3', inputs: { model: hasLora ? ['101', 0] : ['95', 0], shift: 5 } },
     103: { class_type: 'ModelSamplingSD3', inputs: { model: hasLora ? ['102', 0] : ['96', 0], shift: 5 } },
-    98: { class_type: 'WanImageToVideo', inputs: { positive: ['93', 0], negative: ['89', 0], vae: ['90', 0], start_image: ['97', 0], width, height, length: 81, batch_size: 1 } },
+    98: { class_type: 'WanImageToVideo', inputs: { positive: ['93', 0], negative: ['89', 0], vae: ['90', 0], start_image: ['97', 0], width, height, length: framesPour(duration, fps), batch_size: 1 } },
     86: {
       class_type: 'KSamplerAdvanced',
       inputs: { model: ['104', 0], positive: ['98', 0], negative: ['98', 1], latent_image: ['98', 2], add_noise: 'enable', noise_seed: seed(), steps, cfg, sampler_name: 'euler', scheduler: 'simple', start_at_step: 0, end_at_step: switchAt, return_with_leftover_noise: 'enable' },
@@ -389,8 +579,8 @@ async function wan14bGraph({ prompt, imageUrl, aspectRatio }) {
       inputs: { model: ['103', 0], positive: ['98', 0], negative: ['98', 1], latent_image: ['86', 0], add_noise: 'disable', noise_seed: 0, steps, cfg, sampler_name: 'euler', scheduler: 'simple', start_at_step: switchAt, end_at_step: steps, return_with_leftover_noise: 'disable' },
     },
     87: { class_type: 'VAEDecode', inputs: { samples: ['85', 0], vae: ['90', 0] } },
-    94: { class_type: 'CreateVideo', inputs: { images: ['87', 0], fps: 16 } },
-    108: { class_type: 'SaveVideo', inputs: { video: ['94', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+    94: { class_type: 'CreateVideo', inputs: { images: ['87', 0], fps } },
+    108: { class_type: 'SaveVideo', inputs: { video: ['94', 0], filename_prefix: prefixe('keou-video/keou'), format: 'auto', codec: 'auto' } },
   };
   if (hasLora) {
     g[101] = { class_type: 'LoraLoaderModelOnly', inputs: { model: ['95', 0], lora_name: e.loraHigh, strength_model: 1.0 } };
@@ -416,7 +606,7 @@ async function ltxGraph({ prompt, imageUrl, aspectRatio }) {
     },
     8: { class_type: 'VAEDecode', inputs: { samples: ['72', 0], vae: ['44', 2] } },
     78: { class_type: 'CreateVideo', inputs: { images: ['8', 0], fps: 24 } },
-    79: { class_type: 'SaveVideo', inputs: { video: ['78', 0], filename_prefix: 'keou-video/keou', format: 'auto', codec: 'auto' } },
+    79: { class_type: 'SaveVideo', inputs: { video: ['78', 0], filename_prefix: prefixe('keou-video/keou'), format: 'auto', codec: 'auto' } },
   };
   if (imageUrl) {
     const up = await uploadFromUrl(imageUrl);
@@ -442,7 +632,7 @@ async function ltxGraph({ prompt, imageUrl, aspectRatio }) {
   return g;
 }
 
-export async function generateVideo(_apiKey, { prompt, imageUrl, aspectRatio }) {
+export async function generateVideo(_apiKey, { prompt, imageUrl, aspectRatio, duration }) {
   const engines = await detectVideoEngines();
   const engine = pickVideoEngine(engines, !!imageUrl);
   if (!engine) {
@@ -450,7 +640,7 @@ export async function generateVideo(_apiKey, { prompt, imageUrl, aspectRatio }) 
       'Local engine: no video model installed. For local video, add Wan 2.2 5B to your ComfyUI (diffusion_models/wan2.2_ti2v_5B_fp16.safetensors + text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors + vae/wan2.2_vae.safetensors — ~17 GB, runs on 8 GB VRAM) or LTX-Video 2B — or use a cloud provider key for video.'
     );
   }
-  const params = { prompt, imageUrl, aspectRatio: aspectRatio || '16:9' };
+  const params = { prompt, imageUrl, aspectRatio: aspectRatio || '16:9', duration };
   const graph = engine === 'wan5b' ? await wan5bGraph(params)
     : engine === 'wan14b' ? await wan14bGraph(params)
     : await ltxGraph(params);

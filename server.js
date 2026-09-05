@@ -751,7 +751,16 @@ app.get('/api/engine', (req, res) => {
   res.json({
     provider: (config.localEngine?.url && config.defaultProvider === 'local') ? 'local' : config.defaultProvider,
     localEngine: config.localEngine?.url
-      ? { configured: true, reachable: !!localEngineState.reachable, checkpoints: localEngineState.checkpoints || 0, active: config.defaultProvider === 'local' }
+      ? {
+          configured: true,
+          reachable: !!localEngineState.reachable,
+          checkpoints: localEngineState.checkpoints || 0,
+          active: config.defaultProvider === 'local',
+          // Le studio doit pouvoir dire à l'utilisateur ce qui se passe quand
+          // la box est à terre : « on bascule sur le cloud » ou « rendu
+          // indisponible ». Sans ça, il affiche « Local » et ment.
+          fallback: !!config.localEngine.fallback,
+        }
       : { configured: false },
   });
 });
@@ -806,12 +815,16 @@ const PORT = config.port;
 // ─── Moteur local — sonde au boot (même principe que ffmpeg) ───
 // L'état est mémoïsé et resondé toutes les 60 s : /health et /api/engine le
 // servent sans re-frapper ComfyUI à chaque requête.
+// La sonde vit dans local-gate.js — même verdict pour /health, /api/engine et
+// le routage des générations. Deux sondes indépendantes finiraient par se
+// contredire, et c'est celle qui route qui compte.
 let localEngineState = { configured: false };
 async function refreshLocalEngine() {
   if (!config.localEngine?.url) return;
   try {
-    const { probeLocalEngine } = await import('./src/lib/providers/comfy.js');
-    localEngineState = await probeLocalEngine();
+    const gate = await import('./src/lib/providers/local-gate.js');
+    await gate.refreshLocalEngine();
+    localEngineState = gate.getLocalEngineState();
   } catch (err) {
     localEngineState = { configured: true, reachable: false, error: err.message };
   }

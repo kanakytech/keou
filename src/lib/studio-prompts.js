@@ -52,3 +52,44 @@ export function buildImagePrompt(creativeDirection) {
     return IMAGE_PROMPT;
   }
 }
+
+
+// ─── Briefs pour les modèles LOCAUX (FLUX / Kontext) ───
+//
+// IMAGE_PROMPT parle aux modèles d'édition cloud : un JSON en chinois qu'un
+// modèle à composante LLM lit comme une consigne. L'encodeur T5 de FLUX lit de
+// l'anglais naturel, et un modèle d'ÉDITION obéit à l'ordre des mots : ce qui
+// CHANGE d'abord, ce qui est VERROUILLÉ ensuite. Le même logo, la même
+// machine, la même consigne utilisateur : « logo must be unchanged » en tête
+// rendait le logo intact sur son fond ; « replace the background… keep the
+// logo exactly unchanged » le posait sur le sable avec ses reflets.
+// Même goût que le brief cloud — photo commerciale, matières, lumière, zéro
+// rendu CG — porté par des phrases, pas par des clés JSON.
+
+const LOCAL_TASTE = 'Photorealistic commercial product photography, premium editorial look: soft directional studio or natural light, true materials and micro-textures, accurate contact shadows and reflections, shallow depth of field, cinematic color grading, subtle film grain. No CGI or game-render look, no plastic sheen, no cartoon style, no added text, no distorted text or logos.';
+
+/** Réécrit une direction créative en consigne d'édition impérative. */
+export function buildLocalEditPrompt(direction) {
+  const d = String(direction || '').trim();
+  const changement = d ? `Edit this image: ${d}.` : 'Edit this image: place the subject in a fitting realistic environment.';
+  return `${changement} Rebuild the scene and lighting around the subject so it belongs there physically. Keep the subject itself — its shape, proportions, colors, text and logo — exactly unchanged. ${LOCAL_TASTE}`;
+}
+
+/** Direction créative → prompt texte→image pour FLUX. */
+export function buildLocalImagePrompt(direction) {
+  const d = String(direction || '').trim();
+  return d ? `${d}. ${LOCAL_TASTE}` : LOCAL_TASTE;
+}
+
+/**
+ * Retrouve la direction créative dans ce que le studio envoie au fournisseur :
+ * soit déjà brute, soit enfouie dans le brief JSON destiné au cloud.
+ */
+export function extractDirection(prompt, instruction) {
+  if (instruction && String(instruction).trim()) return String(instruction).trim();
+  const p = String(prompt || '').trim();
+  if (p.startsWith('{')) {
+    try { const j = JSON.parse(p); return String(j['用户创意方向']?.['方向'] || '').trim(); } catch { return ''; }
+  }
+  return p;
+}

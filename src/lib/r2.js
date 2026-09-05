@@ -128,14 +128,36 @@ export async function uploadPermanent(buffer, key, contentType = 'image/png') {
  * @param {string} key - R2 object key (e.g. results/123.png)
  * @returns {Promise<string>} Public URL (if R2_PUBLIC_URL set) or presigned URL
  */
-export async function persistFromUrl(sourceUrl, key) {
-  const res = await fetch(sourceUrl);
+export async function persistFromUrl(sourceUrl, key, { attempts = 3 } = {}) {
+  // Un tunnel Cloudflare éphémère (trycloudflare) coupe volontiers une
+  // connexion en plein flux (ECONNRESET, socket hang up) — surtout sous charge.
+  // Le poller le constatait et se rabattait sur une URL /api/local-view qui
+  // MEURT avec la box. On réessaie, et pour les fichiers de taille connue et
+  // raisonnable on TAMPONNE avant d'envoyer à R2 : une coupure devient alors
+  // un fetch raté qu'on rejoue, pas un PutObject à moitié écrit.
+  let derniere;
+  for (let i = 1; i <= attempts; i++) {
+    try { return await persistOnce(sourceUrl, key); }
+    catch (err) { derniere = err; if (i < attempts) await new Promise((r) => setTimeout(r, 1500 * i)); }
+  }
+  throw derniere;
+}
+
+async function persistOnce(sourceUrl, key) {
+  const res = await fetch(sourceUrl, { signal: AbortSignal.timeout(120_000) });
   if (!res.ok) throw new Error(`Failed to download: ${res.status}`);
   const contentType = res.headers.get('content-type') || 'application/octet-stream';
   const contentLengthHeader = res.headers.get('content-length');
   const contentLength = contentLengthHeader ? Number(contentLengthHeader) : null;
 
-  if (contentLength && contentLength > 0 && res.body) {
+  // Tamponner protège d'un flux coupé en cours de route — mais ça coûte de la
+  // mémoire, et seul le moteur LOCAL a ce problème (le tunnel Cloudflare
+  // réinitialise ses connexions sous charge). Les CDN des fournisseurs cloud
+  // ne le font pas : on ne leur impose pas ce coût sur l'instance hébergée.
+  const local = (config.localEngine?.url || '').replace(/\/+$/, '');
+  const depuisLocal = !!local && String(sourceUrl).startsWith(local);
+  const petit = depuisLocal && contentLength && contentLength > 0 && contentLength < 64 * 1024 * 1024;
+  if (contentLength && contentLength > 0 && res.body && !petit) {
     // Streaming path — bytes go source → R2 without fully buffering in Node.
     await r2.send(new PutObjectCommand({
       Bucket: BUCKET,

@@ -2368,11 +2368,16 @@ function maybeFlagKeyError(msg) {
    * GET /api/engine est public et minimal ; on le lit UNE fois ici et on
    * mémorise — le clic Generate (pré-vol de clé), la barre BYOK et le badge
    * s'appuient tous sur ce même état. fetch nu, pas authFetch : en anonyme,
-   * l'adaptateur ne connaît pas cette route et répondrait 403. Sur l'instance
-   * hébergée le provider n'est jamais 'local' — tout ceci reste inerte. */
+   * l'adaptateur ne connaît pas cette route et répondrait 403.
+   *
+   * Lu dans TOUTES les éditions : l'instance enterprise peut désormais pointer
+   * sur une machine de rendu (LOCAL_ENGINE_URL). Quand elle ne le fait pas,
+   * la route rend provider='kie' et rien ne change. Ne plus jamais supposer
+   * qu'une édition ne sera « jamais » locale — c'est ce qui faisait afficher
+   * $0.09 sur des rendus qui coûtaient 0,00016 $. */
   window.ENGINE_LOCAL = false;
   window.ENGINE_REACHABLE = false;
-  if (window.IS_OS || window.IS_CM) {
+  {
     try {
       const engRes = await fetch('/api/engine', { credentials: 'same-origin' });
       if (engRes.ok) {
@@ -3370,6 +3375,10 @@ async function processAll(pending) {
       job.generationId = genData.generationId || genData.id;
       job.taskId = genData.taskId || genData.id;
       job.recordId = genData.recordId;
+      // Qui a rendu ce job — décidé côté serveur PAR ACTION (une box qui n'a
+      // pas de modèle vidéo envoie la vidéo chez KIE). Le libellé de coût du
+      // lightbox s'appuie dessus : « local » n'est vrai que si c'est écrit ici.
+      job.provider = genData.provider || null;
 
     } catch (e) {
       job.status = 'error';
@@ -4200,7 +4209,11 @@ window.openModal = (id, type) => {
       ? 'Billed to your own API key'
       : (Auth.isCreditsMode && Auth.isCreditsMode())
         ? (type === 'video' ? `${(window._keouPricing?.actions?.video?.[job.videoModel] ?? 10)} credits` : '1 credit')
-        : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
+        // Rendu local : le fournisseur, c'est notre machine, pas un tarif à
+        // l'appel. On le dit tel quel plutôt qu'un prix KIE qui n'a pas été payé.
+        : (job.provider === 'local')
+          ? 'local · ~$0.00'
+          : (type === 'video' ? `$${(VIDEO_COSTS[job.videoModel] || 0.15).toFixed(2)}` : '$0.09'),
     creativeDirection: cd || null,
     inputUrl: job.uploadUrl,
     onPolish: () => polishJob(id),

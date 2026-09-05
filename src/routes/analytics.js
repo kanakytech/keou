@@ -77,8 +77,11 @@ router.get('/roi', requireAdmin, async (req, res) => {
     // Override with real tracked costs when available
     try {
       const rc = await queryOne(
-        `SELECT COALESCE(SUM(CASE WHEN api_cost > 0 THEN api_cost ELSE 0 END), 0) as tracked,
-                COUNT(CASE WHEN api_cost > 0 THEN 1 END) as tracked_count
+        // api_cost IS NOT NULL = suivi. 0 est un coût réel (moteur local), pas
+        // une absence de donnée : le compter comme « non suivi » le facturait
+        // 0,09 $ l'image dans le tableau de bord.
+        `SELECT COALESCE(SUM(api_cost), 0) as tracked,
+                COUNT(CASE WHEN api_cost IS NOT NULL THEN 1 END) as tracked_count
          FROM generations WHERE status = 'completed' AND created_at >= $1`,
         [since]
       );
