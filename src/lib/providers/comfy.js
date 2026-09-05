@@ -16,7 +16,7 @@
  */
 
 import { config } from '../../config.js';
-import { buildLocalEditPrompt, buildLocalImagePrompt, extractDirection, LOCAL_TASTE_VIDEO } from '../studio-prompts.js';
+import { buildLocalEditPrompt, buildLocalImagePrompt, extractDirection, LOCAL_TASTE_VIDEO, LOCAL_TASTE_RAFFINAGE } from '../studio-prompts.js';
 
 export const name = 'local';
 
@@ -525,8 +525,54 @@ async function fluxUpscaleGraph(imageUrl) {
 
 // Consigne volontairement NEUTRE : on agrandit, on ne réinterprète pas. Y
 // remettre la direction créative rouvrirait la porte à la recomposition.
-const UPSCALE_BRIEF = 'Ultra high definition photograph, fine surface micro-detail and true material texture, '
-  + 'crisp natural edges, physically accurate light and reflections, no added elements, no style change.';
+const UPSCALE_BRIEF = LOCAL_TASTE_RAFFINAGE;
+
+/**
+ * Agrandissement par DIFFUSION EN TUILES (Ultimate SD Upscale).
+ *
+ * L'image agrandie est découpée en tuiles d'environ 1 Mpx — la zone où le
+ * modèle est bon — et chacune repasse par l'échantillonneur. Le modèle ajoute
+ * donc du détail en connaissant le sujet, au lieu d'en inventer à une échelle
+ * qu'il n'a jamais vue.
+ *
+ * Mesuré le 06/09 sur un même rendu porté en 4K, écart entre colonnes voisines
+ * sur un aplat de bitume — plus bas veut dire moins d'artefact :
+ *   lanczos simple (la référence) . . . 14,4
+ *   seconde passe FLUX en latent . . . . 21,4   trame en damier
+ *   ESRGAN x4 seul . . . . . . . . . . . 4,4   propre mais lisse les dégradés
+ *   diffusion en tuiles . . . . . . . . . 1,89  le plus propre des quatre
+ *
+ * Sans passe de raccords : avec 16 de flou de masque et 64 de débord les
+ * jonctions ne se voient pas, et la passe de raccords doublait le temps
+ * (18 tuiles au lieu de 8).
+ */
+async function usduGraph(imageUrl, ckpt, modeleAgrandisseur) {
+  const up = await uploadFromUrl(imageUrl);
+  return {
+    1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: ckpt } },
+    2: { class_type: 'LoadImage', inputs: { image: up.name } },
+    3: { class_type: 'ModelSamplingFlux', inputs: { model: ['1', 0], max_shift: 1.15, base_shift: 0.5, width: 1920, height: 1080 } },
+    4: { class_type: 'CLIPTextEncode', inputs: { text: UPSCALE_BRIEF, clip: ['1', 1] } },
+    5: { class_type: 'FluxGuidance', inputs: { conditioning: ['4', 0], guidance: 3.5 } },
+    6: { class_type: 'CLIPTextEncode', inputs: { text: '', clip: ['1', 1] } },
+    7: { class_type: 'UpscaleModelLoader', inputs: { model_name: modeleAgrandisseur } },
+    8: {
+      class_type: 'UltimateSDUpscale',
+      inputs: {
+        image: ['2', 0], model: ['3', 0], positive: ['5', 0], negative: ['6', 0], vae: ['1', 2],
+        upscale_by: 2, seed: seed(), steps: 14, cfg: 1, sampler_name: 'euler', scheduler: 'simple',
+        // 0,2 : le sujet ne bouge pas d'une tuile à l'autre. Au-delà de 0,3
+        // les tuiles divergent et les raccords se voient.
+        denoise: 0.2, upscale_model: ['7', 0], mode_type: 'Linear',
+        tile_width: 1024, tile_height: 1024, mask_blur: 16, tile_padding: 64,
+        seam_fix_mode: 'None', seam_fix_denoise: 0.4, seam_fix_width: 96,
+        seam_fix_mask_blur: 16, seam_fix_padding: 32,
+        force_uniform_tiles: true, tiled_decode: true, batch_size: 1,
+      },
+    },
+    9: { class_type: 'SaveImage', inputs: { images: ['8', 0], filename_prefix: prefixe('keou-upscale') } },
+  };
+}
 
 export async function upscaleImage(_apiKey, { imageUrl }) {
   // ESRGAN d'abord — il est FAIT pour agrandir une image fixe. Le reproche
@@ -538,6 +584,13 @@ export async function upscaleImage(_apiKey, { imageUrl }) {
   // damier bien réelle, FLUX sortant de sa résolution d'entraînement — et 4,4
   // avec l'agrandisseur dédié, soit plus propre que la référence.
   const model = await getUpscaleModel().catch(() => null);
+  const ckptFlux = await detectFluxCheckpoint();
+  // Le meilleur chemin quand tout est là : diffusion en tuiles. Il a besoin
+  // d'un modèle de diffusion ET d'un agrandisseur classique — il se sert du
+  // second pour poser la trame, du premier pour y remettre de la matière.
+  if (model && ckptFlux && await nodeExiste('UltimateSDUpscale')) {
+    return submit(await usduGraph(imageUrl, ckptFlux, model));
+  }
   if (!model) {
     // Aucun agrandisseur installé : plutôt que de refuser, on se rabat sur
     // FLUX. Moins bon, mais l'utilisateur obtient son image.

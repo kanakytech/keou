@@ -72,24 +72,46 @@ export function buildImagePrompt(creativeDirection) {
 // « d'IA » : ils tirent le modèle vers la photographie réelle plutôt que vers
 // le rendu de jeu. Une image de studio doit pouvoir passer en tête de gondole
 // sans retouche, et servir d'image de départ à une vidéo sans rien perdre.
-// Le socle commun à tout rendu local. « Mouvement » et « physique » n'y sont
-// PAS : sur une image fixe, demander du mouvement fait ajouter du flou de
-// filé — le sujet devient mou, et c'est exactement le défaut qu'on chasse.
-// Ces termes appartiennent au brief vidéo, où ils décrivent ce qui doit se
-// passer entre deux images.
-const SOCLE_QUALITE = 'Ultra high definition, ultra high quality, photorealistic. '
-  + 'High quality realistic textures with fine surface micro-detail, physically accurate shadows and contact shadows, '
-  + 'true specular reflections and correct light falloff. '
-  + 'Premium commercial and editorial photography: soft directional light, true materials, cinematic color grading, subtle film grain. '
-  + 'No CGI or game-render look, no plastic sheen, no cartoon style, no added text, no distorted text or logos.';
+// Le brief local, écrit comme une COMMANDE À UN DIRECTEUR PHOTO plutôt qu'en
+// liste de mots-clés séparés par des virgules.
+//
+// La structure vient des workflows de production de Kevyn (ComfyUI + KIE,
+// février 2026), qui produisaient la qualité qu'on cherche à retrouver :
+// un rôle, puis des règles absolues, puis un style de prise de vue, puis la
+// scène, puis ce qu'on refuse. Un modèle suit une consigne structurée bien
+// mieux qu'une accumulation d'adjectifs — « ultra high quality » ne dit rien,
+// « shot on a Phase One IQ4 150MP » dit un capteur, une profondeur de champ et
+// un grain.
+//
+// « Mouvement » et « physique » n'y sont PAS : sur une image fixe, demander du
+// mouvement fait ajouter du flou de filé. Ces termes appartiennent au brief
+// vidéo, où ils décrivent ce qui doit se passer entre deux images.
+const SOCLE_QUALITE = 'You are a luxury commercial photography director.\n'
+  + 'ABSOLUTE RULES: real materials with true surface texture — visible grain, weave, brushed metal, subsurface scattering on skin; '
+  + 'physically accurate contact shadows and specular reflections; no CGI feel, no plastic sheen, no game rendering.\n'
+  + 'SHOOTING STYLE: ultra-realistic editorial photography, VOGUE and Harper\'s Bazaar level. '
+  + 'Natural cinematic lighting with real shadow depth and shallow depth of field. '
+  + 'Fine film grain, realistic bokeh, true-to-life colour grading. Shot on a Phase One IQ4 150MP.\n'
+  + 'NEGATIVE: no added text, no watermark, no logo, no distorted lettering, no extra limbs or duplicated parts, no flat lighting.';
 
-// Image fixe : on veut de la NETTETÉ. Un plan publicitaire de voiture se shoote
-// au 1/1000e — le sujet est figé, c'est le décor qui file, jamais l'inverse.
-const LOCAL_TASTE = `${SOCLE_QUALITE} Razor sharp focus on the subject, every edge crisp, no motion blur on the subject.`;
+// Image fixe : on veut de la NETTETÉ. Un plan publicitaire se shoote au
+// 1/1000e — le sujet est figé, c'est le décor qui file, jamais l'inverse.
+const LOCAL_TASTE = `${SOCLE_QUALITE}\nFOCUS: razor sharp on the subject, every edge crisp, no motion blur on the subject.`;
 
 // Vidéo : là seulement, le mouvement et la physique ont un sens.
-export const LOCAL_TASTE_VIDEO = `${SOCLE_QUALITE} Natural motion with correct physics and weight, `
-  + 'smooth stable camera, consistent lighting across the shot, no flicker, no warping.';
+export const LOCAL_TASTE_VIDEO = `${SOCLE_QUALITE}\n`
+  + 'MOTION: natural movement with correct physics and weight, smooth stable camera, '
+  + 'consistent lighting across the shot, no flicker, no warping.';
+
+// Raffinage : on ÉNUMÈRE ce qui ne doit pas bouger, puis la courte liste de ce
+// qu'on améliore. C'est le motif des workflows de production : sans la liste
+// de ce qui est verrouillé, la passe redessine la scène au lieu de l'enrichir.
+export const LOCAL_TASTE_RAFFINAGE = 'Enhance this photograph to look like a real ultra-realistic professional shoot. '
+  + 'Keep absolutely everything identical — the subject, its shape and proportions, any text or logo on it, '
+  + 'the pose, the composition, the framing, the colours. '
+  + 'ONLY improve: surface texture realism, material detail, lighting quality, shadow depth, cinematic colour grading. '
+  + 'No new elements, no change of scene, no restyling — ultra-realistic enhancement only. '
+  + 'Shot on a Phase One IQ4 150MP for an editorial cover.';
 
 /** Réécrit une direction créative en consigne d'édition impérative. */
 export function buildLocalEditPrompt(direction) {
