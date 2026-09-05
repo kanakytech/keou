@@ -72,12 +72,24 @@ export function buildImagePrompt(creativeDirection) {
 // « d'IA » : ils tirent le modèle vers la photographie réelle plutôt que vers
 // le rendu de jeu. Une image de studio doit pouvoir passer en tête de gondole
 // sans retouche, et servir d'image de départ à une vidéo sans rien perdre.
-const LOCAL_TASTE = 'Ultra high definition, ultra high quality, photorealistic. '
+// Le socle commun à tout rendu local. « Mouvement » et « physique » n'y sont
+// PAS : sur une image fixe, demander du mouvement fait ajouter du flou de
+// filé — le sujet devient mou, et c'est exactement le défaut qu'on chasse.
+// Ces termes appartiennent au brief vidéo, où ils décrivent ce qui doit se
+// passer entre deux images.
+const SOCLE_QUALITE = 'Ultra high definition, ultra high quality, photorealistic. '
   + 'High quality realistic textures with fine surface micro-detail, physically accurate shadows and contact shadows, '
-  + 'natural motion and correct physics, true specular reflections and light falloff. '
-  + 'Premium commercial and editorial photography: soft directional studio or natural light, true materials, '
-  + 'shallow depth of field, cinematic color grading, subtle film grain, razor sharp focus on the subject. '
+  + 'true specular reflections and correct light falloff. '
+  + 'Premium commercial and editorial photography: soft directional light, true materials, cinematic color grading, subtle film grain. '
   + 'No CGI or game-render look, no plastic sheen, no cartoon style, no added text, no distorted text or logos.';
+
+// Image fixe : on veut de la NETTETÉ. Un plan publicitaire de voiture se shoote
+// au 1/1000e — le sujet est figé, c'est le décor qui file, jamais l'inverse.
+const LOCAL_TASTE = `${SOCLE_QUALITE} Razor sharp focus on the subject, every edge crisp, no motion blur on the subject.`;
+
+// Vidéo : là seulement, le mouvement et la physique ont un sens.
+export const LOCAL_TASTE_VIDEO = `${SOCLE_QUALITE} Natural motion with correct physics and weight, `
+  + 'smooth stable camera, consistent lighting across the shot, no flicker, no warping.';
 
 /** Réécrit une direction créative en consigne d'édition impérative. */
 export function buildLocalEditPrompt(direction) {

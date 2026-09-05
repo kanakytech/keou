@@ -16,7 +16,7 @@
  */
 
 import { config } from '../../config.js';
-import { buildLocalEditPrompt, buildLocalImagePrompt, extractDirection } from '../studio-prompts.js';
+import { buildLocalEditPrompt, buildLocalImagePrompt, extractDirection, LOCAL_TASTE_VIDEO } from '../studio-prompts.js';
 
 export const name = 'local';
 
@@ -485,10 +485,67 @@ export async function adapt(_apiKey, { prompt, imageUrl, aspectRatio }) {
   return submit(await img2imgGraph(prompt || 'same scene, recomposed', imageUrl, aspectRatio || '1:1', 0.5));
 }
 
+/**
+ * Agrandissement GÉNÉRATIF avec FLUX — ×2 en espace pixel puis passe fine.
+ *
+ * ESRGAN invente du détail plausible par voisinage de pixels, sans savoir ce
+ * qu'il regarde : sur une arête nette ça fourmille, sur une peau ça plastifie.
+ * Ici on agrandit au lanczos — déterministe, il n'invente aucune structure —
+ * puis on laisse le modèle repasser à 0,25 de bruit : il ajoute de la matière
+ * fine en connaissant le sujet, sans avoir la liberté de le redessiner.
+ *
+ * L'agrandissement en LATENT (LatentUpscale) a été essayé et rejeté : il laisse
+ * une grille régulière visible sur les aplats, et à un bruit assez fort pour
+ * l'effacer, le modèle recompose la scène.
+ */
+async function fluxUpscaleGraph(imageUrl) {
+  const ckpt = await detectFluxCheckpoint();
+  const up = await uploadFromUrl(imageUrl);
+  return {
+    1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: ckpt } },
+    2: { class_type: 'LoadImage', inputs: { image: up.name } },
+    3: { class_type: 'ImageScaleBy', inputs: { image: ['2', 0], upscale_method: 'lanczos', scale_by: 2 } },
+    4: { class_type: 'VAEEncode', inputs: { pixels: ['3', 0], vae: ['1', 2] } },
+    5: { class_type: 'CLIPTextEncode', inputs: { text: UPSCALE_BRIEF, clip: ['1', 1] } },
+    6: { class_type: 'FluxGuidance', inputs: { conditioning: ['5', 0], guidance: 3.5 } },
+    7: { class_type: 'CLIPTextEncode', inputs: { text: '', clip: ['1', 1] } },
+    8: {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['1', 0], positive: ['6', 0], negative: ['7', 0], latent_image: ['4', 0],
+        seed: seed(), steps: 10, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 0.25,
+      },
+    },
+    // Décodage par tuiles : une image 4K dépasse le VAE d'un coup sur beaucoup
+    // de cartes, et un échec ici gâcherait tout le calcul déjà fait.
+    9: { class_type: 'VAEDecodeTiled', inputs: { samples: ['8', 0], vae: ['1', 2], tile_size: 1024, overlap: 64, temporal_size: 64, temporal_overlap: 8 } },
+    10: { class_type: 'SaveImage', inputs: { images: ['9', 0], filename_prefix: prefixe('keou-upscale') } },
+  };
+}
+
+// Consigne volontairement NEUTRE : on agrandit, on ne réinterprète pas. Y
+// remettre la direction créative rouvrirait la porte à la recomposition.
+const UPSCALE_BRIEF = 'Ultra high definition photograph, fine surface micro-detail and true material texture, '
+  + 'crisp natural edges, physically accurate light and reflections, no added elements, no style change.';
+
 export async function upscaleImage(_apiKey, { imageUrl }) {
+  // ESRGAN d'abord — il est FAIT pour agrandir une image fixe. Le reproche
+  // qu'on lui fait (le fourmillement) vaut pour la VIDÉO, où il traite chaque
+  // image sans mémoire de la précédente : sur une image seule il n'y a pas de
+  // suite à trahir. Mesuré le 06/09 sur un même rendu porté en 4K, écart entre
+  // colonnes voisines sur un aplat de bitume : 14,4 pour un simple lanczos
+  // (la référence), 21,4 en repassant FLUX sur le latent 4K — une trame en
+  // damier bien réelle, FLUX sortant de sa résolution d'entraînement — et 4,4
+  // avec l'agrandisseur dédié, soit plus propre que la référence.
+  const model = await getUpscaleModel().catch(() => null);
+  if (!model) {
+    // Aucun agrandisseur installé : plutôt que de refuser, on se rabat sur
+    // FLUX. Moins bon, mais l'utilisateur obtient son image.
+    if (await detectFluxCheckpoint()) return submit(await fluxUpscaleGraph(imageUrl));
+    throw new Error('Local engine: no upscale model installed — add one to models/upscale_models (e.g. 4x-UltraSharp.pth)');
+  }
   // Le facteur est celui du modèle installé (RealESRGAN x4 → ×4) : ComfyUI
   // n'expose pas de facteur réglable sur ImageUpscaleWithModel.
-  const model = await getUpscaleModel();
   const up = await uploadFromUrl(imageUrl);
   const graph = {
     1: { class_type: 'LoadImage', inputs: { image: up.name } },
@@ -699,7 +756,7 @@ async function ltx23Graph({ prompt, imageUrl, aspectRatio, duration }) {
     7: { class_type: 'EmptyLTXVLatentVideo', inputs: { width: width / 2, height: height / 2, length: frames, batch_size: 1 } },
     9: { class_type: 'LTXVAudioVAELoader', inputs: { ckpt_name: e.ckpt } },
     10: { class_type: 'LTXVEmptyLatentAudio', inputs: { audio_vae: ['9', 0], frames_number: frames, frame_rate: 25, batch_size: 1 } },
-    12: { class_type: 'CLIPTextEncode', inputs: { text: prompt, clip: ['2', 0] } },
+    12: { class_type: 'CLIPTextEncode', inputs: { text: `${prompt}. ${LOCAL_TASTE_VIDEO}`, clip: ['2', 0] } },
     13: { class_type: 'CLIPTextEncode', inputs: { text: VIDEO_NEGATIVE, clip: ['2', 0] } },
     14: { class_type: 'LTXVConditioning', inputs: { positive: ['12', 0], negative: ['13', 0], frame_rate: fps } },
     16: { class_type: 'RandomNoise', inputs: { noise_seed: Math.floor(Math.random() * 1e15) } },

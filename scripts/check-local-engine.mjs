@@ -15,6 +15,9 @@ const PORT = 3498;
 let promptCount = 0;
 const submitted = {}; // prompt_id → graph
 
+// Interrupteur du stub : simule une box SANS FLUX pour vérifier le repli.
+let sansFlux = false;
+
 const stub = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const send = (code, body, type = 'application/json') => {
@@ -23,7 +26,8 @@ const stub = http.createServer((req, res) => {
   };
 
   if (url.pathname === '/object_info/CheckpointLoaderSimple') {
-    return send(200, { CheckpointLoaderSimple: { input: { required: { ckpt_name: [['flux1-schnell-fp8.safetensors', 'sdxl-base.safetensors']] } } } });
+    const liste = sansFlux ? ['sdxl-base.safetensors'] : ['flux1-schnell-fp8.safetensors', 'sdxl-base.safetensors'];
+    return send(200, { CheckpointLoaderSimple: { input: { required: { ckpt_name: [liste] } } } });
   }
   if (url.pathname === '/object_info/UpscaleModelLoader') {
     return send(200, { UpscaleModelLoader: { input: { required: { model_name: [['RealESRGAN_x4plus.pth']] } } } });
@@ -121,11 +125,14 @@ try {
 
 // 3. upscale
 try {
+  // Même avec FLUX installé, l'agrandisseur DÉDIÉ prime : mesuré sur un rendu
+  // porté en 4K, repasser FLUX sur le latent laisse une trame en damier
+  // (21,4 contre 14,4 pour un simple lanczos), l'agrandisseur donne 4,4.
   const t = await comfy.upscaleImage('', { imageUrl: `http://localhost:${PORT}/fake-source.png` });
   const graph = submitted[t.taskId];
   assert.equal(graph[2].inputs.model_name, 'RealESRGAN_x4plus.pth');
   assert.equal(graph[3].class_type, 'ImageUpscaleWithModel');
-  ok('upscaleImage : graphe upscale avec modèle auto-détecté');
+  ok('upscaleImage : agrandisseur dédié même quand FLUX est là');
 } catch (e) { ko('upscaleImage', e); }
 
 // 4. sondage — les trois états
