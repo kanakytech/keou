@@ -338,7 +338,7 @@ async function detectFluxCheckpoint() {
 async function fluxCkptTxt2imgGraph(prompt, ratio, { width, height, steps } = {}) {
   const ckpt = await detectFluxCheckpoint();
   if (!ckpt) throw new Error('Local engine: FLUX checkpoint not installed');
-  const [w, h] = width && height ? [width, height] : dims(ratio);
+  const [w, h] = width && height ? [width, height] : await fluxDims(ratio);
   // schnell est DISTILLÉ pour 4 pas : lui en imposer 28 coûte sept fois
   // le temps sans rien ajouter à l'image. samplerFor tranche par le nom.
   const pas = steps || samplerFor(ckpt).steps;
@@ -519,7 +519,51 @@ const WAN5B_DIMS = { '1:1': [768, 768], '16:9': [1280, 704], '9:16': [704, 1280]
 const WAN14B_DIMS = { '1:1': [960, 960], '16:9': [1280, 720], '9:16': [720, 1280], '4:3': [1024, 768], '3:4': [768, 1024] };
 // LTX-2.3 : dimensions FINALES. L'étage 1 échantillonne à la moitié, donc
 // chaque côté doit être divisible par 64 (le latent veut des multiples de 32).
+//
+// Deux jeux, choisis sur la VRAM RÉELLE de la machine et pas sur une constante :
+// une image de départ nette ne sert à rien si le modèle la réduit ensuite à
+// 1280x704. Mesuré le 06/09 sur une RTX 5090 32 Go : le jeu haut passe grâce
+// au déchargement dynamique de ComfyUI (30,6 Go utilisés, 71 s au lieu de 43).
+// En dessous de 30 Go on reste sur le jeu standard — mieux vaut un plan un peu
+// moins défini qu'une génération qui meurt en fin de course.
+const LTX23_DIMS_HD = { '1:1': [1536, 1536], '16:9': [1920, 1088], '9:16': [1088, 1920], '4:3': [1600, 1216], '3:4': [1216, 1600], '21:9': [1920, 832] };
 const LTX23_DIMS = { '1:1': [1024, 1024], '16:9': [1280, 704], '9:16': [704, 1280], '4:3': [1024, 768], '3:4': [768, 1024], '21:9': [1216, 512] };
+
+// VRAM totale annoncée par ComfyUI, en Go. Cache long : le matériel ne change
+// pas sous les pieds d'une instance.
+let _vramCache = { v: null, exp: 0 };
+async function vramTotaleGo() {
+  const now = Date.now();
+  if (_vramCache.v !== null && now < _vramCache.exp) return _vramCache.v;
+  let v = 0;
+  try {
+    const st = await comfyJson('/system_stats');
+    v = Math.max(0, ...(st?.devices || []).map((d) => (d?.vram_total || 0) / 1073741824));
+  } catch { v = 0; }
+  _vramCache = { v, exp: now + 600_000 };
+  return v;
+}
+
+/**
+ * Dimensions FLUX. Sur une machine capable, on génère à la résolution EXACTE
+ * que le modèle vidéo utilisera (LTX23_DIMS_HD) : l'image de départ d'une
+ * vidéo ne subit alors aucun redimensionnement, ni vers le haut ni vers le
+ * bas. Générer en 1344x768 pour une vidéo en 1920x1088 revenait à agrandir —
+ * donc à inventer du détail — juste avant l'étape qui compte.
+ *
+ * Sur une petite machine on reste à ~1 Mpx : FLUX y est déjà excellent, et
+ * une génération qui aboutit vaut mieux qu'une définition qui sature la carte.
+ */
+async function fluxDims(ratio) {
+  const table = (await vramTotaleGo()) >= 30 ? LTX23_DIMS_HD : DIMS;
+  return table[ratio] || table['16:9'] || DIMS['1:1'];
+}
+
+/** Le jeu de dimensions que cette machine peut réellement tenir. */
+async function ltx23Dims(ratio) {
+  const table = (await vramTotaleGo()) >= 30 ? LTX23_DIMS_HD : LTX23_DIMS;
+  return table[ratio] || table['16:9'];
+}
 const LTX_DIMS = { '1:1': [640, 640], '16:9': [768, 512], '9:16': [512, 768], '4:3': [704, 544], '3:4': [544, 704] };
 
 async function loaderChoices(nodeType, inputName) {
@@ -645,7 +689,7 @@ const LTX23_SIGMAS_2 = '0.85, 0.7250, 0.4219, 0.0';
  */
 async function ltx23Graph({ prompt, imageUrl, aspectRatio, duration }) {
   const e = (await detectVideoEngines()).ltx23;
-  const [width, height] = LTX23_DIMS[aspectRatio] || LTX23_DIMS['16:9'];
+  const [width, height] = await ltx23Dims(aspectRatio);
   const frames = framesPourLtx23(duration);
   const fps = 24;
 

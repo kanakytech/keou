@@ -66,7 +66,18 @@ export function buildImagePrompt(creativeDirection) {
 // Même goût que le brief cloud — photo commerciale, matières, lumière, zéro
 // rendu CG — porté par des phrases, pas par des clés JSON.
 
-const LOCAL_TASTE = 'Photorealistic commercial product photography, premium editorial look: soft directional studio or natural light, true materials and micro-textures, accurate contact shadows and reflections, shallow depth of field, cinematic color grading, subtle film grain. No CGI or game-render look, no plastic sheen, no cartoon style, no added text, no distorted text or logos.';
+// Le standard de qualité du studio, appliqué à CHAQUE rendu local — jamais au
+// cas par cas. Les six termes en tête (définition, texture, ombres, mouvement,
+// physique, reflets) sont ceux qui séparent un visuel vendable d'un visuel
+// « d'IA » : ils tirent le modèle vers la photographie réelle plutôt que vers
+// le rendu de jeu. Une image de studio doit pouvoir passer en tête de gondole
+// sans retouche, et servir d'image de départ à une vidéo sans rien perdre.
+const LOCAL_TASTE = 'Ultra high definition, ultra high quality, photorealistic. '
+  + 'High quality realistic textures with fine surface micro-detail, physically accurate shadows and contact shadows, '
+  + 'natural motion and correct physics, true specular reflections and light falloff. '
+  + 'Premium commercial and editorial photography: soft directional studio or natural light, true materials, '
+  + 'shallow depth of field, cinematic color grading, subtle film grain, razor sharp focus on the subject. '
+  + 'No CGI or game-render look, no plastic sheen, no cartoon style, no added text, no distorted text or logos.';
 
 /** Réécrit une direction créative en consigne d'édition impérative. */
 export function buildLocalEditPrompt(direction) {
