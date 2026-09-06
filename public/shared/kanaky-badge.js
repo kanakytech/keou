@@ -35,7 +35,7 @@
   var pill = document.createElement('a');
   pill.className = 'kh-pill'; pill.href = 'https://kanaky.xyz/home/';
   pill.setAttribute('aria-label', 'Retour à l’écosystème Kanaky Tech');
-  pill.innerHTML = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5 8 7.5l4 3 3 4" stroke="currentColor" stroke-width="1" opacity=".45"/><circle cx="3.5" cy="3.5" r="1.6" fill="currentColor"/><circle cx="8" cy="7.5" r="1.4" fill="currentColor"/><circle cx="12" cy="10.5" r="1.4" fill="currentColor"/><circle cx="15" cy="14.5" r="1.8" fill="currentColor"/></svg>Accueil';
+  pill.innerHTML = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5 8 7.5l4 3 3 4" stroke="currentColor" stroke-width="1" opacity=".45"/><circle cx="3.5" cy="3.5" r="1.6" fill="currentColor"/><circle cx="8" cy="7.5" r="1.4" fill="currentColor"/><circle cx="12" cy="10.5" r="1.4" fill="currentColor"/><circle cx="15" cy="14.5" r="1.8" fill="currentColor"/></svg>Écosystème';
   document.body.appendChild(pill);
   pill.addEventListener('click', function (e) {
     if (reduced || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
