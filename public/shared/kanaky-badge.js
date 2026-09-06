@@ -33,8 +33,8 @@
   ].join('');
   document.head.appendChild(css);
   var pill = document.createElement('a');
-  pill.className = 'kh-pill'; pill.href = 'https://kanaky.xyz/';
-  pill.setAttribute('aria-label', 'Retour à l’accueil kanaky.xyz');
+  pill.className = 'kh-pill'; pill.href = 'https://kanaky.xyz/home/';
+  pill.setAttribute('aria-label', 'Retour à l’écosystème Kanaky Tech');
   pill.innerHTML = '<svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5 8 7.5l4 3 3 4" stroke="currentColor" stroke-width="1" opacity=".45"/><circle cx="3.5" cy="3.5" r="1.6" fill="currentColor"/><circle cx="8" cy="7.5" r="1.4" fill="currentColor"/><circle cx="12" cy="10.5" r="1.4" fill="currentColor"/><circle cx="15" cy="14.5" r="1.8" fill="currentColor"/></svg>Accueil';
   document.body.appendChild(pill);
   pill.addEventListener('click', function (e) {
@@ -91,6 +91,6 @@
       }
       if (t < 700) requestAnimationFrame(frame);
     })(t0);
-    setTimeout(function () { location.href = 'https://kanaky.xyz/'; }, 660);
+    setTimeout(function () { location.href = 'https://kanaky.xyz/home/'; }, 660);
   });
 })();
