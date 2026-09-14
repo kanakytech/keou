@@ -1,4 +1,5 @@
 import express from 'express';
+import { publicSeo } from './src/middleware/publicSeo.js';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -150,6 +151,8 @@ app.use(cookieParser());
 // Billing webhook: commercial deployments only — not part of the open-source edition.
 
 app.use(express.json({ limit: '1mb' }));
+app.use(publicSeo({ edition: config.edition, publicDir: join(__dirname, 'public') }));
+
 app.use(express.static(join(__dirname, 'public'), {
   maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0, // images, polices, échantillons : 1 h
   etag: true,                    // ETag for conditional requests (304 Not Modified)
@@ -589,9 +592,8 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', (req, res) => {
   if (config.edition !== 'community') return res.status(404).end();
-  const lastmod = new Date().toISOString().slice(0, 10);
   const urls = SEO_PAGES.map(([p, freq, prio]) =>
-    `  <url><loc>${SEO_HOST}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>${freq}</changefreq><priority>${prio}</priority></url>`,
+    `  <url><loc>${SEO_HOST}${p}</loc><changefreq>${freq}</changefreq><priority>${prio}</priority></url>`,
   ).join('\n');
   res.type('application/xml').send(
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
